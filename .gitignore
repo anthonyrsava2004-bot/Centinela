@@ -1,0 +1,41 @@
+# Variables de entorno y secretos (Ley N° 29733 / Seguridad de Credenciales)
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+
+# Entornos virtuales Python
+venv/
+.venv/
+env/
+backend/venv/
+backend/.venv/
+
+# Caché de Python y artefactos
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+
+# Dependencias y compilación de Node.js / Vite
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+build/
+.vite/
+
+# Archivos de sistema e IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+*.sqlite3
+*.db
