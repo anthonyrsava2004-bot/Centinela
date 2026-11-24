@@ -208,3 +208,29 @@ export interface GrafoColusionData {
     edges: { data: Record<string, any> }[];
   };
 }
+
+export interface AuditLogItem {
+  id: number;
+  timestamp: string;
+  usuario_codigo: string;
+  rol_usuario: string;
+  accion: string;
+  recurso: string;
+  resultado: 'PERMITIDO' | 'BLOQUEADO_403' | string;
+  detalle: string;
+  ip_origen: string;
+  hash_anterior: string;
+  hash_actual: string;
+  es_integro: boolean;
+}
+
+export interface AuditLogResumen {
+  cadena_integra: boolean;
+  total_eventos: number;
+  total_permitidos: number;
+  total_bloqueados: number;
+  ultimo_hash: string;
+  evento_comprometido_id?: number | null;
+  mensaje_integridad: string;
+  eventos: AuditLogItem[];
+}

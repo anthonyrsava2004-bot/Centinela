@@ -136,3 +136,24 @@ class HistorialAlerta(Base):
     timestamp = Column(String(35), nullable=False)
 
     alerta = relationship("AlertaGestion", back_populates="historial")
+
+
+class AuditLog(Base):
+    """
+    Bitácora global inmutable (append-only) encadenada con SHA-256.
+    Registra quién (código funcional seudonimizado), bajo qué rol, qué acción ejecutó
+    (o intentó ejecutar y fue bloqueada con 403), sobre qué recurso, cuándo y desde qué IP.
+    """
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(String(35), nullable=False, index=True)
+    usuario_codigo = Column(String(40), nullable=False, index=True)
+    rol_usuario = Column(String(80), nullable=False)
+    accion = Column(String(60), nullable=False, index=True)
+    recurso = Column(String(120), nullable=False)
+    resultado = Column(String(30), nullable=False, index=True)  # PERMITIDO | BLOQUEADO_403
+    detalle = Column(Text, nullable=False)
+    ip_origen = Column(String(60), nullable=False, default="127.0.0.1")
+    hash_anterior = Column(String(64), nullable=False)
+    hash_actual = Column(String(64), nullable=False)

@@ -6,6 +6,7 @@ import { ExpedientesPage } from './pages/ExpedientesPage';
 import { TrazabilidadPage } from './pages/TrazabilidadPage';
 import { GrafoColusionPage } from './pages/GrafoColusionPage';
 import { CompliancePage } from './pages/CompliancePage';
+import { AuditoriaPage } from './pages/AuditoriaPage';
 import { ThemeProvider } from './context/ThemeContext';
 import { RolUsuario } from './types';
 import { ROLE_PROFILES } from './config/roles';
@@ -23,6 +24,15 @@ export const App: React.FC = () => {
     return 'Auditor OCI (Control Institucional)';
   });
 
+  const handleSetRolActivo = (nuevoRol: RolUsuario) => {
+    try {
+      localStorage.setItem(ROL_STORAGE_KEY, nuevoRol);
+    } catch {
+      // Ignore storage access issues
+    }
+    setRolActivo(nuevoRol);
+  };
+
   useEffect(() => {
     try {
       localStorage.setItem(ROL_STORAGE_KEY, rolActivo);
@@ -33,7 +43,7 @@ export const App: React.FC = () => {
 
   return (
     <ThemeProvider>
-      <Layout rolActivo={rolActivo} setRolActivo={setRolActivo}>
+      <Layout rolActivo={rolActivo} setRolActivo={handleSetRolActivo}>
         <Routes>
           <Route path="/" element={<DashboardPage rolActivo={rolActivo} />} />
           <Route path="/expedientes" element={<ExpedientesPage rolActivo={rolActivo} />} />
@@ -45,6 +55,10 @@ export const App: React.FC = () => {
           <Route
             path="/compliance"
             element={<CompliancePage rolActivo={rolActivo} />}
+          />
+          <Route
+            path="/auditoria"
+            element={<AuditoriaPage rolActivo={rolActivo} />}
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

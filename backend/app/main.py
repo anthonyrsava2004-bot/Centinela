@@ -4,12 +4,19 @@ import csv
 from datetime import datetime
 import io
 from typing import List, Optional
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
+from .audit_log import (
+    extraer_actor_request,
+    inicializar_bitacora_si_vacia,
+    registrar_evento_auditoria,
+    resolver_usuario_codigo,
+    verificar_y_listar_auditoria,
+)
 from .crypto_audit import (
     restaurar_integridad_expediente,
     simular_alteracion_ex_post,
@@ -17,13 +24,14 @@ from .crypto_audit import (
 )
 from .database import Base, SessionLocal, engine, get_db
 from .graph_engine import construir_grafo_colusion
-from .models import AlertaGestion, Expediente, HistorialAlerta, Postulacion, Proveedor
+from .models import AlertaGestion, AuditLog, Expediente, HistorialAlerta, Postulacion, Proveedor
 from .nlp_tdr import analizar_similitud_tdr
 from .pdf_report import generar_pdf_expediente, generar_pdf_reporte_institucional
 from .rules_engine import evaluar_expediente_individual
 from .schemas import (
     AlertaGestionOut,
     AlertaUpdateInput,
+    AuditLogResumenOut,
     DashboardKPIsOut,
     ExpedienteCreateInput,
     ExpedienteDetalleOut,
@@ -78,6 +86,7 @@ async def lifespan(app: FastAPI):
         total = db.query(Expediente).count()
         if total == 0:
             poblar_base_datos_sintetica(db)
+        inicializar_bitacora_si_vacia(db)
     finally:
         db.close()
     yield
@@ -245,12 +254,40 @@ def health_check():
 
 
 @app.post("/api/seed/regenerar")
-def regenerar_dataset_sintetico(db: Session = Depends(get_db)):
+def regenerar_dataset_sintetico(request: Request, db: Session = Depends(get_db)):
     """
     Regenera determinísticamente los 120 expedientes sintéticos (111 limpios + 9 casos forenses)
-    y restaura el estado base para demostraciones en vivo.
+    y restaura el estado base para demostraciones en vivo. Preserva la bitácora global inmutable.
     """
-    return poblar_base_datos_sintetica(db)
+    usuario, rol, ip_origen = extraer_actor_request(request)
+    if not _es_auditor_oci(rol):
+        registrar_evento_auditoria(
+            db=db,
+            usuario_codigo=usuario,
+            rol_usuario=rol,
+            accion="ACCESO_DENEGADO_RBAC",
+            recurso="DATASET-BASE-120",
+            resultado="BLOQUEADO_403",
+            detalle=f"Intento no autorizado de reiniciar el dataset sintético base desde el rol '{rol}'.",
+            ip_origen=ip_origen,
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado (RBAC): Solo el Auditor OCI puede restaurar el dataset base.",
+        )
+
+    res = poblar_base_datos_sintetica(db)
+    registrar_evento_auditoria(
+        db=db,
+        usuario_codigo=usuario,
+        rol_usuario=rol,
+        accion="REINICIO_DATASET",
+        recurso="DATASET-BASE-120",
+        resultado="PERMITIDO",
+        detalle="Restauración controlada del dataset sintético base (111 limpios + 9 casos forenses).",
+        ip_origen=ip_origen,
+    )
+    return res
 
 
 @app.get("/api/proveedores", response_model=List[ProveedorOut])
@@ -402,13 +439,28 @@ def listar_expedientes(
 @app.post("/api/expedientes/simular-registro", response_model=ExpedienteDetalleOut)
 def registrar_y_auditar_expediente_vivo(
     payload: ExpedienteCreateInput,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     """
     Registra un nuevo expediente sintético en vivo, construye y sella su cadena SHA-256
     de 6 etapas y ejecuta en tiempo real el motor completo de reglas XAI, TF-IDF y grafos.
     """
-    if _es_solo_lectura(payload.rol_usuario):
+    usuario, rol_req, ip_origen = extraer_actor_request(request, rol_fallback=payload.rol_usuario)
+    rol_efectivo = payload.rol_usuario or rol_req
+    usuario = resolver_usuario_codigo(rol_efectivo, request.headers.get("X-Centinela-User"))
+
+    if _es_solo_lectura(rol_efectivo):
+        registrar_evento_auditoria(
+            db=db,
+            usuario_codigo=usuario,
+            rol_usuario=rol_efectivo,
+            accion="ACCESO_DENEGADO_RBAC",
+            recurso="NUEVO-EXPEDIENTE",
+            resultado="BLOQUEADO_403",
+            detalle=f"Intento bloqueado de registrar expediente '{payload.objeto[:80]}' desde perfil solo lectura.",
+            ip_origen=ip_origen,
+        )
         raise HTTPException(
             status_code=403,
             detail="Acceso denegado (RBAC): El rol de Consulta / Transparencia es de solo lectura.",
@@ -561,8 +613,23 @@ def registrar_y_auditar_expediente_vivo(
     db.commit()
 
     # Evaluar en tiempo real con el motor XAI completo (sin hardcodes)
-    evaluar_expediente_individual(db, exp)
+    alertas_generadas = evaluar_expediente_individual(db, exp)
     db.refresh(exp)
+
+    codigos_al = ", ".join(a.codigo_regla for a in alertas_generadas) or "NINGUNA (LIMPIO)"
+    registrar_evento_auditoria(
+        db=db,
+        usuario_codigo=usuario,
+        rol_usuario=rol_efectivo,
+        accion="REGISTRO_EXPEDIENTE",
+        recurso=exp.codigo,
+        resultado="PERMITIDO",
+        detalle=(
+            f"Registró expediente '{exp.objeto[:90]}' (S/ {exp.monto_estimado:,.2f}, {exp.area_usuaria}). "
+            f"Señales XAI detectadas en vivo: {codigos_al}."
+        ),
+        ip_origen=ip_origen,
+    )
     return _construir_detalle_expediente(db, exp)
 
 
@@ -580,36 +647,113 @@ def obtener_detalle_expediente(expediente_id: int, db: Session = Depends(get_db)
 )
 def endpoint_simular_alteracion(
     expediente_id: int,
+    request: Request,
     payload: Optional[TamperSimulationRequest] = None,
     db: Session = Depends(get_db),
 ):
+    usuario, rol, ip_origen = extraer_actor_request(request)
     exp = db.query(Expediente).filter(Expediente.id == expediente_id).first()
     if not exp:
         raise HTTPException(status_code=404, detail="Expediente no encontrado")
 
+    if not _es_auditor_oci(rol):
+        registrar_evento_auditoria(
+            db=db,
+            usuario_codigo=usuario,
+            rol_usuario=rol,
+            accion="ACCESO_DENEGADO_RBAC",
+            recurso=exp.codigo,
+            resultado="BLOQUEADO_403",
+            detalle=f"Intento no autorizado de ejecutar simulación de alteración SHA-256 desde rol '{rol}'.",
+            ip_origen=ip_origen,
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado (RBAC): Solo el Auditor OCI puede ejecutar simulaciones forenses.",
+        )
+
     etapa_obj = payload.etapa_objetivo if payload and payload.etapa_objetivo else "Cotizaciones"
     nuevo_txt = payload.nuevo_texto_alterado if payload else None
-    return simular_alteracion_ex_post(db, exp, etapa_objetivo=etapa_obj, nuevo_texto=nuevo_txt)
+    res = simular_alteracion_ex_post(db, exp, etapa_objetivo=etapa_obj, nuevo_texto=nuevo_txt)
+    registrar_evento_auditoria(
+        db=db,
+        usuario_codigo=usuario,
+        rol_usuario=rol,
+        accion="SIMULACION_ALTERACION",
+        recurso=exp.codigo,
+        resultado="PERMITIDO",
+        detalle=f"Ejecutó prueba forense de alteración ex-post sobre etapa '{etapa_obj}' (ruptura SHA-256 verificada).",
+        ip_origen=ip_origen,
+    )
+    return res
 
 
 @app.post(
     "/api/expedientes/{expediente_id}/restaurar-integridad",
     response_model=VerificacionCadenaOut,
 )
-def endpoint_restaurar_integridad(expediente_id: int, db: Session = Depends(get_db)):
+def endpoint_restaurar_integridad(
+    expediente_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    usuario, rol, ip_origen = extraer_actor_request(request)
     exp = db.query(Expediente).filter(Expediente.id == expediente_id).first()
     if not exp:
         raise HTTPException(status_code=404, detail="Expediente no encontrado")
-    return restaurar_integridad_expediente(db, exp)
+
+    if not _es_auditor_oci(rol):
+        registrar_evento_auditoria(
+            db=db,
+            usuario_codigo=usuario,
+            rol_usuario=rol,
+            accion="ACCESO_DENEGADO_RBAC",
+            recurso=exp.codigo,
+            resultado="BLOQUEADO_403",
+            detalle=f"Intento no autorizado de restaurar cadena SHA-256 desde rol '{rol}'.",
+            ip_origen=ip_origen,
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado (RBAC): Solo el Auditor OCI puede restaurar la integridad tras una prueba forense.",
+        )
+
+    res = restaurar_integridad_expediente(db, exp)
+    registrar_evento_auditoria(
+        db=db,
+        usuario_codigo=usuario,
+        rol_usuario=rol,
+        accion="RESTAURACION_INTEGRIDAD",
+        recurso=exp.codigo,
+        resultado="PERMITIDO",
+        detalle=f"Restauró la cadena SHA-256 del expediente {exp.codigo} a su estado íntegro original.",
+        ip_origen=ip_origen,
+    )
+    return res
 
 
 @app.get("/api/expedientes/{expediente_id}/reporte-pdf")
-def descargar_reporte_pdf(expediente_id: int, db: Session = Depends(get_db)):
+def descargar_reporte_pdf(
+    expediente_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
     exp = db.query(Expediente).filter(Expediente.id == expediente_id).first()
     if not exp:
         raise HTTPException(status_code=404, detail="Expediente no encontrado")
 
+    usuario, rol, ip_origen = extraer_actor_request(request)
     pdf_bytes = generar_pdf_expediente(db, exp)
+    registrar_evento_auditoria(
+        db=db,
+        usuario_codigo=usuario,
+        rol_usuario=rol,
+        accion="EXPORTACION_PDF_EXPEDIENTE",
+        recurso=exp.codigo,
+        resultado="PERMITIDO",
+        detalle=f"Descargó Reporte Forense Oficial PDF del expediente {exp.codigo}.",
+        ip_origen=ip_origen,
+    )
     filename = f"Reporte_Forense_{exp.codigo}.pdf"
     return Response(
         content=pdf_bytes,
@@ -619,9 +763,20 @@ def descargar_reporte_pdf(expediente_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/api/reportes/institucional-pdf")
-def descargar_reporte_institucional_pdf(db: Session = Depends(get_db)):
+def descargar_reporte_institucional_pdf(request: Request, db: Session = Depends(get_db)):
     """Descarga el reporte agregado de indicadores de integridad y transparencia en PDF."""
+    usuario, rol, ip_origen = extraer_actor_request(request)
     pdf_bytes = generar_pdf_reporte_institucional(db)
+    registrar_evento_auditoria(
+        db=db,
+        usuario_codigo=usuario,
+        rol_usuario=rol,
+        accion="EXPORTACION_REPORTE_INSTITUCIONAL",
+        recurso="REPORTE-AGREGADO-PDF",
+        resultado="PERMITIDO",
+        detalle="Descargó Reporte Institucional Agregado de Integridad y Transparencia (PDF).",
+        ip_origen=ip_origen,
+    )
     filename = f"Reporte_Institucional_CENTINELA_{datetime.utcnow().strftime('%Y%m%d')}.pdf"
     return Response(
         content=pdf_bytes,
@@ -631,8 +786,9 @@ def descargar_reporte_institucional_pdf(db: Session = Depends(get_db)):
 
 
 @app.get("/api/reportes/indicadores-csv")
-def descargar_indicadores_csv(db: Session = Depends(get_db)):
+def descargar_indicadores_csv(request: Request, db: Session = Depends(get_db)):
     """Exporta indicadores agregados y padrón anonimizado en CSV (Ley N° 27806 y Ley N° 29733)."""
+    usuario, rol, ip_origen = extraer_actor_request(request)
     expedientes = db.query(Expediente).order_by(Expediente.id.asc()).all()
     alertas = db.query(AlertaGestion).all()
     conteo_alertas = Counter(a.expediente_id for a in alertas)
@@ -675,6 +831,16 @@ def descargar_indicadores_csv(db: Session = Depends(get_db)):
             ]
         )
 
+    registrar_evento_auditoria(
+        db=db,
+        usuario_codigo=usuario,
+        rol_usuario=rol,
+        accion="EXPORTACION_DATOS_CSV",
+        recurso="INDICADORES-TRANSPARENCIA-CSV",
+        resultado="PERMITIDO",
+        detalle=f"Exportó CSV anonimizado de transparencia con {len(expedientes)} expedientes.",
+        ip_origen=ip_origen,
+    )
     csv_bytes = output.getvalue().encode("utf-8-sig")
     filename = f"Indicadores_Transparencia_CENTINELA_{datetime.utcnow().strftime('%Y%m%d')}.csv"
     return Response(
@@ -722,9 +888,35 @@ def listar_alertas_xai(
 def actualizar_alerta_xai(
     alerta_id: int,
     payload: AlertaUpdateInput,
+    request: Request,
     db: Session = Depends(get_db),
 ):
-    if _es_solo_lectura(payload.rol_usuario):
+    _, _, ip_origen = extraer_actor_request(request, rol_fallback=payload.rol_usuario)
+    rol_efectivo = payload.rol_usuario
+    usuario_codigo = resolver_usuario_codigo(rol_efectivo, request.headers.get("X-Centinela-User"))
+
+    alerta = db.query(AlertaGestion).filter(AlertaGestion.id == alerta_id).first()
+    exp_ref = (
+        db.query(Expediente).filter(Expediente.id == alerta.expediente_id).first()
+        if alerta
+        else None
+    )
+    recurso_lbl = f"{exp_ref.codigo} / ALERTA-#{alerta_id}" if exp_ref else f"ALERTA-#{alerta_id}"
+
+    if _es_solo_lectura(rol_efectivo):
+        registrar_evento_auditoria(
+            db=db,
+            usuario_codigo=usuario_codigo,
+            rol_usuario=rol_efectivo,
+            accion="ACCESO_DENEGADO_RBAC",
+            recurso=recurso_lbl,
+            resultado="BLOQUEADO_403",
+            detalle=(
+                f"Intento bloqueado de modificar estado de alerta a '{payload.estado_revision}' "
+                f"desde perfil Solo Lectura."
+            ),
+            ip_origen=ip_origen,
+        )
         raise HTTPException(
             status_code=403,
             detail=(
@@ -733,7 +925,7 @@ def actualizar_alerta_xai(
             ),
         )
 
-    es_oci = _es_auditor_oci(payload.rol_usuario)
+    es_oci = _es_auditor_oci(rol_efectivo)
     estados_permitidos_dec = {"EN_DESCARGO"}
     estados_validos = {"PENDIENTE", "EN_DESCARGO", "VALIDADA_OCI", "ARCHIVADA_SUSTENTADA"}
 
@@ -741,6 +933,19 @@ def actualizar_alerta_xai(
         raise HTTPException(status_code=400, detail="Estado de revisión no válido.")
 
     if not es_oci and payload.estado_revision not in estados_permitidos_dec:
+        registrar_evento_auditoria(
+            db=db,
+            usuario_codigo=usuario_codigo,
+            rol_usuario=rol_efectivo,
+            accion="ACCESO_DENEGADO_RBAC",
+            recurso=recurso_lbl,
+            resultado="BLOQUEADO_403",
+            detalle=(
+                f"Intento no autorizado de '{usuario_codigo}' ({rol_efectivo}) para cambiar alerta "
+                f"a '{payload.estado_revision}' (competencia exclusiva de Auditor OCI)."
+            ),
+            ip_origen=ip_origen,
+        )
         raise HTTPException(
             status_code=403,
             detail=(
@@ -750,12 +955,12 @@ def actualizar_alerta_xai(
             ),
         )
 
-    alerta = db.query(AlertaGestion).filter(AlertaGestion.id == alerta_id).first()
     if not alerta:
         raise HTTPException(status_code=404, detail="Señal de alerta no encontrada")
 
     estado_anterior = alerta.estado_revision
     ahora_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    firma_actor = f"{usuario_codigo} ({rol_efectivo})"
 
     alerta.estado_revision = payload.estado_revision
     alerta.comentario_descargo = payload.comentario_descargo.strip()
@@ -766,7 +971,7 @@ def actualizar_alerta_xai(
     if payload.accion_correctiva is not None and payload.accion_correctiva.strip():
         alerta.accion_correctiva = payload.accion_correctiva.strip()
 
-    alerta.rol_ultimo_cambio = payload.rol_usuario
+    alerta.rol_ultimo_cambio = firma_actor
     alerta.fecha_actualizacion = ahora_iso
 
     registro_historial = HistorialAlerta(
@@ -776,18 +981,144 @@ def actualizar_alerta_xai(
         area_asignada=alerta.area_asignada,
         comentario=alerta.comentario_descargo,
         accion_correctiva=alerta.accion_correctiva,
-        rol_usuario=payload.rol_usuario,
+        rol_usuario=firma_actor,
         timestamp=ahora_iso,
     )
     db.add(registro_historial)
     db.commit()
     db.refresh(alerta)
 
-    exp = db.query(Expediente).filter(Expediente.id == alerta.expediente_id).first()
+    registrar_evento_auditoria(
+        db=db,
+        usuario_codigo=usuario_codigo,
+        rol_usuario=rol_efectivo,
+        accion="REVISION_ALERTA",
+        recurso=recurso_lbl,
+        resultado="PERMITIDO",
+        detalle=(
+            f"Cambió estado de alerta {alerta.codigo_regla} ({estado_anterior} → {alerta.estado_revision}); "
+            f"área asignada: '{alerta.area_asignada}'."
+        ),
+        ip_origen=ip_origen,
+    )
+
     historial_items = (
         db.query(HistorialAlerta)
         .filter(HistorialAlerta.alerta_id == alerta.id)
         .order_by(HistorialAlerta.id.asc())
         .all()
     )
-    return _serializar_alerta(alerta, exp, historial_items)
+    return _serializar_alerta(alerta, exp_ref, historial_items)
+
+
+@app.get("/api/auditoria", response_model=AuditLogResumenOut)
+def obtener_bitacora_auditoria(
+    request: Request,
+    resultado: Optional[str] = Query(None),
+    accion: Optional[str] = Query(None),
+    busqueda: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """
+    Bitácora global inmutable encadenada con SHA-256 (acceso exclusivo Auditor OCI).
+    Verifica la cadena de eventos en tiempo real y expone quién hizo qué y cuándo.
+    """
+    usuario, rol, ip_origen = extraer_actor_request(request)
+    if not _es_auditor_oci(rol):
+        registrar_evento_auditoria(
+            db=db,
+            usuario_codigo=usuario,
+            rol_usuario=rol,
+            accion="ACCESO_DENEGADO_RBAC",
+            recurso="BITACORA-AUDITORIA-GLOBAL",
+            resultado="BLOQUEADO_403",
+            detalle=f"Intento no autorizado de consultar la bitácora global de auditoría desde '{rol}'.",
+            ip_origen=ip_origen,
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado (RBAC): La Bitácora Global de Auditoría es de acceso exclusivo para el Auditor OCI.",
+        )
+
+    return verificar_y_listar_auditoria(
+        db=db,
+        resultado=resultado,
+        accion=accion,
+        busqueda=busqueda,
+    )
+
+
+@app.get("/api/auditoria/csv")
+def exportar_bitacora_auditoria_csv(request: Request, db: Session = Depends(get_db)):
+    """Exporta la bitácora global de auditoría encadenada SHA-256 en formato CSV (solo OCI)."""
+    usuario, rol, ip_origen = extraer_actor_request(request)
+    if not _es_auditor_oci(rol):
+        registrar_evento_auditoria(
+            db=db,
+            usuario_codigo=usuario,
+            rol_usuario=rol,
+            accion="ACCESO_DENEGADO_RBAC",
+            recurso="BITACORA-AUDITORIA-CSV",
+            resultado="BLOQUEADO_403",
+            detalle=f"Intento no autorizado de exportar la bitácora de auditoría desde '{rol}'.",
+            ip_origen=ip_origen,
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado (RBAC): Solo el Auditor OCI puede exportar la bitácora global.",
+        )
+
+    resumen = verificar_y_listar_auditoria(db=db, limit=1000)
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "id",
+            "timestamp_utc",
+            "usuario_codigo",
+            "rol_usuario",
+            "accion",
+            "recurso",
+            "resultado",
+            "ip_origen",
+            "detalle",
+            "es_integro_sha256",
+            "hash_anterior",
+            "hash_actual",
+        ]
+    )
+    for ev in resumen["eventos"]:
+        writer.writerow(
+            [
+                ev["id"],
+                ev["timestamp"],
+                ev["usuario_codigo"],
+                ev["rol_usuario"],
+                ev["accion"],
+                ev["recurso"],
+                ev["resultado"],
+                ev["ip_origen"],
+                ev["detalle"],
+                "INTEGRO" if ev["es_integro"] else "ALTERADO",
+                ev["hash_anterior"],
+                ev["hash_actual"],
+            ]
+        )
+
+    registrar_evento_auditoria(
+        db=db,
+        usuario_codigo=usuario,
+        rol_usuario=rol,
+        accion="EXPORTACION_BITACORA_CSV",
+        recurso="BITACORA-AUDITORIA-CSV",
+        resultado="PERMITIDO",
+        detalle=f"Exportó evidencia de bitácora global ({resumen['total_eventos']} eventos encadenados SHA-256).",
+        ip_origen=ip_origen,
+    )
+    csv_bytes = output.getvalue().encode("utf-8-sig")
+    filename = f"Bitacora_Auditoria_CENTINELA_{datetime.utcnow().strftime('%Y%m%d')}.csv"
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

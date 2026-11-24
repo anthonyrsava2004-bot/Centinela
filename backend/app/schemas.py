@@ -212,3 +212,31 @@ class DashboardKPIsOut(BaseModel):
     distribucion_riesgo: dict
     alertas_por_categoria: List[dict]
     casos_destacados: List[ExpedienteListOut]
+
+
+class AuditLogItemOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    timestamp: str
+    usuario_codigo: str
+    rol_usuario: str
+    accion: str
+    recurso: str
+    resultado: str
+    detalle: str
+    ip_origen: str
+    hash_anterior: str
+    hash_actual: str
+    es_integro: bool = True
+
+
+class AuditLogResumenOut(BaseModel):
+    cadena_integra: bool
+    total_eventos: int
+    total_permitidos: int
+    total_bloqueados: int
+    ultimo_hash: str
+    evento_comprometido_id: Optional[int] = None
+    mensaje_integridad: str
+    eventos: List[AuditLogItemOut]

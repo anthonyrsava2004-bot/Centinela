@@ -18,6 +18,7 @@ import {
   Eye,
   Briefcase,
   ShieldCheck,
+  History,
 } from 'lucide-react';
 import { RolUsuario } from '../types';
 import { useTheme } from '../context/ThemeContext';
@@ -102,16 +103,26 @@ export const Layout: React.FC<LayoutProps> = ({
       visible: !profile.isReadOnly,
       badge: undefined,
     },
+    {
+      to: '/auditoria',
+      label: 'Bitácora de Auditoría',
+      sub: 'Quién hizo qué y cuándo',
+      icon: History,
+      visible: profile.canDictaminarOci,
+      badge: undefined,
+    },
   ].filter((item) => item.visible);
 
   const handleSeleccionarRol = (nuevoRol: RolUsuario) => {
     setRolActivo(nuevoRol);
     setModalSesionAbierto(false);
-    // Si pasa a Transparencia mientras estaba en una vista interna de control, llevar a Resumen Público
     const nuevoPerfil = ROLE_PROFILES[nuevoRol];
     if (
-      nuevoPerfil.isReadOnly &&
-      (location.pathname === '/compliance' || location.pathname === '/grafo-colusion')
+      (nuevoPerfil.isReadOnly &&
+        (location.pathname === '/compliance' ||
+          location.pathname === '/grafo-colusion' ||
+          location.pathname === '/auditoria')) ||
+      (!nuevoPerfil.canDictaminarOci && location.pathname === '/auditoria')
     ) {
       navigate('/');
     }
@@ -249,10 +260,11 @@ export const Layout: React.FC<LayoutProps> = ({
         <header className="px-6 py-2.5 bg-white/95 dark:bg-slate-900/85 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 sticky top-0 z-30 shadow-sm dark:shadow-none">
           <div className="min-w-0 flex items-center gap-2.5 overflow-hidden">
             <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold whitespace-nowrap shrink-0 ${profile.accentBarClass}`}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold min-w-0 max-w-full ${profile.accentBarClass}`}
+              title={profile.workspaceTitle}
             >
-              <RoleIcon className="w-3.5 h-3.5" />
-              {profile.workspaceTitle}
+              <RoleIcon className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{profile.workspaceTitle}</span>
             </span>
             <p className="hidden 2xl:block text-[11px] text-slate-500 dark:text-slate-400 truncate">
               Capa externa no intrusiva (no reemplaza SEACE/SIGA/SIAF)
