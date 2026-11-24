@@ -1,4 +1,7 @@
-export type RolUsuario = 'Auditor OCI (Control Institucional)' | 'Especialista Logística (DEC)';
+export type RolUsuario =
+  | 'Auditor OCI (Control Institucional)'
+  | 'Especialista Logística (DEC)'
+  | 'Consulta Transparencia (Solo Lectura)';
 
 export type NivelRiesgo = 'ALTO' | 'MEDIO' | 'LIMPIO';
 
@@ -9,6 +12,8 @@ export interface ActuacionItem {
   etapa: string;
   usuario_rol: string;
   timestamp: string;
+  version_doc: string;
+  tiene_sustento: boolean;
   documento_texto: string;
   hash_anterior: string;
   hash_actual: string;
@@ -41,6 +46,18 @@ export interface PostulacionDetalle {
   fecha_presentacion: string;
 }
 
+export interface HistorialAlertaItem {
+  id: number;
+  alerta_id: number;
+  estado_anterior?: string | null;
+  estado_nuevo: string;
+  area_asignada?: string | null;
+  comentario: string;
+  accion_correctiva?: string | null;
+  rol_usuario: string;
+  timestamp: string;
+}
+
 export interface AlertaGestion {
   id: number;
   expediente_id: number;
@@ -56,9 +73,41 @@ export interface AlertaGestion {
   evidencia_exacta: string;
   base_normativa: string;
   estado_revision: 'PENDIENTE' | 'EN_DESCARGO' | 'VALIDADA_OCI' | 'ARCHIVADA_SUSTENTADA';
+  area_asignada: string;
+  accion_correctiva?: string | null;
+  fecha_limite?: string | null;
   comentario_descargo?: string | null;
   rol_ultimo_cambio?: string | null;
   fecha_actualizacion?: string | null;
+  historial: HistorialAlertaItem[];
+}
+
+export interface ProveedorItem {
+  id: number;
+  codigo: string;
+  alias_comercial: string;
+  rubro: string;
+  representante_id: string;
+  direccion_hash: string;
+  telefono_hash: string;
+  es_colusorio: boolean;
+}
+
+export interface ExpedienteCreatePayload {
+  objeto: string;
+  rubro: string;
+  area_usuaria: string;
+  modalidad: string;
+  monto_estimado: number;
+  tdr_texto: string;
+  proveedor_adjudicado_codigo: string;
+  proveedores_postores: string[];
+  fecha_creacion?: string;
+  mismo_funcionario_etapas?: boolean;
+  pago_sin_conformidad?: boolean;
+  modificacion_extemporanea_tdr?: boolean;
+  sin_sustento_documental?: boolean;
+  rol_usuario: RolUsuario;
 }
 
 export interface NlpSimilitudItem {
@@ -120,6 +169,8 @@ export interface DashboardKPIs {
   alertas_pendientes: number;
   alertas_validadas_oci: number;
   alertas_en_descargo: number;
+  alertas_archivadas: number;
+  porcentaje_limpios: number;
   distribucion_riesgo: Record<string, number>;
   alertas_por_categoria: { categoria: string; cantidad: number }[];
   casos_destacados: ExpedienteListItem[];

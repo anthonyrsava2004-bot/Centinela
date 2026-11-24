@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CytoscapeComponent from 'react-cytoscapejs';
 import {
@@ -13,9 +13,13 @@ import {
 } from 'lucide-react';
 import { centinelaApi } from '../api/client';
 import { GrafoColusionData } from '../types';
+import { useTheme } from '../context/ThemeContext';
 
 export const GrafoColusionPage: React.FC = () => {
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
   const cyRef = useRef<any>(null);
   const [grafoData, setGrafoData] = useState<GrafoColusionData | null>(null);
   const [soloRiesgo, setSoloRiesgo] = useState<boolean>(true);
@@ -53,109 +57,121 @@ export const GrafoColusionPage: React.FC = () => {
   const handleFit = () => {
     if (cyRef.current) {
       cyRef.current.fit(undefined, 45);
-      cyRef.current.layout({ name: 'cose', animate: true, idealEdgeLength: 120, nodeRepulsion: 6500 }).run();
+      cyRef.current
+        .layout({ name: 'cose', animate: true, idealEdgeLength: 120, nodeRepulsion: 6500 })
+        .run();
     }
   };
 
-  const stylesheet: any[] = [
-    {
-      selector: 'node',
-      style: {
-        label: 'data(label)',
-        color: '#f8fafc',
-        'font-size': '10px',
-        'font-weight': 'bold',
-        'text-wrap': 'wrap',
-        'text-max-width': '115px',
-        'text-valign': 'bottom',
-        'text-halign': 'center',
-        'text-margin-y': 6,
-        'text-background-color': '#020617',
-        'text-background-opacity': 0.85,
-        'text-background-padding': '3px',
-        'text-background-shape': 'roundrectangle',
-        width: 44,
-        height: 44,
-        'border-width': 3,
+  const stylesheet: any[] = useMemo(
+    () => [
+      {
+        selector: 'node',
+        style: {
+          label: 'data(label)',
+          color: isDark ? '#f8fafc' : '#0f172a',
+          'font-size': '10px',
+          'font-weight': 'bold',
+          'text-wrap': 'wrap',
+          'text-max-width': '115px',
+          'text-valign': 'bottom',
+          'text-halign': 'center',
+          'text-margin-y': 6,
+          'text-background-color': isDark ? '#020617' : '#ffffff',
+          'text-background-opacity': 0.92,
+          'text-background-padding': '3px',
+          'text-background-shape': 'roundrectangle',
+          width: 44,
+          height: 44,
+          'border-width': 3,
+        },
       },
-    },
-    {
-      selector: 'node[tipo = "PROVEEDOR"]',
-      style: {
-        shape: 'ellipse',
-        'background-color': '#e11d48',
-        'border-color': '#fda4af',
+      {
+        selector: 'node[tipo = "PROVEEDOR"]',
+        style: {
+          shape: 'ellipse',
+          'background-color': '#e11d48',
+          'border-color': isDark ? '#fda4af' : '#9f1239',
+        },
       },
-    },
-    {
-      selector: 'node[tipo = "PROVEEDOR"][riesgo = "LIMPIO"]',
-      style: {
-        'background-color': '#475569',
-        'border-color': '#94a3b8',
+      {
+        selector: 'node[tipo = "PROVEEDOR"][riesgo = "LIMPIO"]',
+        style: {
+          'background-color': isDark ? '#475569' : '#64748b',
+          'border-color': isDark ? '#94a3b8' : '#334155',
+        },
       },
-    },
-    {
-      selector: 'node[tipo = "ATRIBUTO"]',
-      style: {
-        shape: 'diamond',
-        width: 48,
-        height: 48,
-        'background-color': '#f59e0b',
-        'border-color': '#fde68a',
+      {
+        selector: 'node[tipo = "ATRIBUTO"]',
+        style: {
+          shape: 'diamond',
+          width: 48,
+          height: 48,
+          'background-color': '#f59e0b',
+          'border-color': isDark ? '#fde68a' : '#b45309',
+        },
       },
-    },
-    {
-      selector: 'node[tipo = "EXPEDIENTE"]',
-      style: {
-        shape: 'round-rectangle',
-        width: 54,
-        height: 40,
-        'background-color': '#0ea5e9',
-        'border-color': '#7dd3fc',
+      {
+        selector: 'node[tipo = "EXPEDIENTE"]',
+        style: {
+          shape: 'round-rectangle',
+          width: 54,
+          height: 40,
+          'background-color': isDark ? '#0ea5e9' : '#1d4ed8',
+          'border-color': isDark ? '#7dd3fc' : '#1e3a8a',
+        },
       },
-    },
-    {
-      selector: 'node:selected',
-      style: {
-        'border-width': 5,
-        'border-color': '#10b981',
-        'overlay-color': '#10b981',
-        'overlay-padding': 6,
-        'overlay-opacity': 0.25,
+      {
+        selector: 'node:selected',
+        style: {
+          'border-width': 5,
+          'border-color': '#059669',
+          'overlay-color': '#10b981',
+          'overlay-padding': 6,
+          'overlay-opacity': 0.25,
+        },
       },
-    },
-    {
-      selector: 'edge',
-      style: {
-        width: 2.2,
-        'line-color': '#475569',
-        'target-arrow-color': '#475569',
-        'target-arrow-shape': 'triangle',
-        'curve-style': 'bezier',
-        label: 'data(label)',
-        'font-size': '8px',
-        color: '#cbd5e1',
-        'text-background-color': '#0f172a',
-        'text-background-opacity': 0.85,
-        'text-background-padding': '2px',
+      {
+        selector: 'edge',
+        style: {
+          width: 2.2,
+          'line-color': isDark ? '#475569' : '#94a3b8',
+          'target-arrow-color': isDark ? '#475569' : '#64748b',
+          'target-arrow-shape': 'triangle',
+          'curve-style': 'bezier',
+          label: 'data(label)',
+          'font-size': '8px',
+          color: isDark ? '#cbd5e1' : '#334155',
+          'text-background-color': isDark ? '#0f172a' : '#ffffff',
+          'text-background-opacity': 0.9,
+          'text-background-padding': '2px',
+        },
       },
-    },
-    {
-      selector: 'edge[tipo_enlace = "VINCULO_ATRIBUTO"]',
-      style: {
-        'line-color': '#f59e0b',
-        'line-style': 'dashed',
-        width: 2.8,
+      {
+        selector: 'edge[tipo_enlace = "VINCULO_ATRIBUTO"]',
+        style: {
+          'line-color': isDark ? '#f59e0b' : '#d97706',
+          'line-style': 'dashed',
+          width: 2.8,
+        },
       },
-    },
-    {
-      selector: 'edge[tipo_enlace = "POSTULACION_GANADORA"]',
-      style: {
-        'line-color': '#10b981',
-        width: 3,
+      {
+        selector: 'edge[tipo_enlace = "POSTULACION_GANADORA"]',
+        style: {
+          'line-color': isDark ? '#10b981' : '#059669',
+          width: 3,
+        },
       },
-    },
-  ];
+    ],
+    [isDark],
+  );
+
+  // Actualizar estilos del lienzo Cytoscape cuando el usuario cambia entre Claro y Oscuro
+  useEffect(() => {
+    if (cyRef.current) {
+      cyRef.current.style().fromJson(stylesheet).update();
+    }
+  }, [stylesheet]);
 
   const cytoscapeElements = grafoData
     ? [...grafoData.elements.nodes, ...grafoData.elements.edges]
@@ -166,11 +182,11 @@ export const GrafoColusionPage: React.FC = () => {
       {/* Encabezado y Controles */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-white flex items-center gap-2.5">
-            <Network className="w-6 h-6 text-emerald-400" />
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2.5">
+            <Network className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
             Detección de Colusión y Pluralidad Ficticia por Grafos (NetworkX + Cytoscape)
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
             Identificación topológica de proveedores aparentemente independientes que comparten Representante Legal, Dirección Fiscal o Teléfono Hash en un mismo proceso (Art. 30 Ley N° 32069)
           </p>
         </div>
@@ -180,45 +196,57 @@ export const GrafoColusionPage: React.FC = () => {
             onClick={() => setSoloRiesgo(!soloRiesgo)}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition ${
               soloRiesgo
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                : 'bg-slate-900 text-slate-300 border-slate-700'
+                ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40'
+                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
             }`}
           >
-            {soloRiesgo ? 'Vista: Anillos de Colusión Detectados' : 'Vista: Red Extendida con Postores Limpios'}
+            {soloRiesgo
+              ? 'Vista: Anillos de Colusión Detectados'
+              : 'Vista: Red Extendida con Postores Limpios'}
           </button>
         </div>
       </div>
 
       {/* KPIs de Red */}
       {grafoData && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800">
-            <div className="text-[11px] text-slate-400 uppercase font-bold">Anillos de Colusión</div>
-            <div className="text-2xl font-extrabold text-rose-400 mt-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
+          <div className="p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-bold">
+              Anillos de Colusión
+            </div>
+            <div className="text-xl xl:text-2xl font-extrabold text-rose-700 dark:text-rose-400 mt-1">
               {grafoData.metricas_grafo.total_clusters_colusion} Clústeres
             </div>
           </div>
-          <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800">
-            <div className="text-[11px] text-slate-400 uppercase font-bold">Proveedores Vinculados</div>
-            <div className="text-2xl font-extrabold text-amber-300 mt-1">
+          <div className="p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-bold">
+              Proveedores Vinculados
+            </div>
+            <div className="text-xl xl:text-2xl font-extrabold text-amber-700 dark:text-amber-300 mt-1">
               {grafoData.metricas_grafo.proveedores_en_colusion} Postores
             </div>
           </div>
-          <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800">
-            <div className="text-[11px] text-slate-400 uppercase font-bold">Expedientes Afectados</div>
-            <div className="text-2xl font-extrabold text-cyan-300 mt-1">
+          <div className="p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-bold">
+              Expedientes Afectados
+            </div>
+            <div className="text-xl xl:text-2xl font-extrabold text-blue-700 dark:text-cyan-300 mt-1">
               {grafoData.metricas_grafo.expedientes_comprometidos} Procesos
             </div>
           </div>
-          <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800">
-            <div className="text-[11px] text-slate-400 uppercase font-bold">Nodos en Grafo</div>
-            <div className="text-2xl font-extrabold text-white mt-1">
+          <div className="p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-bold">
+              Nodos en Grafo
+            </div>
+            <div className="text-xl xl:text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
               {grafoData.metricas_grafo.total_nodos}
             </div>
           </div>
-          <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800">
-            <div className="text-[11px] text-slate-400 uppercase font-bold">Enlaces Forenses</div>
-            <div className="text-2xl font-extrabold text-emerald-400 mt-1">
+          <div className="p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-bold">
+              Enlaces Forenses
+            </div>
+            <div className="text-xl xl:text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">
               {grafoData.metricas_grafo.total_enlaces}
             </div>
           </div>
@@ -227,20 +255,20 @@ export const GrafoColusionPage: React.FC = () => {
 
       {/* Lienzo Interactivo Cytoscape + Panel Inspector Forense */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 rounded-2xl bg-slate-900/95 border border-slate-800 overflow-hidden flex flex-col">
+        <div className="lg:col-span-2 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden flex flex-col">
           {/* Barra de Leyenda y Zoom */}
-          <div className="px-5 py-3 bg-slate-950/80 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+          <div className="px-5 py-3 bg-slate-50 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-4 text-xs">
-              <span className="inline-flex items-center gap-1.5 text-slate-300">
+              <span className="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-medium">
                 <span className="w-3 h-3 rounded-full bg-rose-600 inline-block border border-rose-300" />
                 Proveedor Vinculado
               </span>
-              <span className="inline-flex items-center gap-1.5 text-slate-300">
-                <span className="w-3 h-3 rotate-45 bg-amber-500 inline-block border border-amber-200" />
+              <span className="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-medium">
+                <span className="w-3 h-3 rotate-45 bg-amber-500 inline-block border border-amber-300" />
                 Atributo Compartido (Rep/Dir/Tel)
               </span>
-              <span className="inline-flex items-center gap-1.5 text-slate-300">
-                <span className="w-3.5 h-3 rounded bg-sky-500 inline-block border border-sky-200" />
+              <span className="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-medium">
+                <span className="w-3.5 h-3 rounded bg-blue-700 dark:bg-sky-500 inline-block border border-blue-300 dark:border-sky-200" />
                 Expediente Contratación
               </span>
             </div>
@@ -248,21 +276,21 @@ export const GrafoColusionPage: React.FC = () => {
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => handleZoom(1.25)}
-                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200"
+                className="p-1.5 rounded-lg bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
                 title="Acercar"
               >
                 <ZoomIn className="w-4 h-4" />
               </button>
               <button
                 onClick={() => handleZoom(0.8)}
-                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200"
+                className="p-1.5 rounded-lg bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
                 title="Alejar"
               >
                 <ZoomOut className="w-4 h-4" />
               </button>
               <button
                 onClick={handleFit}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-emerald-300 inline-flex items-center gap-1"
+                className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-1"
                 title="Reorganizar y centrar grafo"
               >
                 <Maximize2 className="w-3.5 h-3.5" />
@@ -272,11 +300,11 @@ export const GrafoColusionPage: React.FC = () => {
           </div>
 
           {/* Contenedor Cytoscape */}
-          <div className="relative h-[520px] w-full bg-slate-950">
+          <div className="relative h-[520px] w-full bg-slate-50 dark:bg-slate-950 transition-colors">
             {loading ? (
               <div className="h-full flex flex-col items-center justify-center space-y-3">
-                <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
-                <span className="text-xs text-slate-400 font-mono">
+                <RefreshCw className="w-8 h-8 text-blue-700 dark:text-emerald-400 animate-spin" />
+                <span className="text-xs text-slate-600 dark:text-slate-400 font-mono">
                   Calculando componentes conexas y centralidad en NetworkX...
                 </span>
               </div>
@@ -312,73 +340,79 @@ export const GrafoColusionPage: React.FC = () => {
         </div>
 
         {/* Panel Inspector de Nodo Seleccionado */}
-        <div className="p-6 rounded-2xl bg-slate-900/95 border border-slate-800 flex flex-col justify-between space-y-4">
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none flex flex-col justify-between space-y-4">
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-sm font-bold text-white border-b border-slate-800 pb-3">
-              <Info className="w-4 h-4 text-cyan-400" />
+            <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-800 pb-3">
+              <Info className="w-4 h-4 text-blue-700 dark:text-cyan-400" />
               Inspector Forense de Nodo (Clic en el Grafo)
             </div>
 
             {nodoSeleccionado ? (
               <div className="space-y-4 text-xs">
-                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
-                  <span className="px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 font-mono text-[10px] font-bold">
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
+                  <span className="px-2 py-0.5 rounded bg-blue-100 dark:bg-cyan-500/15 text-blue-800 dark:text-cyan-300 font-mono text-[10px] font-bold">
                     TIPO: {nodoSeleccionado.tipo}
                   </span>
-                  <h3 className="text-base font-extrabold text-white font-mono pt-1">
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white font-mono pt-1">
                     {nodoSeleccionado.id}
                   </h3>
-                  <p className="text-slate-300">{nodoSeleccionado.titulo_completo}</p>
+                  <p className="text-slate-600 dark:text-slate-300">
+                    {nodoSeleccionado.titulo_completo}
+                  </p>
                 </div>
 
-                <div className="space-y-2 bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/80">
+                <div className="space-y-2 bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Centralidad NetworkX:</span>
-                    <span className="font-mono font-bold text-emerald-400">
+                    <span className="text-slate-500 dark:text-slate-400">Centralidad NetworkX:</span>
+                    <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">
                       {nodoSeleccionado.centralidad}
                     </span>
                   </div>
                   {nodoSeleccionado.representante_id && (
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Representante Hash:</span>
-                      <span className="font-mono text-amber-300">
+                      <span className="text-slate-500 dark:text-slate-400">Representante Hash:</span>
+                      <span className="font-mono text-amber-700 dark:text-amber-300 font-semibold">
                         {nodoSeleccionado.representante_id}
                       </span>
                     </div>
                   )}
                   {nodoSeleccionado.direccion_hash && (
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Dirección Fiscal Hash:</span>
-                      <span className="font-mono text-amber-300">
+                      <span className="text-slate-500 dark:text-slate-400">
+                        Dirección Fiscal Hash:
+                      </span>
+                      <span className="font-mono text-amber-700 dark:text-amber-300 font-semibold">
                         {nodoSeleccionado.direccion_hash}
                       </span>
                     </div>
                   )}
                   {nodoSeleccionado.telefono_hash && (
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Teléfono Hash:</span>
-                      <span className="font-mono text-amber-300">
+                      <span className="text-slate-500 dark:text-slate-400">Teléfono Hash:</span>
+                      <span className="font-mono text-amber-700 dark:text-amber-300 font-semibold">
                         {nodoSeleccionado.telefono_hash}
                       </span>
                     </div>
                   )}
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 leading-relaxed">
-                  <strong className="text-slate-100 block mb-1">Evidencia Topológica:</strong>
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 leading-relaxed">
+                  <strong className="text-slate-900 dark:text-slate-100 block mb-1">
+                    Evidencia Topológica:
+                  </strong>
                   {nodoSeleccionado.detalle}
                 </div>
 
                 {vecinosNodo.length > 0 && (
                   <div className="space-y-1.5">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase">
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">
                       Conexiones Directas ({vecinosNodo.length}):
                     </span>
                     <div className="flex flex-wrap gap-1.5">
                       {vecinosNodo.map((vec) => (
                         <span
                           key={vec}
-                          className="px-2 py-1 rounded-lg bg-slate-950 border border-slate-800 font-mono text-[11px] text-cyan-300"
+                          className="px-2 py-1 rounded-lg bg-blue-50 dark:bg-slate-950 border border-blue-200 dark:border-slate-800 font-mono text-[11px] text-blue-800 dark:text-cyan-300"
                         >
                           {vec}
                         </span>
@@ -393,7 +427,7 @@ export const GrafoColusionPage: React.FC = () => {
                       onClick={() =>
                         navigate(`/trazabilidad?id=${nodoSeleccionado.expediente_db_id}`)
                       }
-                      className="w-full py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-2 transition"
+                      className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold text-xs flex items-center justify-center gap-2 transition"
                     >
                       <FileSearch className="w-4 h-4" />
                       Auditar Cadena SHA-256 de este Expediente
@@ -401,13 +435,13 @@ export const GrafoColusionPage: React.FC = () => {
                   )}
               </div>
             ) : (
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Haga clic sobre cualquier nodo en el grafo interactivo para inspeccionar sus metadatos y conexiones.
               </p>
             )}
           </div>
 
-          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-200 leading-relaxed">
+          <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-[11px] text-amber-900 dark:text-amber-200 leading-relaxed">
             <strong>Base Legal (Art. 30 Ley N° 32069):</strong> Se encuentran impedidos de ser participantes o postores en un mismo procedimiento las personas jurídicas que compartan representantes legales, socios o formen parte del mismo grupo económico.
           </div>
         </div>
@@ -416,8 +450,8 @@ export const GrafoColusionPage: React.FC = () => {
       {/* Tarjetas de Clústeres de Colusión Detectados */}
       {grafoData && (
         <div className="space-y-4">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <ShieldAlert className="w-5 h-5 text-rose-400" />
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <ShieldAlert className="w-5 h-5 text-rose-600 dark:text-rose-400" />
             Clústeres de Colusión Detectados Automáticamente por NetworkX
           </h2>
 
@@ -425,13 +459,13 @@ export const GrafoColusionPage: React.FC = () => {
             {grafoData.clusters_detectados.map((cluster) => (
               <div
                 key={cluster.cluster_id}
-                className="p-6 rounded-2xl bg-slate-900/95 border border-rose-500/40 space-y-4"
+                className="p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-rose-200 dark:border-rose-500/40 shadow-sm dark:shadow-none space-y-4"
               >
                 <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 font-mono text-xs font-bold border border-rose-500/40">
+                  <span className="px-2.5 py-1 rounded-full bg-rose-50 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300 font-mono text-xs font-bold border border-rose-200 dark:border-rose-500/40">
                     {cluster.cluster_id}
                   </span>
-                  <span className="font-mono text-xs font-bold text-amber-300">
+                  <span className="font-mono text-xs font-bold text-amber-700 dark:text-amber-300">
                     Monto Afectado: S/{' '}
                     {cluster.monto_total_afectado.toLocaleString('es-PE', {
                       minimumFractionDigits: 2,
@@ -439,46 +473,56 @@ export const GrafoColusionPage: React.FC = () => {
                   </span>
                 </div>
 
-                <h3 className="text-base font-extrabold text-white">{cluster.nombre_red}</h3>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                  {cluster.nombre_red}
+                </h3>
 
                 <div className="space-y-2 text-xs">
                   <div>
-                    <strong className="text-slate-400">Postores Vinculados: </strong>
-                    <span className="font-mono text-rose-300 font-bold">
+                    <strong className="text-slate-500 dark:text-slate-400">
+                      Postores Vinculados:{' '}
+                    </strong>
+                    <span className="font-mono text-rose-700 dark:text-rose-300 font-bold">
                       {cluster.proveedores_vinculados.join(', ')}
                     </span>
                   </div>
                   <div>
-                    <strong className="text-slate-400">Atributos Forenses Compartidos: </strong>
-                    <span className="font-mono text-amber-300">
+                    <strong className="text-slate-500 dark:text-slate-400">
+                      Atributos Forenses Compartidos:{' '}
+                    </strong>
+                    <span className="font-mono text-amber-700 dark:text-amber-300">
                       {cluster.atributos_compartidos.join(' | ')}
                     </span>
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-300 leading-relaxed bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-950 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
                   {cluster.explicacion_xai}
                 </p>
 
                 <div className="space-y-2">
-                  <span className="text-[11px] font-bold uppercase text-slate-400">
+                  <span className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400">
                     Expedientes donde co-participaron simulando competencia:
                   </span>
                   {cluster.expedientes_afectados.map((exp) => (
                     <div
                       key={exp.id}
-                      className="flex items-center justify-between p-3 rounded-xl bg-slate-950/90 border border-slate-800 text-xs"
+                      className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-800 text-xs"
                     >
                       <div>
-                        <span className="font-mono font-bold text-cyan-300">{exp.codigo}</span>
-                        <span className="text-slate-400 ml-2">({exp.area_usuaria})</span>
-                        <div className="text-[11px] text-slate-300 truncate max-w-sm">
+                        <span className="font-mono font-bold text-blue-700 dark:text-cyan-300">
+                          {exp.codigo}
+                        </span>
+                        <span className="text-slate-500 dark:text-slate-400 ml-2">
+                          ({exp.area_usuaria})
+                        </span>
+                        <div className="text-[11px] text-slate-600 dark:text-slate-300 truncate max-w-sm">
                           {exp.objeto}
                         </div>
                       </div>
                       <button
                         onClick={() => navigate(`/trazabilidad?id=${exp.id}`)}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 font-semibold whitespace-nowrap ml-3"
+                        className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 font-semibold whitespace-nowrap ml-3"
                       >
                         Ver Expediente
                       </button>

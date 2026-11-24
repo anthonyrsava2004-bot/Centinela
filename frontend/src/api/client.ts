@@ -2,9 +2,11 @@ import axios from 'axios';
 import {
   AlertaGestion,
   DashboardKPIs,
+  ExpedienteCreatePayload,
   ExpedienteDetalle,
   ExpedienteListItem,
   GrafoColusionData,
+  ProveedorItem,
   VerificacionCadena,
 } from '../types';
 
@@ -68,6 +70,29 @@ export const centinelaApi = {
     return `${API_BASE_URL}/api/expedientes/${expedienteId}/reporte-pdf`;
   },
 
+  obtenerUrlReporteInstitucionalPdf: (): string => {
+    return `${API_BASE_URL}/api/reportes/institucional-pdf`;
+  },
+
+  obtenerUrlIndicadoresCsv: (): string => {
+    return `${API_BASE_URL}/api/reportes/indicadores-csv`;
+  },
+
+  listarProveedores: async (): Promise<ProveedorItem[]> => {
+    const { data } = await apiClient.get<ProveedorItem[]>('/api/proveedores');
+    return data;
+  },
+
+  registrarExpedienteVivo: async (
+    payload: ExpedienteCreatePayload,
+  ): Promise<ExpedienteDetalle> => {
+    const { data } = await apiClient.post<ExpedienteDetalle>(
+      '/api/expedientes/simular-registro',
+      payload,
+    );
+    return data;
+  },
+
   obtenerGrafoColusion: async (soloRiesgo: boolean = true): Promise<GrafoColusionData> => {
     const { data } = await apiClient.get<GrafoColusionData>('/api/grafo-colusion', {
       params: { solo_riesgo: soloRiesgo },
@@ -89,6 +114,9 @@ export const centinelaApi = {
       estado_revision: string;
       comentario_descargo: string;
       rol_usuario: string;
+      area_asignada?: string;
+      accion_correctiva?: string;
+      fecha_limite?: string;
     },
   ): Promise<AlertaGestion> => {
     const { data } = await apiClient.patch<AlertaGestion>(
