@@ -50,6 +50,8 @@ class Actuacion(Base):
     etapa = Column(String(40), nullable=False)
     usuario_rol = Column(String(50), nullable=False)
     timestamp = Column(String(35), nullable=False)
+    version_doc = Column(String(20), nullable=False, default="v1.0")
+    tiene_sustento = Column(Boolean, nullable=False, default=True)
     documento_texto = Column(Text, nullable=False)
     hash_anterior = Column(String(64), nullable=False)
     hash_actual = Column(String(64), nullable=False)
@@ -104,8 +106,33 @@ class AlertaGestion(Base):
     evidencia_exacta = Column(Text, nullable=False)
     base_normativa = Column(Text, nullable=False)
     estado_revision = Column(String(40), nullable=False, default="PENDIENTE")
+    area_asignada = Column(String(80), nullable=False, default="OCI — Órgano de Control Institucional")
+    accion_correctiva = Column(Text, nullable=True)
+    fecha_limite = Column(String(20), nullable=True)
     comentario_descargo = Column(Text, nullable=True)
     rol_ultimo_cambio = Column(String(60), nullable=True)
     fecha_actualizacion = Column(String(35), nullable=True)
 
     expediente = relationship("Expediente", back_populates="alertas")
+    historial = relationship(
+        "HistorialAlerta",
+        back_populates="alerta",
+        cascade="all, delete-orphan",
+        order_by="HistorialAlerta.id.asc()",
+    )
+
+
+class HistorialAlerta(Base):
+    __tablename__ = "historial_alertas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    alerta_id = Column(Integer, ForeignKey("alertas_gestion.id", ondelete="CASCADE"), nullable=False, index=True)
+    estado_anterior = Column(String(40), nullable=True)
+    estado_nuevo = Column(String(40), nullable=False)
+    area_asignada = Column(String(80), nullable=True)
+    comentario = Column(Text, nullable=False)
+    accion_correctiva = Column(Text, nullable=True)
+    rol_usuario = Column(String(80), nullable=False)
+    timestamp = Column(String(35), nullable=False)
+
+    alerta = relationship("AlertaGestion", back_populates="historial")

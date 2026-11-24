@@ -96,6 +96,8 @@ def verificar_cadena_expediente(db: Session, expediente: Expediente) -> Verifica
                 etapa=act.etapa,
                 usuario_rol=act.usuario_rol,
                 timestamp=act.timestamp,
+                version_doc=act.version_doc,
+                tiene_sustento=act.tiene_sustento,
                 documento_texto=act.documento_texto,
                 hash_anterior=act.hash_anterior,
                 hash_actual=act.hash_actual,
@@ -216,6 +218,8 @@ def simular_alteracion_ex_post(
                 "Ley N° 27815 (Ley del Código de Ética de la Función Pública - Deber de Transparencia)."
             ),
             estado_revision="PENDIENTE",
+            area_asignada="OCI — Auditoría Forense Digital",
+            fecha_limite=datetime.utcnow().strftime("%Y-%m-%d"),
             comentario_descargo=None,
             rol_ultimo_cambio="SISTEMA-FORENSE-SHA256",
             fecha_actualizacion=datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
@@ -255,6 +259,16 @@ def restaurar_integridad_expediente(db: Session, expediente: Expediente) -> Veri
         expediente.nivel_riesgo = "LIMPIO"
         expediente.puntaje_riesgo = 8
         expediente.estado_expediente = "Pagado"
+    else:
+        puntajes_base_trampa = {
+            "FRACCIONAMIENTO_8UIT": 92,
+            "COLUSION_PROVEEDORES": 94,
+            "DIRECCIONAMIENTO_TDR": 92,
+            "CONFLICTO_SEGREGACION": 92,
+            "PAGO_SIN_CONFORMIDAD": 95,
+            "INCONSISTENCIA_VERSION_SUSTENTO": 91,
+        }
+        expediente.puntaje_riesgo = puntajes_base_trampa.get(expediente.tipo_trampa or "", 92)
 
     db.commit()
     return verificar_cadena_expediente(db, expediente)

@@ -76,9 +76,9 @@ flowchart LR
 
 ---
 
-## 4. Los 8 Casos Trampa del Dataset Sintético (120 Expedientes)
+## 4. Los 9 Casos Forenses del Dataset Sintético (120 Expedientes)
 
-Al iniciar el backend por primera vez (o al pulsar **"Regenerar Dataset Sintético (120 Exp.)"** en el Dashboard), el sistema genera **112 expedientes limpios** y **8 expedientes con trampas forenses deterministas**:
+Al iniciar el backend por primera vez (o al pulsar **"Restaurar Dataset Base (120 Exp.)"** en el Dashboard como Auditor OCI), el sistema genera **111 expedientes limpios** y **9 expedientes con señales forenses deterministas** evaluados dinámicamente por el motor XAI (sin banderas hardcodeadas), además de permitir registrar y auditar nuevos expedientes sintéticos en vivo:
 
 | Expediente | Tipología de Riesgo | Evidencia Forense Detectada por CENTINELA | Base Legal |
 | :--- | :--- | :--- | :--- |
@@ -87,7 +87,8 @@ Al iniciar el backend por primera vez (o al pulsar **"Regenerar Dataset Sintéti
 | **`EXP-2025-UNT-0005`** | `COLUSION_PROVEEDORES` | Co-participan `PROV-SYN-007`, `PROV-SYN-008` y `PROV-SYN-009` compartiendo `REP-HASH-4420B` y `DIR-HASH-TRUJ-509`. | Art. 5 y Art. 30 Ley N° 32069 |
 | **`EXP-2025-UNT-0006`** | `DIRECCIONAMIENTO_TDR` | El TDR presenta **>85% de similitud coseno TF-IDF** con el catálogo exclusivo de `PROV-SYN-014` (`BioCore-X99 Quantum`, `NanoVein-770`). | Art. 47 Ley N° 32069 y D.S. N° 009-2025-EF |
 | **`EXP-2025-UNT-0007`** | `CONFLICTO_SEGREGACION` | El mismo código funcional `FUNC-LOG-01` formula el Requerimiento, elabora el TDR, cotiza, otorga la Buena Pro y emite la Conformidad. | Art. 11 y Art. 25 Ley N° 32069 / Ley N° 27815 |
-| **`EXP-2025-UNT-0008`** | `PAGO_SIN_CONFORMIDAD` | Se ejecuta el devengado y pago SIAF pese a que la etapa de Conformidad registra *"OBSERVADO - SIN ACTA DE RECEPCIÓN DEFINITIVA"*. | Art. 67 Ley N° 32069 / D.L. N° 1441 |
+| **`EXP-2025-UNT-0008`** | `PAGO_SIN_CONFORMIDAD` | Se ejecuta el devengado y pago SIAF pese a que la etapa de Conformidad registra *"OBSERVADO - SIN ACTA DE RECEPCIÓN DEFINITIVA"* y carece de sustento documental. | Art. 67 Ley N° 32069 / D.L. N° 1441 |
+| **`EXP-2025-UNT-0009`** | `INCONSISTENCIA_VERSION_SUSTENTO` | Modificación extemporánea del TDR (`v2.1`) registrada después de la etapa de Cotizaciones y sin informe técnico de sustento adjunto (`R-07-CRONO-VERSION`). | Art. 5 y Art. 47 Ley N° 32069 / Art. 6 Ley N° 27444 |
 
 ---
 

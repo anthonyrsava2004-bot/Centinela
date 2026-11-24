@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from .crypto_audit import GENESIS_HASH, calcular_hash_actuacion
-from .models import Actuacion, AlertaGestion, Expediente, Postulacion, Proveedor
+from .models import Actuacion, AlertaGestion, Expediente, HistorialAlerta, Postulacion, Proveedor
 from .rules_engine import ejecutar_motor_reglas_xai
 
 
@@ -29,6 +29,8 @@ def crear_actuaciones_secuenciales(
             etapa=item["etapa"],
             usuario_rol=item["usuario_rol"],
             timestamp=item["timestamp"],
+            version_doc=item.get("version_doc", "v1.0"),
+            tiene_sustento=item.get("tiene_sustento", True),
             documento_texto=item["documento_texto"],
             hash_anterior=hash_prev,
             hash_actual=hash_actual,
@@ -39,11 +41,12 @@ def crear_actuaciones_secuenciales(
 
 def poblar_base_datos_sintetica(db: Session) -> dict:
     """
-    Generador determinista de 120 expedientes sintéticos (112 limpios + 8 casos trampa de auditoría)
+    Generador determinista de 120 expedientes sintéticos (111 limpios + 9 casos forenses de auditoría)
     cumpliendo estrictamente con la Ley N° 29733 (Privacidad por Diseño - códigos anonimizados)
     y la Ley N° 32069 (Ley General de Contrataciones Públicas).
     """
     # Limpiar tablas en orden de dependencias
+    db.query(HistorialAlerta).delete()
     db.query(AlertaGestion).delete()
     db.query(Postulacion).delete()
     db.query(Actuacion).delete()
@@ -291,6 +294,27 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
                 "electrónico, compresor inverter modulante y monitoreo SNMP integrado para centro de datos."
             ),
         },
+        # Caso 9: Modificación Extemporánea de Versión Documental (TDR v2.1) y Ausencia de Sustento
+        {
+            "num": 9,
+            "objeto": "Servicio de Adecuación de Red Eléctrica Estabilizada y UPS para Laboratorios de Ingeniería",
+            "rubro": "Infraestructura y Mantenimiento Eléctrico",
+            "area_usuaria": "AREA-INFRA-01",
+            "modalidad": "Concurso Público Abreviado",
+            "monto": 118900.00,
+            "fecha": "2025-03-22T09:00:00",
+            "prov_ganador": "PROV-SYN-012",
+            "postores": [
+                ("PROV-SYN-012", 118900.00, True),
+                ("PROV-SYN-018", 123400.00, False),
+                ("PROV-SYN-021", 125100.00, False),
+            ],
+            "tipo_trampa": "INCONSISTENCIA_VERSION_SUSTENTO",
+            "tdr": (
+                "Servicio de mantenimiento eléctrico con suministro de tableros estabilizados trifásicos, "
+                "sistema UPS online doble conversión de 20 kVA y certificación de pozo a tierra según CNE."
+            ),
+        },
     ]
 
     for spec in trampas_spec:
@@ -307,7 +331,7 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
             tdr_texto=spec["tdr"],
             proveedor_adjudicado_codigo=spec["prov_ganador"],
             nivel_riesgo="ALTO",
-            puntaje_riesgo=92,
+            puntaje_riesgo=91 if spec["tipo_trampa"] == "INCONSISTENCIA_VERSION_SUSTENTO" else 92,
             integridad_valida=True,
             es_caso_trampa=True,
             tipo_trampa=spec["tipo_trampa"],
@@ -318,12 +342,15 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
         fecha_dia = spec["fecha"][:10]
         es_segregacion_rota = spec["tipo_trampa"] == "CONFLICTO_SEGREGACION"
         es_pago_sin_conf = spec["tipo_trampa"] == "PAGO_SIN_CONFORMIDAD"
+        es_version_extemp = spec["tipo_trampa"] == "INCONSISTENCIA_VERSION_SUSTENTO"
 
         etapas_data = [
             {
                 "etapa": "Requerimiento",
                 "usuario_rol": "FUNC-LOG-01" if es_segregacion_rota else f"FUNC-{spec['area_usuaria'].split('-')[1]}-01",
                 "timestamp": f"{fecha_dia}T09:00:00",
+                "version_doc": "v1.0",
+                "tiene_sustento": True,
                 "documento_texto": (
                     f"Pedido SIGA N° {1000 + spec['num']} formulado por {spec['area_usuaria']} "
                     f"para '{spec['objeto']}'. Presupuesto estimado: S/ {spec['monto']:,.2f}."
@@ -332,13 +359,21 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
             {
                 "etapa": "TDR",
                 "usuario_rol": "FUNC-LOG-01" if es_segregacion_rota else "FUNC-ESP-TEC-02",
-                "timestamp": f"{fecha_dia}T11:30:00",
-                "documento_texto": spec["tdr"],
+                "timestamp": f"{fecha_dia}T15:40:00" if es_version_extemp else f"{fecha_dia}T11:30:00",
+                "version_doc": "v2.1" if es_version_extemp else "v1.0",
+                "tiene_sustento": False if es_version_extemp else True,
+                "documento_texto": (
+                    f"[MODIFICACIÓN EXTEMPORÁNEA v2.1 - SIN SUSTENTO TÉCNICO ADJUNTO]: {spec['tdr']}"
+                    if es_version_extemp
+                    else spec["tdr"]
+                ),
             },
             {
                 "etapa": "Cotizaciones",
                 "usuario_rol": "FUNC-LOG-01",
                 "timestamp": f"{fecha_dia}T14:15:00",
+                "version_doc": "v1.0",
+                "tiene_sustento": True,
                 "documento_texto": (
                     f"Indagación de mercado con postores: "
                     + ", ".join([f"{c} (S/ {m:,.2f})" for c, m, _ in spec["postores"]])
@@ -349,6 +384,8 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
                 "etapa": "Buena Pro",
                 "usuario_rol": "FUNC-LOG-01" if es_segregacion_rota else "FUNC-COM-SEL-01",
                 "timestamp": f"{fecha_dia}T16:45:00",
+                "version_doc": "v1.0",
+                "tiene_sustento": True,
                 "documento_texto": (
                     f"Acta de Otorgamiento de Buena Pro del proceso {codigo_exp} a favor del postor "
                     f"{spec['prov_ganador']} por el monto adjudicado de S/ {spec['monto']:,.2f}."
@@ -358,6 +395,8 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
                 "etapa": "Conformidad",
                 "usuario_rol": "FUNC-LOG-01" if es_segregacion_rota else f"FUNC-{spec['area_usuaria'].split('-')[1]}-01",
                 "timestamp": f"{fecha_dia}T18:20:00" if not es_pago_sin_conf else f"{fecha_dia}T19:40:00",
+                "version_doc": "v1.0",
+                "tiene_sustento": False if es_pago_sin_conf else True,
                 "documento_texto": (
                     "OBSERVADO - SIN ACTA DE RECEPCIÓN DEFINITIVA: Equipos pendientes de prueba de carga térmica; "
                     "pendiente de verificación técnica por el área usuaria."
@@ -369,6 +408,8 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
                 "etapa": "Pago",
                 "usuario_rol": "FUNC-TES-02",
                 "timestamp": f"{fecha_dia}T17:50:00" if es_pago_sin_conf else f"{fecha_dia}T19:30:00",
+                "version_doc": "v1.0",
+                "tiene_sustento": True,
                 "documento_texto": (
                     f"Comprobante de Pago SIAF N° {8000 + spec['num']} girado a favor de {spec['prov_ganador']} "
                     f"por S/ {spec['monto']:,.2f}."
@@ -390,7 +431,7 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
             )
 
     # -------------------------------------------------------------------------
-    # 3. GENERAR 112 EXPEDIENTES LIMPIOS (EXP-2025-UNT-0009 AL EXP-2025-UNT-0120)
+    # 3. GENERAR 111 EXPEDIENTES LIMPIOS (EXP-2025-UNT-0010 AL EXP-2025-UNT-0120)
     # -------------------------------------------------------------------------
     areas_limpias = [
         "AREA-ACAD-01",
@@ -443,22 +484,22 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
         p for p in proveedores_lista if not p.es_colusorio
     ]
 
-    for num in range(9, 121):
-        idx_item = (num - 9) % len(objetos_limpios)
+    for num in range(10, 121):
+        idx_item = (num - 10) % len(objetos_limpios)
         obj_base, rubro, monto_base, modalidad = objetos_limpios[idx_item]
-        area = areas_limpias[(num - 9) % len(areas_limpias)]
+        area = areas_limpias[(num - 10) % len(areas_limpias)]
         variacion = ((num * 17) % 19) * 450.0
         monto_final = round(monto_base + variacion, 2)
         if "Menor" in modalidad and monto_final > 36000.0:
             monto_final = round(18500.0 + ((num * 313) % 14000), 2)
 
-        mes = ((num - 9) % 9) + 1
+        mes = ((num - 10) % 9) + 1
         dia = ((num * 3) % 27) + 1
         fecha_iso = f"2025-{mes:02d}-{dia:02d}T08:30:00"
         fecha_dia = f"2025-{mes:02d}-{dia:02d}"
 
-        p_ganador = proveedores_limpios[(num - 9) % len(proveedores_limpios)]
-        p_segundo = proveedores_limpios[(num - 8) % len(proveedores_limpios)]
+        p_ganador = proveedores_limpios[(num - 10) % len(proveedores_limpios)]
+        p_segundo = proveedores_limpios[(num - 9) % len(proveedores_limpios)]
 
         codigo_exp = f"EXP-2025-UNT-{num:04d}"
         tdr_generico = (
@@ -469,7 +510,7 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
 
         exp = Expediente(
             codigo=codigo_exp,
-            objeto=f"{obj_base} - Sede Lote #{num - 8}",
+            objeto=f"{obj_base} - Sede Lote #{num - 9}",
             rubro=rubro,
             area_usuaria=area,
             modalidad=modalidad,
@@ -561,10 +602,10 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
     resumen_reglas = ejecutar_motor_reglas_xai(db)
 
     return {
-        "mensaje": "Dataset sintético CENTINELA regenerado exitosamente (120 expedientes: 112 limpios + 8 casos trampa).",
+        "mensaje": "Dataset sintético CENTINELA regenerado exitosamente (120 expedientes: 111 limpios + 9 casos forenses).",
         "total_expedientes": 120,
-        "expedientes_limpios": 112,
-        "expedientes_trampa": 8,
+        "expedientes_limpios": 111,
+        "expedientes_trampa": 9,
         "proveedores_sinteticos": len(proveedores_lista),
         "auditoria_xai": resumen_reglas,
     }

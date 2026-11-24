@@ -1,10 +1,13 @@
-from collections import Counter
+from collections import Counter, defaultdict
 from contextlib import asynccontextmanager
+import csv
 from datetime import datetime
+import io
 from typing import List, Optional
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
 from .crypto_audit import (
@@ -14,29 +17,62 @@ from .crypto_audit import (
 )
 from .database import Base, SessionLocal, engine, get_db
 from .graph_engine import construir_grafo_colusion
-from .models import AlertaGestion, Expediente, Postulacion, Proveedor
+from .models import AlertaGestion, Expediente, HistorialAlerta, Postulacion, Proveedor
 from .nlp_tdr import analizar_similitud_tdr
-from .pdf_report import generar_pdf_expediente
+from .pdf_report import generar_pdf_expediente, generar_pdf_reporte_institucional
+from .rules_engine import evaluar_expediente_individual
 from .schemas import (
     AlertaGestionOut,
     AlertaUpdateInput,
     DashboardKPIsOut,
+    ExpedienteCreateInput,
     ExpedienteDetalleOut,
     ExpedienteListOut,
+    HistorialAlertaOut,
     PostulacionDetalleOut,
+    ProveedorOut,
     TamperSimulationRequest,
     VerificacionCadenaOut,
 )
-from .seed_synthetic import poblar_base_datos_sintetica
+from .seed_synthetic import crear_actuaciones_secuenciales, poblar_base_datos_sintetica
+
+
+def _asegurar_esquema_actualizado():
+    """
+    Verifica si las tablas sintéticas cuentan con todas las columnas vigentes del modelo
+    (ej. version_doc, area_asignada, historial_alertas). Si detecta una BD local de una
+    versión anterior, recrea el esquema limpiamente para regenerar el dataset sintético.
+    """
+    inspector = inspect(engine)
+    tablas = set(inspector.get_table_names())
+    esquema_desactualizado = False
+
+    if "actuaciones" in tablas:
+        cols_act = {c["name"] for c in inspector.get_columns("actuaciones")}
+        if "version_doc" not in cols_act or "tiene_sustento" not in cols_act:
+            esquema_desactualizado = True
+
+    if "alertas_gestion" in tablas:
+        cols_al = {c["name"] for c in inspector.get_columns("alertas_gestion")}
+        if "area_asignada" not in cols_al or "accion_correctiva" not in cols_al:
+            esquema_desactualizado = True
+
+    if tablas and "historial_alertas" not in tablas:
+        esquema_desactualizado = True
+
+    if esquema_desactualizado:
+        Base.metadata.drop_all(bind=engine)
+
+    Base.metadata.create_all(bind=engine)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Inicializa esquemas en PostgreSQL y ejecuta el seed automático de los 120 expedientes
-    sintéticos si la base de datos se encuentra vacía.
+    Inicializa esquemas en PostgreSQL / SQLite y ejecuta el seed automático de los
+    120 expedientes sintéticos si la base de datos se encuentra vacía o recién migrada.
     """
-    Base.metadata.create_all(bind=engine)
+    _asegurar_esquema_actualizado()
     db = SessionLocal()
     try:
         total = db.query(Expediente).count()
@@ -53,7 +89,7 @@ app = FastAPI(
         "Plataforma de integridad institucional y detección explicable de riesgos en contrataciones "
         "públicas bajo la Ley N° 32069 y la Ley N° 29733 (Hackathon Innova Norte 3G - UNT)."
     ),
-    version="1.0.0",
+    version="1.1.0",
     lifespan=lifespan,
 )
 
@@ -67,18 +103,143 @@ app.add_middleware(
 )
 
 
+def _es_auditor_oci(rol: str) -> bool:
+    return rol.strip().startswith("Auditor OCI")
+
+
+def _es_solo_lectura(rol: str) -> bool:
+    r = rol.strip().lower()
+    return "transparencia" in r or "solo lectura" in r or "consulta" in r
+
+
+def _serializar_alerta(
+    a: AlertaGestion,
+    exp: Optional[Expediente],
+    historial_items: List[HistorialAlerta],
+) -> AlertaGestionOut:
+    return AlertaGestionOut(
+        id=a.id,
+        expediente_id=a.expediente_id,
+        expediente_codigo=exp.codigo if exp else f"EXP-{a.expediente_id}",
+        expediente_objeto=exp.objeto if exp else "",
+        expediente_monto=exp.monto_estimado if exp else 0.0,
+        area_usuaria=exp.area_usuaria if exp else "",
+        codigo_regla=a.codigo_regla,
+        categoria=a.categoria,
+        titulo=a.titulo,
+        severidad=a.severidad,
+        regla_activada=a.regla_activada,
+        evidencia_exacta=a.evidencia_exacta,
+        base_normativa=a.base_normativa,
+        estado_revision=a.estado_revision,
+        area_asignada=a.area_asignada,
+        accion_correctiva=a.accion_correctiva,
+        fecha_limite=a.fecha_limite,
+        comentario_descargo=a.comentario_descargo,
+        rol_ultimo_cambio=a.rol_ultimo_cambio,
+        fecha_actualizacion=a.fecha_actualizacion,
+        historial=[HistorialAlertaOut.model_validate(h) for h in historial_items],
+    )
+
+
+def _construir_detalle_expediente(db: Session, exp: Expediente) -> ExpedienteDetalleOut:
+    verificacion = verificar_cadena_expediente(db, exp)
+    nlp_res = analizar_similitud_tdr(db, exp)
+
+    postulaciones_db = (
+        db.query(Postulacion).filter(Postulacion.expediente_id == exp.id).all()
+    )
+    prov_map = {p.id: p for p in db.query(Proveedor).all()}
+
+    postulaciones_out = []
+    for post in postulaciones_db:
+        pr = prov_map.get(post.proveedor_id)
+        if pr:
+            postulaciones_out.append(
+                PostulacionDetalleOut(
+                    id=post.id,
+                    proveedor_id=pr.id,
+                    proveedor_codigo=pr.codigo,
+                    proveedor_alias=pr.alias_comercial,
+                    representante_id=pr.representante_id,
+                    direccion_hash=pr.direccion_hash,
+                    telefono_hash=pr.telefono_hash,
+                    monto_ofertado=post.monto_ofertado,
+                    es_ganador=post.es_ganador,
+                    fecha_presentacion=post.fecha_presentacion,
+                )
+            )
+
+    alertas_db = (
+        db.query(AlertaGestion)
+        .filter(AlertaGestion.expediente_id == exp.id)
+        .order_by(AlertaGestion.id.asc())
+        .all()
+    )
+    alerta_ids = [a.id for a in alertas_db]
+    hist_por_alerta: dict[int, List[HistorialAlerta]] = defaultdict(list)
+    if alerta_ids:
+        for h in (
+            db.query(HistorialAlerta)
+            .filter(HistorialAlerta.alerta_id.in_(alerta_ids))
+            .order_by(HistorialAlerta.id.asc())
+            .all()
+        ):
+            hist_por_alerta[h.alerta_id].append(h)
+
+    alertas_out = [
+        _serializar_alerta(a, exp, hist_por_alerta.get(a.id, []))
+        for a in alertas_db
+    ]
+
+    return ExpedienteDetalleOut(
+        id=exp.id,
+        codigo=exp.codigo,
+        objeto=exp.objeto,
+        rubro=exp.rubro,
+        area_usuaria=exp.area_usuaria,
+        modalidad=exp.modalidad,
+        monto_estimado=exp.monto_estimado,
+        fecha_creacion=exp.fecha_creacion,
+        estado_expediente=exp.estado_expediente,
+        tdr_texto=exp.tdr_texto,
+        proveedor_adjudicado_codigo=exp.proveedor_adjudicado_codigo,
+        nivel_riesgo=exp.nivel_riesgo,
+        puntaje_riesgo=exp.puntaje_riesgo,
+        integridad_valida=exp.integridad_valida,
+        es_caso_trampa=exp.es_caso_trampa,
+        tipo_trampa=exp.tipo_trampa,
+        verificacion_sha256=verificacion,
+        postulaciones=postulaciones_out,
+        alertas=alertas_out,
+        analisis_nlp=nlp_res,
+    )
+
+
 @app.get("/")
 def health_check():
     return {
         "sistema": "CENTINELA",
+        "version": "1.1.0",
         "estado": "OPERATIVO",
-        "marco_normativo": ["Ley N° 32069", "D.S. N° 009-2025-EF", "Ley N° 29733", "Ley N° 27815", "Ley N° 27444"],
+        "arquitectura": "Capa de Observabilidad Externa No Intrusiva (No reemplaza SEACE/SIGA/SIAF)",
+        "marco_normativo": [
+            "Ley N° 32069",
+            "D.S. N° 009-2025-EF",
+            "Ley N° 29733",
+            "Ley N° 27806",
+            "Ley N° 27815",
+            "Ley N° 27785",
+            "Ley N° 27444",
+        ],
         "modulos_activos": [
-            "Cadena Criptográfica SHA-256",
-            "Motor XAI Sin Caja Negra",
-            "Grafos de Colusión NetworkX",
-            "Detector Semántico TDR (TF-IDF + Coseno)",
-            "Generador PDF Forense ReportLab",
+            "Cadena Criptográfica SHA-256 con Control de Versiones",
+            "Motor XAI Sin Caja Negra (7 Reglas Normativas Reales)",
+            "Grafos de Colusión NetworkX + Cytoscape",
+            "Detector Semántico TDR (TF-IDF + Coseno Local)",
+            "Panel Compliance Human-in-the-Loop con RBAC y Bitácora",
+            "Evaluador de Expedientes Sintéticos en Vivo",
+            "Reportes Forenses Individuales y Agregados (PDF + CSV)",
         ],
     }
 
@@ -86,10 +247,16 @@ def health_check():
 @app.post("/api/seed/regenerar")
 def regenerar_dataset_sintetico(db: Session = Depends(get_db)):
     """
-    Regenera determinísticamente los 120 expedientes sintéticos (112 limpios + 8 casos trampa)
+    Regenera determinísticamente los 120 expedientes sintéticos (111 limpios + 9 casos forenses)
     y restaura el estado base para demostraciones en vivo.
     """
     return poblar_base_datos_sintetica(db)
+
+
+@app.get("/api/proveedores", response_model=List[ProveedorOut])
+def listar_proveedores(db: Session = Depends(get_db)):
+    """Retorna el padrón de proveedores sintéticos anonimizados (Ley N° 29733)."""
+    return db.query(Proveedor).order_by(Proveedor.codigo.asc()).all()
 
 
 @app.get("/api/dashboard", response_model=DashboardKPIsOut)
@@ -103,6 +270,7 @@ def obtener_kpis_dashboard(db: Session = Depends(get_db)):
     exp_limpios = sum(1 for e in expedientes if e.nivel_riesgo == "LIMPIO" and e.integridad_valida)
     exp_observados = total_exp - exp_limpios
     exp_rotos = sum(1 for e in expedientes if not e.integridad_valida)
+    pct_limpios = round((exp_limpios / max(1, total_exp)) * 100.0, 1)
 
     monto_total = round(sum(e.monto_estimado for e in expedientes), 2)
     monto_riesgo = round(
@@ -120,7 +288,7 @@ def obtener_kpis_dashboard(db: Session = Depends(get_db)):
 
     cat_counter = Counter(a.categoria for a in alertas)
     alertas_por_cat = [
-        {"categoria": cat, "cantidad": cant} for cat, cant in cat_counter.items()
+        {"categoria": cat, "cantidad": cant} for cat, cant in cat_counter.most_common()
     ]
 
     destacados = [
@@ -143,8 +311,8 @@ def obtener_kpis_dashboard(db: Session = Depends(get_db)):
             total_alertas=conteo_alertas_exp.get(e.id, 0),
         )
         for e in expedientes
-        if e.es_caso_trampa or not e.integridad_valida
-    ][:10]
+        if e.es_caso_trampa or e.nivel_riesgo != "LIMPIO" or not e.integridad_valida
+    ][:20]
 
     return DashboardKPIsOut(
         total_expedientes=total_exp,
@@ -158,6 +326,8 @@ def obtener_kpis_dashboard(db: Session = Depends(get_db)):
         alertas_pendientes=sum(1 for a in alertas if a.estado_revision == "PENDIENTE"),
         alertas_validadas_oci=sum(1 for a in alertas if a.estado_revision == "VALIDADA_OCI"),
         alertas_en_descargo=sum(1 for a in alertas if a.estado_revision == "EN_DESCARGO"),
+        alertas_archivadas=sum(1 for a in alertas if a.estado_revision == "ARCHIVADA_SUSTENTADA"),
+        porcentaje_limpios=pct_limpios,
         distribucion_riesgo=dist_riesgo,
         alertas_por_categoria=alertas_por_cat,
         casos_destacados=destacados,
@@ -183,7 +353,11 @@ def listar_expedientes(
         query = query.filter(Expediente.integridad_valida.is_(True))
 
     if solo_trampas:
-        query = query.filter(Expediente.es_caso_trampa.is_(True))
+        query = query.filter(
+            (Expediente.es_caso_trampa.is_(True))
+            | (Expediente.nivel_riesgo != "LIMPIO")
+            | (Expediente.integridad_valida.is_(False))
+        )
 
     expedientes = query.order_by(Expediente.id.asc()).all()
 
@@ -225,90 +399,179 @@ def listar_expedientes(
     ]
 
 
+@app.post("/api/expedientes/simular-registro", response_model=ExpedienteDetalleOut)
+def registrar_y_auditar_expediente_vivo(
+    payload: ExpedienteCreateInput,
+    db: Session = Depends(get_db),
+):
+    """
+    Registra un nuevo expediente sintético en vivo, construye y sella su cadena SHA-256
+    de 6 etapas y ejecuta en tiempo real el motor completo de reglas XAI, TF-IDF y grafos.
+    """
+    if _es_solo_lectura(payload.rol_usuario):
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado (RBAC): El rol de Consulta / Transparencia es de solo lectura.",
+        )
+
+    if payload.monto_estimado <= 0:
+        raise HTTPException(status_code=400, detail="El monto estimado debe ser mayor a cero.")
+
+    prov_ganador = (
+        db.query(Proveedor)
+        .filter(Proveedor.codigo == payload.proveedor_adjudicado_codigo)
+        .first()
+    )
+    if not prov_ganador:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Proveedor adjudicado '{payload.proveedor_adjudicado_codigo}' no existe en el padrón sintético.",
+        )
+
+    total_actual = db.query(Expediente).count()
+    correlativo = total_actual + 1
+    codigo_exp = f"EXP-2025-UNT-{correlativo:04d}"
+    while db.query(Expediente).filter(Expediente.codigo == codigo_exp).first():
+        correlativo += 1
+        codigo_exp = f"EXP-2025-UNT-{correlativo:04d}"
+
+    fecha_iso = payload.fecha_creacion or datetime.utcnow().strftime("%Y-%m-%dT09:00:00")
+    fecha_dia = fecha_iso[:10]
+
+    exp = Expediente(
+        codigo=codigo_exp,
+        objeto=payload.objeto.strip(),
+        rubro=payload.rubro.strip(),
+        area_usuaria=payload.area_usuaria.strip(),
+        modalidad=payload.modalidad.strip(),
+        monto_estimado=round(payload.monto_estimado, 2),
+        fecha_creacion=fecha_iso,
+        estado_expediente="Pagado",
+        tdr_texto=payload.tdr_texto.strip(),
+        proveedor_adjudicado_codigo=prov_ganador.codigo,
+        nivel_riesgo="LIMPIO",
+        puntaje_riesgo=8,
+        integridad_valida=True,
+        es_caso_trampa=False,
+        tipo_trampa=None,
+    )
+    db.add(exp)
+    db.flush()
+
+    codigos_postores = list(dict.fromkeys([prov_ganador.codigo] + list(payload.proveedores_postores)))
+    postores_objs = (
+        db.query(Proveedor).filter(Proveedor.codigo.in_(codigos_postores)).all()
+    )
+    if len(postores_objs) < 2:
+        otro_prov = (
+            db.query(Proveedor)
+            .filter(Proveedor.codigo != prov_ganador.codigo, Proveedor.es_colusorio.is_(False))
+            .first()
+        )
+        if otro_prov:
+            postores_objs.append(otro_prov)
+
+    etiqueta_postores = []
+    for idx_p, p_obj in enumerate(postores_objs):
+        es_gan = p_obj.codigo == prov_ganador.codigo
+        monto_of = round(payload.monto_estimado * (1.0 if es_gan else 1.03 + idx_p * 0.015), 2)
+        db.add(
+            Postulacion(
+                expediente_id=exp.id,
+                proveedor_id=p_obj.id,
+                monto_ofertado=monto_of,
+                es_ganador=es_gan,
+                fecha_presentacion=f"{fecha_dia}T13:30:00",
+            )
+        )
+        etiqueta_postores.append(f"{p_obj.codigo} (S/ {monto_of:,.2f})")
+
+    area_tag = payload.area_usuaria.split("-")[1] if "-" in payload.area_usuaria else "USU"
+    rol_base_seg = "FUNC-LOG-01" if payload.mismo_funcionario_etapas else None
+
+    etapas_data = [
+        {
+            "etapa": "Requerimiento",
+            "usuario_rol": rol_base_seg or f"FUNC-{area_tag}-01",
+            "timestamp": f"{fecha_dia}T09:00:00",
+            "version_doc": "v1.0",
+            "tiene_sustento": not payload.sin_sustento_documental,
+            "documento_texto": (
+                f"Requerimiento institucional SIGA {codigo_exp} formulado por {payload.area_usuaria} "
+                f"para '{payload.objeto}'. Monto estimado: S/ {payload.monto_estimado:,.2f}."
+            ),
+        },
+        {
+            "etapa": "TDR",
+            "usuario_rol": rol_base_seg or "FUNC-ESP-TEC-02",
+            "timestamp": f"{fecha_dia}T15:40:00" if payload.modificacion_extemporanea_tdr else f"{fecha_dia}T11:30:00",
+            "version_doc": "v2.1" if payload.modificacion_extemporanea_tdr else "v1.0",
+            "tiene_sustento": not (payload.modificacion_extemporanea_tdr or payload.sin_sustento_documental),
+            "documento_texto": (
+                f"[MODIFICACIÓN EXTEMPORÁNEA v2.1 - SIN SUSTENTO TÉCNICO ADJUNTO]: {payload.tdr_texto}"
+                if payload.modificacion_extemporanea_tdr
+                else payload.tdr_texto
+            ),
+        },
+        {
+            "etapa": "Cotizaciones",
+            "usuario_rol": "FUNC-LOG-01",
+            "timestamp": f"{fecha_dia}T14:15:00",
+            "version_doc": "v1.0",
+            "tiene_sustento": True,
+            "documento_texto": f"Indagación de mercado con postores: {', '.join(etiqueta_postores)}.",
+        },
+        {
+            "etapa": "Buena Pro",
+            "usuario_rol": rol_base_seg or "FUNC-COM-SEL-01",
+            "timestamp": f"{fecha_dia}T16:45:00",
+            "version_doc": "v1.0",
+            "tiene_sustento": True,
+            "documento_texto": (
+                f"Acta de Otorgamiento de Buena Pro del proceso {codigo_exp} a favor de "
+                f"{prov_ganador.codigo} por S/ {payload.monto_estimado:,.2f}."
+            ),
+        },
+        {
+            "etapa": "Conformidad",
+            "usuario_rol": rol_base_seg or f"FUNC-{area_tag}-01",
+            "timestamp": f"{fecha_dia}T19:40:00" if payload.pago_sin_conformidad else f"{fecha_dia}T18:20:00",
+            "version_doc": "v1.0",
+            "tiene_sustento": not payload.pago_sin_conformidad,
+            "documento_texto": (
+                "OBSERVADO - SIN ACTA DE RECEPCIÓN DEFINITIVA: Pendiente de verificación técnica por el área usuaria."
+                if payload.pago_sin_conformidad
+                else f"Acta de Conformidad Técnica favorable suscrita por {payload.area_usuaria}."
+            ),
+        },
+        {
+            "etapa": "Pago",
+            "usuario_rol": "FUNC-TES-02",
+            "timestamp": f"{fecha_dia}T17:50:00" if payload.pago_sin_conformidad else f"{fecha_dia}T19:30:00",
+            "version_doc": "v1.0",
+            "tiene_sustento": True,
+            "documento_texto": (
+                f"Comprobante de Pago SIAF girado a favor de {prov_ganador.codigo} "
+                f"por S/ {payload.monto_estimado:,.2f}."
+            ),
+        },
+    ]
+
+    crear_actuaciones_secuenciales(db, exp, etapas_data)
+    db.commit()
+
+    # Evaluar en tiempo real con el motor XAI completo (sin hardcodes)
+    evaluar_expediente_individual(db, exp)
+    db.refresh(exp)
+    return _construir_detalle_expediente(db, exp)
+
+
 @app.get("/api/expedientes/{expediente_id}", response_model=ExpedienteDetalleOut)
 def obtener_detalle_expediente(expediente_id: int, db: Session = Depends(get_db)):
     exp = db.query(Expediente).filter(Expediente.id == expediente_id).first()
     if not exp:
         raise HTTPException(status_code=404, detail="Expediente no encontrado")
-
-    verificacion = verificar_cadena_expediente(db, exp)
-    nlp_res = analizar_similitud_tdr(db, exp)
-
-    postulaciones_db = (
-        db.query(Postulacion).filter(Postulacion.expediente_id == exp.id).all()
-    )
-    prov_map = {p.id: p for p in db.query(Proveedor).all()}
-
-    postulaciones_out = []
-    for post in postulaciones_db:
-        pr = prov_map.get(post.proveedor_id)
-        if pr:
-            postulaciones_out.append(
-                PostulacionDetalleOut(
-                    id=post.id,
-                    proveedor_id=pr.id,
-                    proveedor_codigo=pr.codigo,
-                    proveedor_alias=pr.alias_comercial,
-                    representante_id=pr.representante_id,
-                    direccion_hash=pr.direccion_hash,
-                    telefono_hash=pr.telefono_hash,
-                    monto_ofertado=post.monto_ofertado,
-                    es_ganador=post.es_ganador,
-                    fecha_presentacion=post.fecha_presentacion,
-                )
-            )
-
-    alertas_db = (
-        db.query(AlertaGestion)
-        .filter(AlertaGestion.expediente_id == exp.id)
-        .order_by(AlertaGestion.id.asc())
-        .all()
-    )
-    alertas_out = [
-        AlertaGestionOut(
-            id=a.id,
-            expediente_id=a.expediente_id,
-            expediente_codigo=exp.codigo,
-            expediente_objeto=exp.objeto,
-            expediente_monto=exp.monto_estimado,
-            area_usuaria=exp.area_usuaria,
-            codigo_regla=a.codigo_regla,
-            categoria=a.categoria,
-            titulo=a.titulo,
-            severidad=a.severidad,
-            regla_activada=a.regla_activada,
-            evidencia_exacta=a.evidencia_exacta,
-            base_normativa=a.base_normativa,
-            estado_revision=a.estado_revision,
-            comentario_descargo=a.comentario_descargo,
-            rol_ultimo_cambio=a.rol_ultimo_cambio,
-            fecha_actualizacion=a.fecha_actualizacion,
-        )
-        for a in alertas_db
-    ]
-
-    return ExpedienteDetalleOut(
-        id=exp.id,
-        codigo=exp.codigo,
-        objeto=exp.objeto,
-        rubro=exp.rubro,
-        area_usuaria=exp.area_usuaria,
-        modalidad=exp.modalidad,
-        monto_estimado=exp.monto_estimado,
-        fecha_creacion=exp.fecha_creacion,
-        estado_expediente=exp.estado_expediente,
-        tdr_texto=exp.tdr_texto,
-        proveedor_adjudicado_codigo=exp.proveedor_adjudicado_codigo,
-        nivel_riesgo=exp.nivel_riesgo,
-        puntaje_riesgo=exp.puntaje_riesgo,
-        integridad_valida=exp.integridad_valida,
-        es_caso_trampa=exp.es_caso_trampa,
-        tipo_trampa=exp.tipo_trampa,
-        verificacion_sha256=verificacion,
-        postulaciones=postulaciones_out,
-        alertas=alertas_out,
-        analisis_nlp=nlp_res,
-    )
+    return _construir_detalle_expediente(db, exp)
 
 
 @app.post(
@@ -355,6 +618,72 @@ def descargar_reporte_pdf(expediente_id: int, db: Session = Depends(get_db)):
     )
 
 
+@app.get("/api/reportes/institucional-pdf")
+def descargar_reporte_institucional_pdf(db: Session = Depends(get_db)):
+    """Descarga el reporte agregado de indicadores de integridad y transparencia en PDF."""
+    pdf_bytes = generar_pdf_reporte_institucional(db)
+    filename = f"Reporte_Institucional_CENTINELA_{datetime.utcnow().strftime('%Y%m%d')}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.get("/api/reportes/indicadores-csv")
+def descargar_indicadores_csv(db: Session = Depends(get_db)):
+    """Exporta indicadores agregados y padrón anonimizado en CSV (Ley N° 27806 y Ley N° 29733)."""
+    expedientes = db.query(Expediente).order_by(Expediente.id.asc()).all()
+    alertas = db.query(AlertaGestion).all()
+    conteo_alertas = Counter(a.expediente_id for a in alertas)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "codigo_expediente",
+            "area_usuaria_anonimizada",
+            "rubro",
+            "modalidad",
+            "monto_estimado_pen",
+            "proveedor_adjudicado_codigo",
+            "fecha_creacion",
+            "estado_expediente",
+            "integridad_sha256",
+            "nivel_riesgo_xai",
+            "puntaje_riesgo",
+            "total_alertas_xai",
+            "tipologia_senal",
+        ]
+    )
+    for e in expedientes:
+        writer.writerow(
+            [
+                e.codigo,
+                e.area_usuaria,
+                e.rubro,
+                e.modalidad,
+                f"{e.monto_estimado:.2f}",
+                e.proveedor_adjudicado_codigo or "",
+                e.fecha_creacion,
+                e.estado_expediente,
+                "INTEGRA" if e.integridad_valida else "ROTA",
+                e.nivel_riesgo,
+                e.puntaje_riesgo,
+                conteo_alertas.get(e.id, 0),
+                e.tipo_trampa or "NINGUNA",
+            ]
+        )
+
+    csv_bytes = output.getvalue().encode("utf-8-sig")
+    filename = f"Indicadores_Transparencia_CENTINELA_{datetime.utcnow().strftime('%Y%m%d')}.csv"
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @app.get("/api/grafo-colusion")
 def obtener_grafo_colusion(
     solo_riesgo: bool = Query(True),
@@ -378,31 +707,14 @@ def listar_alertas_xai(
     alertas = query.order_by(AlertaGestion.id.asc()).all()
     exp_map = {e.id: e for e in db.query(Expediente).all()}
 
-    resultado = []
-    for a in alertas:
-        exp = exp_map.get(a.expediente_id)
-        resultado.append(
-            AlertaGestionOut(
-                id=a.id,
-                expediente_id=a.expediente_id,
-                expediente_codigo=exp.codigo if exp else f"EXP-{a.expediente_id}",
-                expediente_objeto=exp.objeto if exp else "",
-                expediente_monto=exp.monto_estimado if exp else 0.0,
-                area_usuaria=exp.area_usuaria if exp else "",
-                codigo_regla=a.codigo_regla,
-                categoria=a.categoria,
-                titulo=a.titulo,
-                severidad=a.severidad,
-                regla_activada=a.regla_activada,
-                evidencia_exacta=a.evidencia_exacta,
-                base_normativa=a.base_normativa,
-                estado_revision=a.estado_revision,
-                comentario_descargo=a.comentario_descargo,
-                rol_ultimo_cambio=a.rol_ultimo_cambio,
-                fecha_actualizacion=a.fecha_actualizacion,
-            )
-        )
-    return resultado
+    hist_map: dict[int, List[HistorialAlerta]] = defaultdict(list)
+    for h in db.query(HistorialAlerta).order_by(HistorialAlerta.id.asc()).all():
+        hist_map[h.alerta_id].append(h)
+
+    return [
+        _serializar_alerta(a, exp_map.get(a.expediente_id), hist_map.get(a.id, []))
+        for a in alertas
+    ]
 
 
 @app.patch("/api/alertas/{alerta_id}", response_model=AlertaGestionOut)
@@ -412,35 +724,70 @@ def actualizar_alerta_xai(
     payload: AlertaUpdateInput,
     db: Session = Depends(get_db),
 ):
+    if _es_solo_lectura(payload.rol_usuario):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Acceso denegado (Control de Roles): El rol 'Consulta Transparencia (Solo Lectura)' "
+                "no cuenta con permisos para modificar estados, derivar alertas ni emitir dictámenes."
+            ),
+        )
+
+    es_oci = _es_auditor_oci(payload.rol_usuario)
+    estados_permitidos_dec = {"EN_DESCARGO"}
+    estados_validos = {"PENDIENTE", "EN_DESCARGO", "VALIDADA_OCI", "ARCHIVADA_SUSTENTADA"}
+
+    if payload.estado_revision not in estados_validos:
+        raise HTTPException(status_code=400, detail="Estado de revisión no válido.")
+
+    if not es_oci and payload.estado_revision not in estados_permitidos_dec:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Separación de competencias (Ley N° 32069 / Ley N° 27785): El rol Especialista Logística (DEC) "
+                "solo puede registrar descargos técnicos y acciones correctivas ('EN_DESCARGO'). "
+                "La validación o archivo definitivo corresponde exclusivamente al Auditor OCI."
+            ),
+        )
+
     alerta = db.query(AlertaGestion).filter(AlertaGestion.id == alerta_id).first()
     if not alerta:
         raise HTTPException(status_code=404, detail="Señal de alerta no encontrada")
 
-    alerta.estado_revision = payload.estado_revision
-    alerta.comentario_descargo = payload.comentario_descargo
-    alerta.rol_ultimo_cambio = payload.rol_usuario
-    alerta.fecha_actualizacion = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    estado_anterior = alerta.estado_revision
+    ahora_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
 
+    alerta.estado_revision = payload.estado_revision
+    alerta.comentario_descargo = payload.comentario_descargo.strip()
+    if payload.area_asignada and es_oci:
+        alerta.area_asignada = payload.area_asignada.strip()
+    if payload.fecha_limite and es_oci:
+        alerta.fecha_limite = payload.fecha_limite.strip()
+    if payload.accion_correctiva is not None and payload.accion_correctiva.strip():
+        alerta.accion_correctiva = payload.accion_correctiva.strip()
+
+    alerta.rol_ultimo_cambio = payload.rol_usuario
+    alerta.fecha_actualizacion = ahora_iso
+
+    registro_historial = HistorialAlerta(
+        alerta_id=alerta.id,
+        estado_anterior=estado_anterior,
+        estado_nuevo=alerta.estado_revision,
+        area_asignada=alerta.area_asignada,
+        comentario=alerta.comentario_descargo,
+        accion_correctiva=alerta.accion_correctiva,
+        rol_usuario=payload.rol_usuario,
+        timestamp=ahora_iso,
+    )
+    db.add(registro_historial)
     db.commit()
     db.refresh(alerta)
 
     exp = db.query(Expediente).filter(Expediente.id == alerta.expediente_id).first()
-    return AlertaGestionOut(
-        id=alerta.id,
-        expediente_id=alerta.expediente_id,
-        expediente_codigo=exp.codigo if exp else "",
-        expediente_objeto=exp.objeto if exp else "",
-        expediente_monto=exp.monto_estimado if exp else 0.0,
-        area_usuaria=exp.area_usuaria if exp else "",
-        codigo_regla=alerta.codigo_regla,
-        categoria=alerta.categoria,
-        titulo=alerta.titulo,
-        severidad=alerta.severidad,
-        regla_activada=alerta.regla_activada,
-        evidencia_exacta=alerta.evidencia_exacta,
-        base_normativa=alerta.base_normativa,
-        estado_revision=alerta.estado_revision,
-        comentario_descargo=alerta.comentario_descargo,
-        rol_ultimo_cambio=alerta.rol_ultimo_cambio,
-        fecha_actualizacion=alerta.fecha_actualizacion,
+    historial_items = (
+        db.query(HistorialAlerta)
+        .filter(HistorialAlerta.alerta_id == alerta.id)
+        .order_by(HistorialAlerta.id.asc())
+        .all()
     )
+    return _serializar_alerta(alerta, exp, historial_items)

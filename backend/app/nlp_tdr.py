@@ -17,15 +17,26 @@ SPANISH_STOPWORDS = [
 ]
 
 
-def analizar_similitud_tdr(db: Session, expediente: Expediente) -> NlpResultadoOut:
+def analizar_similitud_tdr(
+    db: Session,
+    expediente: Expediente,
+    proveedores_cache: List[Proveedor] | None = None,
+    postulaciones_cache: List[Postulacion] | None = None,
+) -> NlpResultadoOut:
     """
     Ejecuta análisis semántico 100% local mediante TF-IDF + Similitud Coseno (Scikit-Learn)
     comparando los Términos de Referencia (TDR) del expediente contra los catálogos técnicos
     de los proveedores registrados (priorizando postores del proceso y del mismo rubro).
     """
-    todos_proveedores: List[Proveedor] = db.query(Proveedor).order_by(Proveedor.codigo.asc()).all()
+    todos_proveedores: List[Proveedor] = (
+        proveedores_cache
+        if proveedores_cache is not None
+        else db.query(Proveedor).order_by(Proveedor.codigo.asc()).all()
+    )
     postulaciones: List[Postulacion] = (
-        db.query(Postulacion).filter(Postulacion.expediente_id == expediente.id).all()
+        postulaciones_cache
+        if postulaciones_cache is not None
+        else db.query(Postulacion).filter(Postulacion.expediente_id == expediente.id).all()
     )
     ids_postores = {p.proveedor_id for p in postulaciones}
 
