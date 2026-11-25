@@ -29,7 +29,11 @@ def _crear_engine_seguro(db_url: str):
     if db_url.startswith("sqlite"):
         return create_engine(db_url, connect_args={"check_same_thread": False})
 
-    pg_engine = create_engine(db_url, pool_pre_ping=True)
+    engine_kwargs = {"pool_pre_ping": True}
+    if os.getenv("VERCEL"):
+        engine_kwargs.update({"pool_size": 2, "max_overflow": 3, "pool_recycle": 300})
+
+    pg_engine = create_engine(db_url, **engine_kwargs)
     if "TU_PASSWORD_LOCAL" in db_url:
         try:
             with pg_engine.connect() as _:

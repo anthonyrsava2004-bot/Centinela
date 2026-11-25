@@ -19,7 +19,12 @@ import {
 } from '../types';
 import { ROLE_PROFILES } from '../config/roles';
 
-const rawBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const rawBaseUrl =
+  import.meta.env.VITE_API_URL !== undefined
+    ? import.meta.env.VITE_API_URL
+    : import.meta.env.DEV
+    ? 'http://localhost:8000'
+    : '';
 export const API_BASE_URL = rawBaseUrl.replace(/\/+$/, '');
 
 function toAsciiRoleHeader(rol: RolUsuario): string {
