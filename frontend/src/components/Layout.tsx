@@ -19,11 +19,13 @@ import {
   Briefcase,
   ShieldCheck,
   History,
+  HelpCircle,
 } from 'lucide-react';
 import { RolUsuario } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { ROLE_LIST, ROLE_PROFILES } from '../config/roles';
 import { Modal } from './Modal';
+import { OnboardingTour } from './OnboardingTour';
 import { centinelaApi } from '../api/client';
 
 interface LayoutProps {
@@ -44,6 +46,28 @@ export const Layout: React.FC<LayoutProps> = ({
 
   const [modalSesionAbierto, setModalSesionAbierto] = useState<boolean>(false);
   const [alertasPendientes, setAlertasPendientes] = useState<number>(0);
+  const [tourAbierto, setTourAbierto] = useState<boolean>(false);
+
+  // Mostrar guía interactiva automáticamente solo en la primera visita del usuario
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('centinela-tour-visto') !== '1') {
+        const timer = window.setTimeout(() => setTourAbierto(true), 450);
+        return () => window.clearTimeout(timer);
+      }
+    } catch {
+      // Ignorar errores de almacenamiento
+    }
+  }, []);
+
+  const cerrarTour = () => {
+    setTourAbierto(false);
+    try {
+      localStorage.setItem('centinela-tour-visto', '1');
+    } catch {
+      // Ignorar errores de almacenamiento
+    }
+  };
 
   useEffect(() => {
     centinelaApi
@@ -55,6 +79,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const navItems = [
     {
       to: '/',
+      tourId: 'nav-resumen',
       label: profile.isReadOnly
         ? 'Resumen Público'
         : profile.canSubmitDescargo
@@ -69,6 +94,7 @@ export const Layout: React.FC<LayoutProps> = ({
     },
     {
       to: '/compliance',
+      tourId: 'nav-alertas',
       label: profile.canSubmitDescargo ? 'Alertas por Responder' : 'Alertas y Conflictos',
       sub: profile.canSubmitDescargo
         ? 'Responder y declarar vínculos'
@@ -79,6 +105,7 @@ export const Layout: React.FC<LayoutProps> = ({
     },
     {
       to: '/expedientes',
+      tourId: 'nav-compras',
       label: 'Lista de Compras',
       sub: profile.isReadOnly
         ? 'Procesos públicos anonimizados'
@@ -89,6 +116,7 @@ export const Layout: React.FC<LayoutProps> = ({
     },
     {
       to: '/trazabilidad',
+      tourId: 'nav-detalle',
       label: 'Detalle y Seguridad',
       sub: 'Documentos, pagos y SHA-256',
       icon: Link2,
@@ -97,6 +125,7 @@ export const Layout: React.FC<LayoutProps> = ({
     },
     {
       to: '/grafo-colusion',
+      tourId: 'nav-empresas',
       label: 'Empresas Vinculadas',
       sub: 'Proveedores con datos repetidos',
       icon: Network,
@@ -105,6 +134,7 @@ export const Layout: React.FC<LayoutProps> = ({
     },
     {
       to: '/denuncias',
+      tourId: 'nav-denuncias',
       label: 'Canal de Denuncia',
       sub: 'Reserva de identidad y plazos',
       icon: ShieldCheck,
@@ -113,6 +143,7 @@ export const Layout: React.FC<LayoutProps> = ({
     },
     {
       to: '/auditoria',
+      tourId: 'nav-auditoria',
       label: 'Registro de Actividad',
       sub: 'Quién hizo qué y cuándo',
       icon: History,
@@ -218,6 +249,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   key={item.to}
                   to={item.to}
                   end={item.to === '/'}
+                  data-tour={item.tourId}
                   className={({ isActive }) =>
                     `flex items-center justify-between gap-3 px-3.5 py-3 rounded-xl transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${
                       isActive
@@ -282,6 +314,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <div className="flex items-center gap-2.5 shrink-0">
             {/* Tarjeta de Usuario Autenticado + Botón Cambiar Sesión */}
             <div
+              data-tour="session-switcher"
               className={`flex items-center gap-2.5 pl-3 pr-1.5 py-1 rounded-xl border ${profile.chipClass}`}
             >
               <div className="leading-tight">
@@ -302,6 +335,17 @@ export const Layout: React.FC<LayoutProps> = ({
                 Cambiar sesión
               </button>
             </div>
+
+            {/* Botón Guía Interactiva (Repetir Tour) */}
+            <button
+              type="button"
+              onClick={() => setTourAbierto(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition whitespace-nowrap"
+              title="Iniciar recorrido guiado paso a paso"
+            >
+              <HelpCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Guía</span>
+            </button>
 
             {/* Botón Toggle Modo Claro / Oscuro */}
             <button
@@ -442,6 +486,9 @@ export const Layout: React.FC<LayoutProps> = ({
           })}
         </div>
       </Modal>
+
+      {/* Recorrido Guiado Interactivo para Usuarios Nuevos */}
+      <OnboardingTour isOpen={tourAbierto} onClose={cerrarTour} />
     </div>
   );
 };
