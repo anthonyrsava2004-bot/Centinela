@@ -14,6 +14,7 @@ import {
 import { centinelaApi } from '../api/client';
 import { GrafoColusionData } from '../types';
 import { useTheme } from '../context/ThemeContext';
+import { AnimatedNumber } from '../components/AnimatedNumber';
 
 export const GrafoColusionPage: React.FC = () => {
   const navigate = useNavigate();
@@ -195,7 +196,7 @@ export const GrafoColusionPage: React.FC = () => {
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => setSoloRiesgo(!soloRiesgo)}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition ${
+            className={`btn-tactile px-3.5 py-2 rounded-xl text-xs font-bold border ${
               soloRiesgo
                 ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40'
                 : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
@@ -214,44 +215,44 @@ export const GrafoColusionPage: React.FC = () => {
           data-tour="grafo-kpis"
           className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4"
         >
-          <div className="p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
+          <div className="animate-card-up stagger-1 card-elevate p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
             <div className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-bold">
               Grupos Vinculados
             </div>
             <div className="text-xl xl:text-2xl font-extrabold text-rose-700 dark:text-rose-400 mt-1">
-              {grafoData.metricas_grafo.total_clusters_colusion} Grupos
+              <AnimatedNumber value={grafoData.metricas_grafo.total_clusters_colusion} suffix=" Grupos" />
             </div>
           </div>
-          <div className="p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
+          <div className="animate-card-up stagger-2 card-elevate p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
             <div className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-bold">
               Proveedores Vinculados
             </div>
             <div className="text-xl xl:text-2xl font-extrabold text-amber-700 dark:text-amber-300 mt-1">
-              {grafoData.metricas_grafo.proveedores_en_colusion} Empresas
+              <AnimatedNumber value={grafoData.metricas_grafo.proveedores_en_colusion} suffix=" Empresas" />
             </div>
           </div>
-          <div className="p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
+          <div className="animate-card-up stagger-3 card-elevate p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
             <div className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-bold">
               Compras Afectadas
             </div>
             <div className="text-xl xl:text-2xl font-extrabold text-blue-700 dark:text-cyan-300 mt-1">
-              {grafoData.metricas_grafo.expedientes_comprometidos} Procesos
+              <AnimatedNumber value={grafoData.metricas_grafo.expedientes_comprometidos} suffix=" Procesos" />
             </div>
           </div>
-          <div className="p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
+          <div className="animate-card-up stagger-4 card-elevate p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
             <div className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-bold">
               Elementos en el Mapa
             </div>
             <div className="text-xl xl:text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
-              {grafoData.metricas_grafo.total_nodos}
+              <AnimatedNumber value={grafoData.metricas_grafo.total_nodos} />
             </div>
           </div>
-          <div className="p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
+          <div className="animate-card-up stagger-5 card-elevate p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
             <div className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-bold">
               Conexiones Detectadas
             </div>
             <div className="text-xl xl:text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">
-              {grafoData.metricas_grafo.total_enlaces}
+              <AnimatedNumber value={grafoData.metricas_grafo.total_enlaces} />
             </div>
           </div>
         </div>
@@ -261,7 +262,7 @@ export const GrafoColusionPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div
           data-tour="grafo-canvas"
-          className="lg:col-span-2 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden flex flex-col"
+          className="animate-card-up stagger-2 lg:col-span-2 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden flex flex-col"
         >
           {/* Barra de Leyenda y Zoom */}
           <div className="px-5 py-3 bg-slate-50 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
@@ -283,21 +284,21 @@ export const GrafoColusionPage: React.FC = () => {
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => handleZoom(1.25)}
-                className="p-1.5 rounded-lg bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
+                className="btn-tactile p-1.5 rounded-lg bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
                 title="Acercar"
               >
                 <ZoomIn className="w-4 h-4" />
               </button>
               <button
                 onClick={() => handleZoom(0.8)}
-                className="p-1.5 rounded-lg bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
+                className="btn-tactile p-1.5 rounded-lg bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
                 title="Alejar"
               >
                 <ZoomOut className="w-4 h-4" />
               </button>
               <button
                 onClick={handleFit}
-                className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-1"
+                className="btn-tactile px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-1"
                 title="Reorganizar y centrar grafo"
               >
                 <Maximize2 className="w-3.5 h-3.5" />
@@ -358,7 +359,10 @@ export const GrafoColusionPage: React.FC = () => {
             </div>
 
             {nodoSeleccionado ? (
-              <div className="space-y-4 text-xs">
+              <div
+                key={nodoSeleccionado.id ?? 'selected'}
+                className="animate-page-enter space-y-4 text-xs"
+              >
                 <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
                   <span className="px-2 py-0.5 rounded bg-blue-100 dark:bg-cyan-500/15 text-blue-800 dark:text-cyan-300 font-mono text-[10px] font-bold">
                     TIPO: {nodoSeleccionado.tipo}
@@ -437,7 +441,7 @@ export const GrafoColusionPage: React.FC = () => {
                       onClick={() =>
                         navigate(`/trazabilidad?id=${nodoSeleccionado.expediente_db_id}`)
                       }
-                      className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold text-xs flex items-center justify-center gap-2 transition"
+                      className="btn-tactile w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold text-xs flex items-center justify-center gap-2"
                     >
                       <FileSearch className="w-4 h-4" />
                       Auditar Cadena SHA-256 de este Expediente
@@ -445,7 +449,7 @@ export const GrafoColusionPage: React.FC = () => {
                   )}
               </div>
             ) : (
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p key="empty" className="text-xs text-slate-500 dark:text-slate-400">
                 Haga clic sobre cualquier nodo en el grafo interactivo para inspeccionar sus metadatos y conexiones.
               </p>
             )}
@@ -466,10 +470,10 @@ export const GrafoColusionPage: React.FC = () => {
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {grafoData.clusters_detectados.map((cluster) => (
+            {grafoData.clusters_detectados.map((cluster, idx) => (
               <div
                 key={cluster.cluster_id}
-                className="p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-rose-200 dark:border-rose-500/40 shadow-sm dark:shadow-none space-y-4"
+                className={`animate-card-up stagger-${Math.min(idx + 1, 6)} card-elevate p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-rose-200 dark:border-rose-500/40 shadow-sm dark:shadow-none space-y-4`}
               >
                 <div className="flex items-center justify-between">
                   <span className="px-2.5 py-1 rounded-full bg-rose-50 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300 font-mono text-xs font-bold border border-rose-200 dark:border-rose-500/40">
@@ -532,7 +536,7 @@ export const GrafoColusionPage: React.FC = () => {
                       </div>
                       <button
                         onClick={() => navigate(`/trazabilidad?id=${exp.id}`)}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 font-semibold whitespace-nowrap ml-3"
+                        className="btn-tactile px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 font-semibold whitespace-nowrap ml-3"
                       >
                         Ver Expediente
                       </button>

@@ -15,6 +15,7 @@ import {
 import { centinelaApi } from '../api/client';
 import { AuditLogResumen, RolUsuario } from '../types';
 import { ROLE_PROFILES } from '../config/roles';
+import { AnimatedNumber } from '../components/AnimatedNumber';
 
 interface AuditoriaPageProps {
   rolActivo: RolUsuario;
@@ -111,10 +112,14 @@ export const AuditoriaPage: React.FC<AuditoriaPageProps> = ({ rolActivo }) => {
       {/* Encabezado (Superficie Sólida Institucional Sin Degradados) */}
       <div
         data-tour="aud-header"
-        className="flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 border-t-[3px] border-t-[#0B1F3A] dark:border-t-emerald-500 shadow-sm dark:shadow-none"
+        className="animate-card-up flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 border-t-[3px] border-t-[#0B1F3A] dark:border-t-emerald-500 shadow-sm dark:shadow-none"
       >
         <div className="space-y-1">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-xs font-semibold">
+            <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
+              <span className="animate-radar-ring absolute inline-flex h-full w-full rounded-full bg-emerald-500 dark:bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600 dark:bg-emerald-400" />
+            </span>
             <Activity className="w-3.5 h-3.5" />
             Trazabilidad Total de Usuarios • Encadenamiento SHA-256 Inmutable
           </div>
@@ -130,7 +135,7 @@ export const AuditoriaPage: React.FC<AuditoriaPageProps> = ({ rolActivo }) => {
           <button
             onClick={handleSimularIntentoBloqueado}
             disabled={simulando}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm transition disabled:opacity-50"
+            className="btn-tactile inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm disabled:opacity-50"
             title="Simula a FUNC-DEC-02 intentando archivar indebidamente una alerta para ver cómo RBAC lo bloquea (403) y lo deja grabado aquí"
           >
             <Zap className="w-4 h-4" />
@@ -141,7 +146,7 @@ export const AuditoriaPage: React.FC<AuditoriaPageProps> = ({ rolActivo }) => {
             href={centinelaApi.obtenerUrlAuditoriaCsv()}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs shadow-sm dark:shadow-none transition"
+            className="btn-tactile inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs shadow-sm dark:shadow-none"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             Exportar Bitácora (CSV)
@@ -149,7 +154,7 @@ export const AuditoriaPage: React.FC<AuditoriaPageProps> = ({ rolActivo }) => {
 
           <button
             onClick={cargarBitacora}
-            className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 transition"
+            className="btn-tactile p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
             title="Actualizar bitácora"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -167,14 +172,20 @@ export const AuditoriaPage: React.FC<AuditoriaPageProps> = ({ rolActivo }) => {
       {resumen && (
         <>
           <div
-            className={`p-4 rounded-2xl border flex items-start gap-3.5 ${
+            className={`animate-card-up stagger-1 p-4 rounded-2xl border flex items-start gap-3.5 ${
               resumen.cadena_integra
                 ? 'bg-emerald-50 dark:bg-emerald-950/25 border-emerald-200 dark:border-emerald-500/40 text-emerald-900 dark:text-emerald-200'
                 : 'bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-500 text-rose-950 dark:text-rose-100 animate-pulse'
             }`}
           >
             {resumen.cadena_integra ? (
-              <ShieldCheck className="w-6 h-6 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+              <div className="relative flex items-center justify-center shrink-0 mt-0.5">
+                <ShieldCheck className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5" aria-hidden="true">
+                  <span className="animate-radar-ring absolute inline-flex h-full w-full rounded-full bg-emerald-500 dark:bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 dark:bg-emerald-400 border border-white dark:border-slate-950" />
+                </span>
+              </div>
             ) : (
               <ShieldX className="w-6 h-6 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
             )}
@@ -190,31 +201,31 @@ export const AuditoriaPage: React.FC<AuditoriaPageProps> = ({ rolActivo }) => {
 
           {/* 4 KPIs de Auditoría */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
+            <div className="animate-card-up stagger-1 card-elevate p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
               <div className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400">
                 Total Eventos Encadenados
               </div>
               <div className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1 font-mono">
-                {resumen.total_eventos}
+                <AnimatedNumber value={resumen.total_eventos} />
               </div>
             </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
+            <div className="animate-card-up stagger-2 card-elevate p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
               <div className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400">
                 Acciones Permitidas
               </div>
               <div className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1 font-mono">
-                {resumen.total_permitidos}
+                <AnimatedNumber value={resumen.total_permitidos} />
               </div>
             </div>
-            <div className="p-4 rounded-2xl bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-500/35 shadow-sm dark:shadow-none">
+            <div className="animate-card-up stagger-3 card-elevate p-4 rounded-2xl bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-500/35 shadow-sm dark:shadow-none">
               <div className="text-[11px] font-bold uppercase text-rose-800 dark:text-rose-300">
                 Intentos Bloqueados (403)
               </div>
               <div className="text-2xl font-extrabold text-rose-700 dark:text-rose-400 mt-1 font-mono">
-                {resumen.total_bloqueados}
+                <AnimatedNumber value={resumen.total_bloqueados} />
               </div>
             </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
+            <div className="animate-card-up stagger-4 card-elevate p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
               <div className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400">
                 Último Sello SHA-256
               </div>
@@ -232,7 +243,7 @@ export const AuditoriaPage: React.FC<AuditoriaPageProps> = ({ rolActivo }) => {
       {/* Filtros */}
       <div
         data-tour="aud-filtros"
-        className="p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none grid grid-cols-1 md:grid-cols-4 gap-4"
+        className="animate-card-up stagger-2 p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none grid grid-cols-1 md:grid-cols-4 gap-4"
       >
         <div className="md:col-span-2 relative flex items-center">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -272,7 +283,7 @@ export const AuditoriaPage: React.FC<AuditoriaPageProps> = ({ rolActivo }) => {
       {/* Tabla Cronológica de Eventos */}
       <div
         data-tour="aud-tabla"
-        className="rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden"
+        className="animate-card-up stagger-3 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden"
       >
         <div className="px-6 py-3.5 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
           <span>
@@ -312,8 +323,10 @@ export const AuditoriaPage: React.FC<AuditoriaPageProps> = ({ rolActivo }) => {
                   return (
                     <tr
                       key={ev.id}
-                      className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors ${
-                        esBloqueado ? 'bg-rose-50/60 dark:bg-rose-950/20' : ''
+                      className={`border-l-2 transition-colors ${
+                        esBloqueado
+                          ? 'bg-rose-50/70 dark:bg-rose-950/25 border-l-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/35'
+                          : 'border-l-transparent hover:border-l-emerald-600 dark:hover:border-l-emerald-400 hover:bg-slate-50/90 dark:hover:bg-slate-800/45'
                       }`}
                     >
                       <td className="py-3 px-4 font-mono text-[11px] text-slate-600 dark:text-slate-300 whitespace-nowrap">

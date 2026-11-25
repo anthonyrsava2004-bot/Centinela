@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Grid3X3, ShieldAlert, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { MapaRiesgosData } from '../types';
 
@@ -28,11 +28,12 @@ function getMatrixCellColor(prob: number, imp: number): string {
 }
 
 export const MapaRiesgosPanel: React.FC<MapaRiesgosPanelProps> = ({ mapa }) => {
+  const [hoveredStage, setHoveredStage] = useState<number | null>(null);
   const probLevels = [5, 4, 3, 2, 1];
   const impLevels = [1, 2, 3, 4, 5];
 
   return (
-    <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-5">
+    <div className="animate-card-up p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -77,22 +78,39 @@ export const MapaRiesgosPanel: React.FC<MapaRiesgosPanelProps> = ({ mapa }) => {
                   const itemsEnCelda = mapa.etapas.filter(
                     (e) => e.probabilidad === prob && e.impacto === imp,
                   );
+                  const cellHasHovered =
+                    hoveredStage !== null &&
+                    itemsEnCelda.some((it) => it.orden === hoveredStage);
                   return (
                     <div
                       key={`cell-${prob}-${imp}`}
-                      className={`min-h-[38px] rounded-lg border p-1 flex flex-wrap items-center justify-center gap-1 ${getMatrixCellColor(prob, imp)}`}
+                      className={`min-h-[38px] rounded-lg border p-1 flex flex-wrap items-center justify-center gap-1 transition-all duration-150 ${getMatrixCellColor(prob, imp)} ${
+                        cellHasHovered
+                          ? 'ring-2 ring-emerald-500/80 dark:ring-emerald-400/80 scale-[1.03] z-10'
+                          : ''
+                      }`}
                       title={`Probabilidad ${prob} × Impacto ${imp} = ${prob * imp}`}
                     >
                       {itemsEnCelda.length > 0 ? (
-                        itemsEnCelda.map((it) => (
-                          <span
-                            key={it.orden}
-                            className="w-5 h-5 rounded-full bg-[#0B1F3A] dark:bg-white text-white dark:text-slate-950 font-extrabold text-[10px] flex items-center justify-center shadow-sm"
-                            title={`${it.etapa}: ${it.riesgo_principal}`}
-                          >
-                            {it.orden}
-                          </span>
-                        ))
+                        itemsEnCelda.map((it) => {
+                          const isHovered = hoveredStage === it.orden;
+                          const isDimmed = hoveredStage !== null && !isHovered;
+                          return (
+                            <span
+                              key={it.orden}
+                              onMouseEnter={() => setHoveredStage(it.orden)}
+                              onMouseLeave={() => setHoveredStage(null)}
+                              className={`w-5 h-5 rounded-full font-extrabold text-[10px] flex items-center justify-center shadow-sm cursor-pointer transition-all duration-150 ${
+                                isHovered
+                                  ? 'bg-emerald-600 dark:bg-emerald-400 text-white dark:text-slate-950 scale-125 ring-2 ring-emerald-500 dark:ring-emerald-300 z-10'
+                                  : 'bg-[#0B1F3A] dark:bg-white text-white dark:text-slate-950'
+                              } ${isDimmed ? 'opacity-45' : ''}`}
+                              title={`${it.etapa}: ${it.riesgo_principal}`}
+                            >
+                              {it.orden}
+                            </span>
+                          );
+                        })
                       ) : (
                         <span className="text-[9px] text-slate-400/70">{prob * imp}</span>
                       )}
@@ -131,40 +149,55 @@ export const MapaRiesgosPanel: React.FC<MapaRiesgosPanelProps> = ({ mapa }) => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {mapa.etapas.map((et) => (
-              <div
-                key={`idx-${et.orden}`}
-                className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-start justify-between gap-2"
-              >
-                <div className="flex items-start gap-2 min-w-0">
-                  <span className="w-5 h-5 rounded-full bg-[#0B1F3A] dark:bg-emerald-500 text-white dark:text-slate-950 font-mono text-[10px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">
-                    {et.orden}
-                  </span>
-                  <div className="min-w-0 leading-tight">
-                    <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                      {et.etapa.replace(/^\d+\.\s*/, '')}
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                      {et.componente_modelo_integridad}
+            {mapa.etapas.map((et) => {
+              const isHovered = hoveredStage === et.orden;
+              return (
+                <div
+                  key={`idx-${et.orden}`}
+                  onMouseEnter={() => setHoveredStage(et.orden)}
+                  onMouseLeave={() => setHoveredStage(null)}
+                  className={`p-2.5 rounded-lg border flex items-start justify-between gap-2 cursor-pointer transition-all duration-150 ${
+                    isHovered
+                      ? 'bg-emerald-50/70 dark:bg-emerald-500/10 border-emerald-500 dark:border-emerald-400 shadow-sm -translate-y-0.5'
+                      : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-start gap-2 min-w-0">
+                    <span
+                      className={`w-5 h-5 rounded-full font-mono text-[10px] font-extrabold flex items-center justify-center shrink-0 mt-0.5 transition-transform duration-150 ${
+                        isHovered
+                          ? 'bg-emerald-600 dark:bg-emerald-400 text-white dark:text-slate-950 scale-110'
+                          : 'bg-[#0B1F3A] dark:bg-emerald-500 text-white dark:text-slate-950'
+                      }`}
+                    >
+                      {et.orden}
+                    </span>
+                    <div className="min-w-0 leading-tight">
+                      <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {et.etapa.replace(/^\d+\.\s*/, '')}
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                        {et.componente_modelo_integridad}
+                      </div>
                     </div>
                   </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span
+                      className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full border text-[10px] font-mono font-bold ${getNivelBadge(et.nivel)}`}
+                    >
+                      {et.probabilidad}×{et.impacto}={et.puntaje_inherente}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                      {et.expedientes_afectados} caso(s)
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <span
-                    className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full border text-[10px] font-mono font-bold ${getNivelBadge(et.nivel)}`}
-                  >
-                    {et.probabilidad}×{et.impacto}={et.puntaje_inherente}
-                  </span>
-                  <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                    {et.expedientes_afectados} caso(s)
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200 dark:border-slate-800">
-            Cada punto numerado (<strong className="text-slate-700 dark:text-slate-200">1–6</strong>) en la matriz refleja el riesgo inherente de la etapa y el control preventivo automático implementado en CENTINELA.
+            Pase el cursor sobre cualquier etapa (<strong className="text-slate-700 dark:text-slate-200">1–6</strong>) para resaltar su ubicación en la matriz 5×5 y su control preventivo en CENTINELA.
           </div>
         </div>
       </div>
@@ -182,47 +215,65 @@ export const MapaRiesgosPanel: React.FC<MapaRiesgosPanelProps> = ({ mapa }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 text-xs">
-            {mapa.etapas.map((et) => (
-              <tr key={et.orden} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                <td className="py-2.5 px-2.5 align-top">
-                  <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-[#0B1F3A] dark:bg-emerald-500 text-white dark:text-slate-950 font-mono text-[10px] font-extrabold flex items-center justify-center shrink-0">
-                      {et.orden}
+            {mapa.etapas.map((et) => {
+              const isHovered = hoveredStage === et.orden;
+              return (
+                <tr
+                  key={et.orden}
+                  onMouseEnter={() => setHoveredStage(et.orden)}
+                  onMouseLeave={() => setHoveredStage(null)}
+                  className={`border-l-2 transition-colors duration-150 ${
+                    isHovered
+                      ? 'bg-emerald-50/70 dark:bg-emerald-500/10 border-l-emerald-600 dark:border-l-emerald-400'
+                      : 'border-l-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                  }`}
+                >
+                  <td className="py-2.5 px-2.5 align-top">
+                    <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <span
+                        className={`w-5 h-5 rounded-full font-mono text-[10px] font-extrabold flex items-center justify-center shrink-0 transition-transform duration-150 ${
+                          isHovered
+                            ? 'bg-emerald-600 dark:bg-emerald-400 text-white dark:text-slate-950 scale-110'
+                            : 'bg-[#0B1F3A] dark:bg-emerald-500 text-white dark:text-slate-950'
+                        }`}
+                      >
+                        {et.orden}
+                      </span>
+                      <span>{et.etapa.replace(/^\d+\.\s*/, '')}</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 pl-6">
+                      {et.componente_modelo_integridad}
+                    </div>
+                  </td>
+                  <td className="py-2.5 px-2.5 align-top">
+                    <div className="font-semibold text-slate-800 dark:text-slate-200">
+                      {et.riesgo_principal}
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      {et.causa_raiz}
+                    </div>
+                  </td>
+                  <td className="py-2.5 px-2.5 align-top text-center whitespace-nowrap">
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-mono font-bold ${getNivelBadge(et.nivel)}`}
+                    >
+                      {et.nivel === 'CRÍTICO' ? (
+                        <AlertTriangle className="w-3 h-3" />
+                      ) : (
+                        <CheckCircle2 className="w-3 h-3" />
+                      )}
+                      {et.probabilidad}×{et.impacto}={et.puntaje_inherente}
                     </span>
-                    <span>{et.etapa.replace(/^\d+\.\s*/, '')}</span>
-                  </div>
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 pl-6">
-                    {et.componente_modelo_integridad}
-                  </div>
-                </td>
-                <td className="py-2.5 px-2.5 align-top">
-                  <div className="font-semibold text-slate-800 dark:text-slate-200">
-                    {et.riesgo_principal}
-                  </div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    {et.causa_raiz}
-                  </div>
-                </td>
-                <td className="py-2.5 px-2.5 align-top text-center whitespace-nowrap">
-                  <span
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-mono font-bold ${getNivelBadge(et.nivel)}`}
-                  >
-                    {et.nivel === 'CRÍTICO' ? (
-                      <AlertTriangle className="w-3 h-3" />
-                    ) : (
-                      <CheckCircle2 className="w-3 h-3" />
-                    )}
-                    {et.probabilidad}×{et.impacto}={et.puntaje_inherente}
-                  </span>
-                </td>
-                <td className="py-2.5 px-2.5 align-top text-center font-mono font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                  {et.expedientes_afectados}
-                </td>
-                <td className="py-2.5 px-2.5 align-top text-[11px] text-emerald-800 dark:text-emerald-300 font-medium">
-                  {et.control_centinela}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="py-2.5 px-2.5 align-top text-center font-mono font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                    {et.expedientes_afectados}
+                  </td>
+                  <td className="py-2.5 px-2.5 align-top text-[11px] text-emerald-800 dark:text-emerald-300 font-medium">
+                    {et.control_centinela}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

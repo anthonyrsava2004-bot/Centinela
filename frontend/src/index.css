@@ -38,3 +38,201 @@
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
+
+/* ========================================================================= */
+/* CENTINELA — Sistema de Movimiento Arquitectónico y Micro-interacciones    */
+/* Curva exponencial suave, aceleración GPU (transform / opacity), 0 blobs   */
+/* ========================================================================= */
+
+@keyframes centinelaPageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes centinelaCardUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes centinelaModalPop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes centinelaBackdropFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes centinelaBarGrow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes centinelaRadarRing {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  75%,
+  100% {
+    transform: scale(2.3);
+    opacity: 0;
+  }
+}
+
+@keyframes centinelaScanLine {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.45;
+  }
+  80% {
+    opacity: 0.45;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@layer utilities {
+  .animate-page-enter {
+    animation: centinelaPageEnter 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-card-up {
+    animation: centinelaCardUp 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-modal-pop {
+    animation: centinelaModalPop 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-backdrop-fade {
+    animation: centinelaBackdropFade 180ms ease-out both;
+  }
+
+  .animate-bar-grow {
+    transform-origin: left center;
+    animation: centinelaBarGrow 650ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-radar-ring {
+    animation: centinelaRadarRing 2.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  }
+
+  .animate-scan-line {
+    animation: centinelaScanLine 3.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  }
+
+  .stagger-1 {
+    animation-delay: 50ms;
+  }
+  .stagger-2 {
+    animation-delay: 100ms;
+  }
+  .stagger-3 {
+    animation-delay: 150ms;
+  }
+  .stagger-4 {
+    animation-delay: 200ms;
+  }
+  .stagger-5 {
+    animation-delay: 250ms;
+  }
+  .stagger-6 {
+    animation-delay: 300ms;
+  }
+
+  .card-elevate {
+    transition:
+      transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 200ms ease,
+      border-color 200ms ease;
+  }
+  .card-elevate:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px -10px rgba(11, 31, 58, 0.14);
+  }
+  .dark .card-elevate:hover {
+    box-shadow: 0 12px 28px -12px rgba(2, 6, 23, 0.72);
+  }
+
+  .btn-tactile {
+    transition:
+      transform 150ms cubic-bezier(0.16, 1, 0.3, 1),
+      background-color 150ms ease,
+      border-color 150ms ease,
+      box-shadow 150ms ease,
+      color 150ms ease;
+  }
+  .btn-tactile:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  /* Retícula arquitectónica hairline monocromática de 24px (sin degradados) */
+  .bg-arch-grid-light {
+    background-image:
+      linear-gradient(to right, rgba(11, 31, 58, 0.035) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(11, 31, 58, 0.035) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .bg-arch-grid-dark {
+    background-image:
+      linear-gradient(to right, rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-page-enter,
+  .animate-card-up,
+  .animate-modal-pop,
+  .animate-backdrop-fade,
+  .animate-bar-grow,
+  .animate-radar-ring,
+  .animate-scan-line {
+    animation: none !important;
+  }
+
+  .card-elevate,
+  .btn-tactile {
+    transition: none !important;
+  }
+
+  .card-elevate:hover,
+  .btn-tactile:active {
+    transform: none !important;
+  }
+}

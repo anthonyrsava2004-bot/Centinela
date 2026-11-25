@@ -180,9 +180,7 @@ export const Layout: React.FC<LayoutProps> = ({
         : profile.canSubmitDescargo
         ? 'Panel de Compras'
         : 'Resumen General',
-      sub: profile.isReadOnly
-        ? 'Indicadores y datos abiertos'
-        : 'Indicadores y mapa de riesgos',
+      sub: profile.isReadOnly ? 'Indicadores abiertos' : 'Indicadores y riesgos',
       icon: LayoutDashboard,
       visible: true,
       badge: undefined as number | undefined,
@@ -190,9 +188,9 @@ export const Layout: React.FC<LayoutProps> = ({
     {
       to: '/compliance',
       tourId: 'nav-alertas',
-      label: profile.canSubmitDescargo ? 'Alertas por Responder' : 'Alertas y Conflictos',
+      label: profile.canSubmitDescargo ? 'Alertas DEC' : 'Alertas y Conflictos',
       sub: profile.canSubmitDescargo
-        ? 'Responder y declarar vínculos'
+        ? 'Descargos y conflictos'
         : 'Revisar casos y conflictos',
       icon: BellRing,
       visible: !profile.isReadOnly,
@@ -202,9 +200,7 @@ export const Layout: React.FC<LayoutProps> = ({
       to: '/expedientes',
       tourId: 'nav-compras',
       label: 'Lista de Compras',
-      sub: profile.isReadOnly
-        ? 'Procesos públicos anonimizados'
-        : 'Buscar y registrar procesos',
+      sub: profile.isReadOnly ? 'Procesos públicos' : 'Buscar y registrar',
       icon: FolderSearch,
       visible: true,
       badge: undefined,
@@ -213,7 +209,7 @@ export const Layout: React.FC<LayoutProps> = ({
       to: '/trazabilidad',
       tourId: 'nav-detalle',
       label: 'Detalle y Seguridad',
-      sub: 'Documentos, pagos y SHA-256',
+      sub: 'Pagos y sello SHA-256',
       icon: Link2,
       visible: true,
       badge: undefined,
@@ -222,7 +218,7 @@ export const Layout: React.FC<LayoutProps> = ({
       to: '/grafo-colusion',
       tourId: 'nav-empresas',
       label: 'Empresas Vinculadas',
-      sub: 'Proveedores con datos repetidos',
+      sub: 'Datos compartidos',
       icon: Network,
       visible: !profile.isReadOnly,
       badge: undefined,
@@ -231,7 +227,7 @@ export const Layout: React.FC<LayoutProps> = ({
       to: '/denuncias',
       tourId: 'nav-denuncias',
       label: 'Canal de Denuncia',
-      sub: 'Reserva de identidad y plazos',
+      sub: 'Denuncia anónima',
       icon: ShieldCheck,
       visible: true,
       badge: undefined,
@@ -246,6 +242,12 @@ export const Layout: React.FC<LayoutProps> = ({
       badge: undefined,
     },
   ].filter((item) => item.visible);
+
+  const activePillColor = profile.canDictaminarOci
+    ? 'bg-emerald-400'
+    : profile.canSubmitDescargo
+    ? 'bg-cyan-400'
+    : 'bg-amber-400';
 
   const handleSeleccionarRol = (nuevoRol: RolUsuario) => {
     setRolActivo(nuevoRol);
@@ -281,10 +283,10 @@ export const Layout: React.FC<LayoutProps> = ({
               <div
                 className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-lg ${
                   profile.canDictaminarOci
-                    ? 'bg-gradient-to-br from-emerald-400 to-cyan-500 shadow-emerald-500/20'
+                    ? 'bg-emerald-400 shadow-emerald-500/20'
                     : profile.canSubmitDescargo
-                    ? 'bg-gradient-to-br from-blue-400 to-cyan-400 shadow-blue-500/20'
-                    : 'bg-gradient-to-br from-amber-400 to-orange-400 shadow-amber-500/20'
+                    ? 'bg-sky-400 shadow-sky-500/20'
+                    : 'bg-amber-400 shadow-amber-500/20'
                 }`}
               >
                 <Shield className="w-6 h-6 text-slate-950 stroke-[2.3]" />
@@ -307,11 +309,11 @@ export const Layout: React.FC<LayoutProps> = ({
             {/* Indicador del Espacio de Trabajo Activo */}
             <div className="mt-4 px-3 py-2 rounded-xl bg-black/25 border border-white/10 flex items-center gap-2.5">
               <RoleIcon className="w-4 h-4 text-white shrink-0" />
-              <div className="min-w-0 leading-tight">
-                <div className="text-xs font-bold text-white truncate">
+              <div className="min-w-0 leading-snug">
+                <div className="text-xs font-bold text-white">
                   {profile.shortLabel}
                 </div>
-                <div className="text-[10px] text-white/65 truncate">{profile.area}</div>
+                <div className="text-[10px] text-white/70 leading-tight">{profile.area}</div>
               </div>
             </div>
 
@@ -346,24 +348,34 @@ export const Layout: React.FC<LayoutProps> = ({
                   end={item.to === '/'}
                   data-tour={item.tourId}
                   className={({ isActive }) =>
-                    `flex items-center justify-between gap-3 px-3.5 py-3 rounded-xl transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${
+                    `group relative flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${
                       isActive
                         ? `${profile.activeNavClass} border`
                         : 'text-white/75 hover:text-white hover:bg-white/10 border border-transparent'
                     }`
                   }
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Icon className="w-5 h-5 shrink-0" />
-                    <div className="leading-tight min-w-0">
-                      <div className="text-sm font-semibold truncate">{item.label}</div>
-                      <div className="text-[11px] text-white/55 truncate">{item.sub}</div>
-                    </div>
-                  </div>
-                  {item.badge !== undefined && (
-                    <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-mono text-[11px] font-bold shrink-0">
-                      {item.badge}
-                    </span>
+                  {({ isActive }) => (
+                    <>
+                      {isActive && (
+                        <span
+                          className={`absolute left-0 top-2.5 bottom-2.5 w-1 rounded-r-full ${activePillColor}`}
+                          aria-hidden="true"
+                        />
+                      )}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon className="w-[18px] h-[18px] shrink-0 transition-transform duration-150 group-hover:translate-x-0.5" />
+                        <div className="leading-tight min-w-0">
+                          <div className="text-sm font-semibold whitespace-nowrap">{item.label}</div>
+                          <div className="text-[11px] text-white/60 whitespace-nowrap">{item.sub}</div>
+                        </div>
+                      </div>
+                      {item.badge !== undefined && (
+                        <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-mono text-[11px] font-bold shrink-0 tabular-nums shadow-sm">
+                          {item.badge}
+                        </span>
+                      )}
+                    </>
                   )}
                 </NavLink>
               );
@@ -395,9 +407,13 @@ export const Layout: React.FC<LayoutProps> = ({
         <header className="px-6 py-2.5 bg-white/95 dark:bg-slate-900/85 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 sticky top-0 z-30 shadow-sm dark:shadow-none">
           <div className="min-w-0 flex items-center gap-2.5 overflow-hidden">
             <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold min-w-0 max-w-full ${profile.accentBarClass}`}
+              className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-xs font-bold min-w-0 max-w-full ${profile.accentBarClass}`}
               title={profile.workspaceTitle}
             >
+              <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
+                <span className="animate-radar-ring absolute inline-flex h-full w-full rounded-full bg-emerald-500 dark:bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600 dark:bg-emerald-400" />
+              </span>
               <RoleIcon className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">{profile.workspaceTitle}</span>
             </span>
@@ -426,7 +442,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   detenerEsperaTour();
                   setModalSesionAbierto(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/90 hover:bg-white dark:bg-slate-900/80 dark:hover:bg-slate-900 text-slate-800 dark:text-slate-100 border border-black/10 dark:border-white/10 text-[11px] font-bold transition whitespace-nowrap"
+                className="btn-tactile inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/90 hover:bg-white dark:bg-slate-900/80 dark:hover:bg-slate-900 text-slate-800 dark:text-slate-100 border border-black/10 dark:border-white/10 text-[11px] font-bold whitespace-nowrap"
                 title="Cambiar perfil de sesión institucional (Demo RBAC)"
               >
                 <LogOut className="w-3.5 h-3.5" />
@@ -438,7 +454,7 @@ export const Layout: React.FC<LayoutProps> = ({
             <button
               type="button"
               onClick={abrirTourManual}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition whitespace-nowrap"
+              className="btn-tactile inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold whitespace-nowrap"
               title="Iniciar guía interactiva paso a paso de esta sección"
             >
               <HelpCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -449,7 +465,7 @@ export const Layout: React.FC<LayoutProps> = ({
             <button
               type="button"
               onClick={toggleTheme}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition whitespace-nowrap"
+              className="btn-tactile inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold whitespace-nowrap"
               title={
                 theme === 'light'
                   ? 'Cambiar a Modo Oscuro Forense'
@@ -489,8 +505,12 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
         )}
 
-        {/* Contenido de la Página */}
-        <main className="flex-1 p-6 lg:p-8 overflow-y-auto">{children}</main>
+        {/* Contenido de la Página con Transición Fluida */}
+        <main className="flex-1 p-6 lg:p-8 overflow-y-auto">
+          <div key={location.pathname} className="animate-page-enter">
+            {children}
+          </div>
+        </main>
       </div>
 
       {/* Modal de Acceso Institucional / Cambio de Sesión (RBAC) */}
@@ -539,7 +559,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   <button
                     type="button"
                     onClick={() => handleSeleccionarRol(r.id)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+                    className={`btn-tactile px-3.5 py-2 rounded-xl text-xs font-bold ${
                       activo
                         ? 'bg-emerald-600 text-white cursor-default'
                         : 'bg-[#0B1F3A] hover:bg-[#14335D] dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950'

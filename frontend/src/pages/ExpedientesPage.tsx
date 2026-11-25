@@ -307,7 +307,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
         <div data-tour="exp-acciones" className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={() => setSoloTrampas(!soloTrampas)}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+            className={`btn-tactile inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border ${
               soloTrampas
                 ? 'bg-rose-50 dark:bg-rose-500/20 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-500/50 shadow-sm'
                 : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600'
@@ -328,7 +328,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
             <button
               onClick={() => setModalAbierto(true)}
               title="Registrar un nuevo expediente sintético y evaluarlo en vivo con XAI + SHA-256 + NLP"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0B1F3A] hover:bg-[#14335D] dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold text-xs shadow-sm transition"
+              className="btn-tactile inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0B1F3A] hover:bg-[#14335D] dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold text-xs shadow-sm"
             >
               <PlusCircle className="w-4 h-4" />
               Registrar Nueva Compra
@@ -340,7 +340,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
       {/* Barra de Búsqueda y Filtros */}
       <div
         data-tour="exp-filtros"
-        className="p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none grid grid-cols-1 md:grid-cols-4 gap-4"
+        className="animate-card-up stagger-1 p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none grid grid-cols-1 md:grid-cols-4 gap-4"
       >
         <div className="md:col-span-2 relative flex items-center">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -349,7 +349,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="Buscar por código (EXP-2025-UNT-0001), área (AREA-TI-03), proveedor o descripción..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-600 dark:focus:border-emerald-500"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-600 dark:focus:border-emerald-500 transition-colors"
           />
         </div>
 
@@ -358,7 +358,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
           <select
             value={nivelRiesgo}
             onChange={(e) => setNivelRiesgo(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-600 dark:focus:border-emerald-500"
+            className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-600 dark:focus:border-emerald-500 transition-colors"
           >
             <option value="TODOS">Nivel de Riesgo: Todos</option>
             <option value="ALTO">Riesgo Alto (Con Señal XAI)</option>
@@ -371,7 +371,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
           <select
             value={integridad}
             onChange={(e) => setIntegridad(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-600 dark:focus:border-emerald-500"
+            className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-600 dark:focus:border-emerald-500 transition-colors"
           >
             <option value="TODAS">Integridad SHA-256: Todas</option>
             <option value="INTEGRA">Cadena SHA-256 Íntegra</option>
@@ -380,15 +380,17 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
         </div>
       </div>
 
-      {/* Tabla de Expedientes */}
+      {/* Tabla de Expedientes (7 Columnas Compactas Sin Desborde Horizontal en 1280px–1440px) */}
       <div
         data-tour="exp-tabla"
-        className="rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden"
+        className="animate-card-up stagger-2 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden"
       >
-        <div className="px-6 py-3.5 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+        <div className="px-5 py-3.5 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
           <span>
             Resultados encontrados:{' '}
-            <strong className="text-slate-900 dark:text-white">{expedientes.length}</strong>{' '}
+            <strong className="text-slate-900 dark:text-white tabular-nums">
+              {expedientes.length}
+            </strong>{' '}
             expediente(s)
           </span>
           <span className="font-mono text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
@@ -405,78 +407,85 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full min-w-[860px] text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  <th className="py-3.5 px-4">Código</th>
-                  <th className="py-3.5 px-4">Objeto de Contratación</th>
-                  <th className="py-3.5 px-4">Área Usuaria</th>
-                  <th className="py-3.5 px-4">Modalidad</th>
-                  <th className="py-3.5 px-4">Adjudicado</th>
-                  <th className="py-3.5 px-4">Monto (S/)</th>
-                  <th className="py-3.5 px-4">Cadena SHA-256</th>
-                  <th className="py-3.5 px-4">Nivel Riesgo</th>
-                  <th className="py-3.5 px-4 text-right">Acciones</th>
+                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  <th className="py-3 pl-4 pr-2.5 whitespace-nowrap">Código</th>
+                  <th className="py-3 px-2.5 w-full">Compra / Modalidad</th>
+                  <th className="py-3 px-2.5 whitespace-nowrap">Área / Proveedor</th>
+                  <th className="py-3 px-2.5 text-right whitespace-nowrap">Monto (S/)</th>
+                  <th className="py-3 px-2.5 whitespace-nowrap">SHA-256</th>
+                  <th className="py-3 px-2.5 whitespace-nowrap">Riesgo</th>
+                  <th className="py-3 pl-2.5 pr-4 text-right whitespace-nowrap">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
                 {expedientes.map((exp) => (
                   <tr
                     key={exp.id}
-                    className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors ${
-                      exp.es_caso_trampa ? 'bg-rose-50/50 dark:bg-rose-950/15' : ''
+                    className={`group border-l-2 border-l-transparent hover:border-l-emerald-600 dark:hover:border-l-emerald-400 hover:bg-slate-50/90 dark:hover:bg-slate-800/45 transition-colors ${
+                      exp.es_caso_trampa ? 'bg-rose-50/45 dark:bg-rose-950/15' : ''
                     }`}
                   >
-                    <td className="py-3.5 px-4 font-mono font-bold text-blue-700 dark:text-cyan-300 whitespace-nowrap">
-                      {exp.codigo}
+                    <td className="py-3 pl-4 pr-2.5 w-[1%] whitespace-nowrap align-middle">
+                      <div className="font-mono text-[11px] font-bold text-blue-700 dark:text-cyan-300">
+                        {exp.codigo}
+                      </div>
                       {exp.es_caso_trampa && (
-                        <span className="block font-sans text-[10px] text-amber-800 dark:text-amber-300 font-semibold mt-0.5">
+                        <span className="block font-sans text-[10px] leading-tight text-amber-800 dark:text-amber-300 font-semibold mt-0.5 whitespace-normal max-w-[132px]">
                           {formatTipologia(exp.tipo_trampa)}
                         </span>
                       )}
                     </td>
-                    <td
-                      className="py-3.5 px-4 text-slate-800 dark:text-slate-200 max-w-xs truncate"
-                      title={exp.objeto}
-                    >
-                      {exp.objeto}
+                    <td className="py-3 px-2.5 w-full max-w-0 align-middle">
+                      <div
+                        className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate"
+                        title={exp.objeto}
+                      >
+                        {exp.objeto}
+                      </div>
+                      <div
+                        className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5"
+                        title={exp.modalidad}
+                      >
+                        {exp.modalidad}
+                      </div>
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                      {exp.area_usuaria}
+                    <td className="py-3 px-2.5 w-[1%] whitespace-nowrap align-middle">
+                      <div className="text-[11px] font-semibold text-slate-800 dark:text-slate-200">
+                        {exp.area_usuaria}
+                      </div>
+                      <div className="font-mono text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        {exp.proveedor_adjudicado_codigo || '—'}
+                      </div>
                     </td>
-                    <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                      {exp.modalidad}
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                      {exp.proveedor_adjudicado_codigo}
-                    </td>
-                    <td className="py-3.5 px-4 font-mono font-semibold text-slate-900 dark:text-white whitespace-nowrap">
+                    <td className="py-3 px-2.5 w-[1%] text-right font-mono text-[11px] font-bold tabular-nums text-slate-900 dark:text-white whitespace-nowrap align-middle">
                       S/ {exp.monto_estimado.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                     </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <IntegrityBadge integra={exp.integridad_valida} />
+                    <td className="py-3 px-2.5 w-[1%] whitespace-nowrap align-middle">
+                      <IntegrityBadge integra={exp.integridad_valida} compact />
                     </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <RiskBadge nivel={exp.nivel_riesgo} puntaje={exp.puntaje_riesgo} />
+                    <td className="py-3 px-2.5 w-[1%] whitespace-nowrap align-middle">
+                      <RiskBadge nivel={exp.nivel_riesgo} puntaje={exp.puntaje_riesgo} compact />
                     </td>
-                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                      <div className="inline-flex items-center gap-2">
+                    <td className="py-3 pl-2.5 pr-4 w-[1%] text-right whitespace-nowrap align-middle">
+                      <div className="inline-flex items-center gap-1.5 shrink-0">
                         <button
                           onClick={() => navigate(`/trazabilidad?id=${exp.id}`)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 font-semibold transition"
+                          className="btn-tactile inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-[11px] font-semibold"
                           title="Inspeccionar Cadena SHA-256 y NLP"
                         >
-                          <FileSearch className="w-3.5 h-3.5" />
-                          Auditar
+                          <FileSearch className="w-3 h-3" />
+                          {esSoloLectura ? 'Ver' : 'Auditar'}
                         </button>
                         <a
                           href={centinelaApi.obtenerUrlReportePdf(exp.id)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold transition"
+                          className="btn-tactile inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold"
                           title="Descargar Reporte Forense Oficial en PDF"
                         >
-                          <FileDown className="w-3.5 h-3.5 text-blue-700 dark:text-cyan-400" />
+                          <FileDown className="w-3 h-3 text-blue-700 dark:text-cyan-400" />
                           PDF
                         </a>
                       </div>
@@ -754,14 +763,14 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
             <button
               type="button"
               onClick={() => setModalAbierto(false)}
-              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold"
+              className="btn-tactile px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={creando}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold shadow-sm"
+              className="btn-tactile inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold shadow-sm"
             >
               <PlusCircle className="w-4 h-4" />
               {creando ? 'Sellando SHA-256 y Auditando...' : 'Sellar Cadena y Ejecutar Auditoría XAI'}

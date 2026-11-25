@@ -22,6 +22,7 @@ import {
 import { centinelaApi } from '../api/client';
 import { DashboardKPIs, MapaRiesgosData, RolUsuario } from '../types';
 import { IntegrityBadge, RiskBadge } from '../components/AlertBadge';
+import { AnimatedNumber } from '../components/AnimatedNumber';
 import { MapaRiesgosPanel } from '../components/MapaRiesgosPanel';
 import { ROLE_PROFILES } from '../config/roles';
 import { formatTipologia } from '../utils/formatters';
@@ -40,6 +41,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
   const [regenerating, setRegenerating] = useState<boolean>(false);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [gaugeReady, setGaugeReady] = useState<boolean>(false);
 
   const cargarDashboard = async () => {
     try {
@@ -63,6 +65,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
   useEffect(() => {
     cargarDashboard();
   }, []);
+
+  useEffect(() => {
+    if (!kpis) return;
+    const raf = window.requestAnimationFrame(() => setGaugeReady(true));
+    return () => window.cancelAnimationFrame(raf);
+  }, [kpis]);
 
   const handleRegenerar = async () => {
     if (!profile.canRegenerateDataset) return;
@@ -154,10 +162,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
 
   return (
     <div className="space-y-6">
-      {/* Cabecera Estructural Diferenciada (Tono Sólido en Claro / Oscuro Profundo en Oscuro, Cero Degradados) */}
+      {/* Cabecera Estructural Diferenciada (Tono Sólido con Retícula Arquitectónica, Cero Degradados) */}
       <section
         data-tour="dash-header"
-        className={`rounded-2xl border border-t-[4px] ${heroContainerSurface} shadow-sm dark:shadow-none overflow-hidden transition-colors`}
+        className={`animate-card-up rounded-2xl border border-t-[4px] ${heroContainerSurface} bg-arch-grid-light dark:bg-arch-grid-dark shadow-sm dark:shadow-none overflow-hidden transition-colors`}
       >
         <div className="grid grid-cols-1 lg:grid-cols-12 lg:divide-x divide-[#CBD7E6] dark:divide-slate-800">
           {/* Bloque Izquierdo: Identidad, Título y Acciones */}
@@ -176,7 +184,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                   )}
                   {profile.workspaceTitle} • {profile.userCode}
                 </span>
-                <span className="px-2 py-0.5 rounded-md bg-white/75 dark:bg-slate-900 border border-[#CBD7E6] dark:border-slate-700 text-[10px] font-mono text-slate-600 dark:text-slate-300">
+                <span className="px-2 py-0.5 rounded-md bg-white/80 dark:bg-slate-900 border border-[#CBD7E6] dark:border-slate-700 text-[10px] font-mono text-slate-600 dark:text-slate-300">
                   100% Datos Sintéticos • Ley N° 32069
                 </span>
               </div>
@@ -195,16 +203,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                 <>
                   <button
                     onClick={() => navigate('/compliance')}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0B1F3A] hover:bg-[#15315A] dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-bold text-xs shadow-sm transition"
+                    className="btn-tactile group inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0B1F3A] hover:bg-[#15315A] dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-bold text-xs shadow-sm"
                   >
-                    <BellRing className="w-3.5 h-3.5" />
+                    <BellRing className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
                     Revisar Alertas ({kpis.alertas_pendientes})
+                    <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
                   </button>
                   <a
                     href={centinelaApi.obtenerUrlReporteInstitucionalPdf()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#C5D3E3] dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
+                    className="btn-tactile inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#C5D3E3] dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs"
                   >
                     <FileDown className="w-3.5 h-3.5 text-[#0B1F3A] dark:text-cyan-400" />
                     Reporte PDF
@@ -213,7 +222,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                     href={centinelaApi.obtenerUrlIndicadoresCsv()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#C5D3E3] dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
+                    className="btn-tactile inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#C5D3E3] dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     CSV
@@ -221,7 +230,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                   <button
                     onClick={handleRegenerar}
                     disabled={regenerating}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/75 hover:bg-white dark:bg-slate-900/70 dark:hover:bg-slate-800 border border-[#C5D3E3] dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition"
+                    className="btn-tactile inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/80 hover:bg-white dark:bg-slate-900/75 dark:hover:bg-slate-800 border border-[#C5D3E3] dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs"
                     title="Restaurar el dataset sintético base de 120 expedientes"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${regenerating ? 'animate-spin' : ''}`} />
@@ -234,23 +243,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                 <>
                   <button
                     onClick={() => navigate('/expedientes?nuevo=1')}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950 font-bold text-xs shadow-sm transition"
+                    className="btn-tactile group inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950 font-bold text-xs shadow-sm"
                   >
-                    <PlusCircle className="w-3.5 h-3.5" />
+                    <PlusCircle className="w-3.5 h-3.5 transition-transform group-hover:rotate-90" />
                     Registrar Nueva Compra
                   </button>
                   <button
                     onClick={() => navigate('/compliance')}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#C5D3E3] dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
+                    className="btn-tactile group inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#C5D3E3] dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs"
                   >
                     <ClipboardCheck className="w-3.5 h-3.5 text-blue-700 dark:text-cyan-400" />
                     Responder Alertas ({kpis.alertas_pendientes})
+                    <ArrowRight className="w-3 h-3 text-slate-400 transition-transform group-hover:translate-x-1" />
                   </button>
                   <a
                     href={centinelaApi.obtenerUrlReporteInstitucionalPdf()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#C5D3E3] dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
+                    className="btn-tactile inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#C5D3E3] dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs"
                   >
                     <FileDown className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     Reporte PDF
@@ -264,7 +274,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                     href={centinelaApi.obtenerUrlReporteInstitucionalPdf()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 dark:bg-amber-400 dark:hover:bg-amber-300 text-white dark:text-slate-950 font-bold text-xs shadow-sm transition"
+                    className="btn-tactile inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 dark:bg-amber-400 dark:hover:bg-amber-300 text-white dark:text-slate-950 font-bold text-xs shadow-sm"
                   >
                     <FileDown className="w-3.5 h-3.5" />
                     Descargar Reporte Público (PDF)
@@ -273,7 +283,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                     href={centinelaApi.obtenerUrlIndicadoresCsv()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#E4D5BC] dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
+                    className="btn-tactile inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#E4D5BC] dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     Datos Abiertos (CSV)
@@ -283,7 +293,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
             </div>
           </div>
 
-          {/* Bloque Derecho: Medidor Circular Sólido Integrado en la Grilla */}
+          {/* Bloque Derecho: Medidor Circular Sólido Integrado con Trazo Animado */}
           <div
             className={`lg:col-span-4 p-6 ${heroGaugeSurface} border-t lg:border-t-0 border-[#CBD7E6] dark:border-slate-800 flex items-center justify-center`}
           >
@@ -307,13 +317,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                     strokeWidth="9"
                     strokeLinecap="round"
                     strokeDasharray={gaugeCircumference}
-                    strokeDashoffset={gaugeOffset}
+                    strokeDashoffset={gaugeReady ? gaugeOffset : gaugeCircumference}
+                    style={{
+                      transition: 'stroke-dashoffset 900ms cubic-bezier(0.16, 1, 0.3, 1)',
+                    }}
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-base font-extrabold font-mono tabular-nums text-[#0B1F3A] dark:text-white leading-none">
-                    {pctLimpios.toFixed(1)}%
-                  </span>
+                  <AnimatedNumber
+                    value={pctLimpios}
+                    decimals={1}
+                    suffix="%"
+                    duration={850}
+                    className="text-base font-extrabold font-mono text-[#0B1F3A] dark:text-white leading-none"
+                  />
                   <span className="text-[9px] uppercase tracking-wider text-slate-600 dark:text-slate-400 font-bold mt-0.5">
                     Sin alerta
                   </span>
@@ -349,7 +366,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
           <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-slate-800 border-t border-[#CBD7E6] dark:border-slate-800 bg-white dark:bg-[#050B14]">
             <button
               onClick={() => navigate('/compliance')}
-              className="group text-left px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-900 transition flex items-center justify-between gap-2"
+              className="btn-tactile group text-left px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-900 flex items-center justify-between gap-2"
             >
               <div className="min-w-0">
                 <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
@@ -359,12 +376,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                   OCI: {kpis.alertas_validadas_oci} • Compras: {kpis.alertas_en_descargo}
                 </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white group-hover:translate-x-0.5 transition shrink-0" />
+              <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white group-hover:translate-x-1 transition-transform shrink-0" />
             </button>
 
             <button
               onClick={() => navigate('/grafo-colusion')}
-              className="group text-left px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-900 transition flex items-center justify-between gap-2"
+              className="btn-tactile group text-left px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-900 flex items-center justify-between gap-2"
             >
               <div className="min-w-0">
                 <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
@@ -374,12 +391,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                   Dueño, dirección o teléfono
                 </div>
               </div>
-              <Network className="w-4 h-4 text-slate-400 group-hover:text-blue-700 dark:group-hover:text-cyan-400 transition shrink-0" />
+              <Network className="w-4 h-4 text-slate-400 group-hover:text-blue-700 dark:group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
             </button>
 
             <button
               onClick={() => navigate('/trazabilidad?id=6')}
-              className="group text-left px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-900 transition flex items-center justify-between gap-2"
+              className="btn-tactile group text-left px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-900 flex items-center justify-between gap-2"
             >
               <div className="min-w-0">
                 <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
@@ -389,7 +406,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                   Verificación criptográfica SHA-256
                 </div>
               </div>
-              <Lock className="w-4 h-4 text-slate-400 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition shrink-0" />
+              <Lock className="w-4 h-4 text-slate-400 group-hover:text-rose-600 dark:group-hover:text-rose-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
             </button>
           </div>
         )}
@@ -406,7 +423,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
       </section>
 
       {feedbackMsg && (
-        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/40 text-emerald-900 dark:text-emerald-200 text-xs font-medium flex items-center justify-between">
+        <div className="animate-modal-pop p-4 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/40 text-emerald-900 dark:text-emerald-200 text-xs font-medium flex items-center justify-between">
           <span>{feedbackMsg}</span>
           <button
             onClick={() => setFeedbackMsg(null)}
@@ -417,9 +434,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
         </div>
       )}
 
-      {/* Tarjetas de KPIs Ejecutivos — Superficies Sólidas Sin Degradados */}
+      {/* Tarjetas de KPIs Ejecutivos — Superficies Sólidas Sin Degradados + Entrada Escalonada */}
       <div data-tour="dash-kpis" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none hover:border-slate-300 dark:hover:border-slate-700 transition space-y-3">
+        <div className="animate-card-up stagger-1 card-elevate p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none hover:border-slate-300 dark:hover:border-slate-700 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Compras Revisadas
@@ -429,9 +446,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums tracking-tight">
-              {kpis.total_expedientes}
-            </span>
+            <AnimatedNumber
+              value={kpis.total_expedientes}
+              className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight"
+            />
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
               procesos
             </span>
@@ -446,7 +464,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
           </div>
         </div>
 
-        <div className="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none hover:border-slate-300 dark:hover:border-slate-700 transition space-y-3">
+        <div className="animate-card-up stagger-2 card-elevate p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none hover:border-slate-300 dark:hover:border-slate-700 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Monto Total Revisado
@@ -455,11 +473,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
               <Scale className="w-4 h-4 text-slate-700 dark:text-slate-300" />
             </div>
           </div>
-          <div className="text-[22px] font-extrabold text-slate-900 dark:text-white font-mono tabular-nums tracking-tight">
-            S/{' '}
-            {kpis.monto_total_auditado.toLocaleString('es-PE', {
-              minimumFractionDigits: 2,
-            })}
+          <div className="text-[22px] font-extrabold text-slate-900 dark:text-white font-mono tracking-tight">
+            <AnimatedNumber
+              value={kpis.monto_total_auditado}
+              prefix="S/ "
+              decimals={2}
+            />
           </div>
           <div className="text-[11px] text-slate-600 dark:text-slate-400 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
             <span>En compras con alerta:</span>
@@ -469,7 +488,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
           </div>
         </div>
 
-        <div className="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 border-l-[3px] border-l-emerald-600 dark:border-l-emerald-500 shadow-sm dark:shadow-none hover:border-slate-300 dark:hover:border-slate-700 transition space-y-3">
+        <div className="animate-card-up stagger-3 card-elevate p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 border-l-[3px] border-l-emerald-600 dark:border-l-emerald-500 shadow-sm dark:shadow-none hover:border-slate-300 dark:hover:border-slate-700 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
               Ahorro Preventivo Estimado
@@ -478,11 +497,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
               <TrendingUp className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
             </div>
           </div>
-          <div className="text-[22px] font-extrabold text-emerald-700 dark:text-emerald-400 font-mono tabular-nums tracking-tight">
-            S/{' '}
-            {kpis.ahorro_preventivo_estimado.toLocaleString('es-PE', {
-              minimumFractionDigits: 2,
-            })}
+          <div className="text-[22px] font-extrabold text-emerald-700 dark:text-emerald-400 font-mono tracking-tight">
+            <AnimatedNumber
+              value={kpis.ahorro_preventivo_estimado}
+              prefix="S/ "
+              decimals={2}
+            />
           </div>
           <div className="text-[11px] text-slate-600 dark:text-slate-400 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
             <span className="truncate">Sobrecosto evitado</span>
@@ -492,7 +512,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
           </div>
         </div>
 
-        <div className="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none hover:border-slate-300 dark:hover:border-slate-700 transition space-y-3">
+        <div className="animate-card-up stagger-4 card-elevate p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none hover:border-slate-300 dark:hover:border-slate-700 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Documentos Protegidos
@@ -507,11 +527,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                 className="text-blue-700 dark:text-cyan-300"
                 title="Verificación criptográfica SHA-256 al 100%"
               >
-                100% Sin cambios
+                <AnimatedNumber value={100} suffix="%" /> Sin cambios
               </span>
             ) : (
               <span className="text-rose-700 dark:text-rose-400">
-                {kpis.expedientes_integridad_rota} Con alteración
+                <AnimatedNumber value={kpis.expedientes_integridad_rota} /> Con alteración
               </span>
             )}
           </div>
@@ -529,7 +549,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
 
       {/* Distribución de Señales + Garantías Éticas y Legales */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none flex flex-col justify-between space-y-5">
+        <div className="animate-card-up stagger-5 lg:col-span-2 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none flex flex-col justify-between space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
@@ -543,15 +563,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
               {!profile.isReadOnly && (
                 <button
                   onClick={() => navigate('/compliance')}
-                  className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 inline-flex items-center gap-1 transition"
+                  className="btn-tactile group px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 inline-flex items-center gap-1"
                 >
                   {profile.canSubmitDescargo ? 'Ir a Responder' : 'Ir a Alertas'}{' '}
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
                 </button>
               )}
               <button
                 onClick={() => navigate('/denuncias')}
-                className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 transition"
+                className="btn-tactile px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200"
               >
                 Canal de Denuncia
               </button>
@@ -592,8 +612,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                   </div>
                   <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                     <div
-                      className={`h-full rounded-full ${barColor}`}
-                      style={{ width: `${Math.max(10, porcentaje)}%` }}
+                      className={`h-full rounded-full animate-bar-grow ${barColor}`}
+                      style={{
+                        width: `${Math.max(10, porcentaje)}%`,
+                        animationDelay: `${120 + idx * 70}ms`,
+                      }}
                     />
                   </div>
                 </div>
@@ -602,7 +625,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
           </div>
         </div>
 
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4">
+        <div className="animate-card-up stagger-6 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2 tracking-tight">
               <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -669,7 +692,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
       {/* Tabla de Expedientes Prioritarios */}
       <div
         data-tour="dash-tabla-prioritaria"
-        className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4"
+        className="animate-card-up p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4"
       >
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -684,9 +707,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
           </div>
           <button
             onClick={() => navigate('/expedientes')}
-            className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 inline-flex items-center gap-1.5 transition"
+            className="btn-tactile group px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 inline-flex items-center gap-1.5"
           >
-            Ver las {kpis.total_expedientes} Compras <ArrowRight className="w-3.5 h-3.5" />
+            Ver las {kpis.total_expedientes} Compras{' '}
+            <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
           </button>
         </div>
 
@@ -710,7 +734,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                 return (
                   <tr
                     key={exp.id}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                    className="border-l-2 border-l-transparent hover:border-l-emerald-600 dark:hover:border-l-emerald-400 hover:bg-slate-50/90 dark:hover:bg-slate-800/45 transition-colors"
                   >
                     <td className="py-2.5 px-2.5 max-w-[330px]">
                       <div className="flex items-center gap-2">
@@ -729,7 +753,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                       </div>
                     </td>
                     <td className="py-2.5 px-2.5 whitespace-nowrap">
-                      <div className="font-mono font-bold text-slate-900 dark:text-white">
+                      <div className="font-mono font-bold tabular-nums text-slate-900 dark:text-white">
                         S/ {exp.monto_estimado.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                       </div>
                       <div className="text-[10px] text-slate-500 dark:text-slate-400">
@@ -750,7 +774,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                     <td className="py-2.5 px-2.5 text-right whitespace-nowrap">
                       <button
                         onClick={() => navigate(`/trazabilidad?id=${exp.id}`)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 font-semibold transition"
+                        className="btn-tactile inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 font-semibold"
                       >
                         <FileSearch className="w-3.5 h-3.5" />
                         {profile.isReadOnly ? 'Ver Historial' : 'Auditar'}

@@ -22,6 +22,7 @@ import {
   RolUsuario,
 } from '../types';
 import { Modal } from '../components/Modal';
+import { AnimatedNumber } from '../components/AnimatedNumber';
 
 interface DenunciasPageProps {
   rolActivo: RolUsuario;
@@ -254,7 +255,7 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
   return (
     <div className="space-y-6">
       {/* Encabezado (Superficie Sólida Limpia) */}
-      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 border-t-[3px] border-t-[#0B1F3A] dark:border-t-emerald-500 shadow-sm dark:shadow-none space-y-2">
+      <div className="animate-card-up p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 border-t-[3px] border-t-[#0B1F3A] dark:border-t-emerald-500 shadow-sm dark:shadow-none space-y-2">
         <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-xs font-semibold">
           <Lock className="w-3.5 h-3.5" />
           Componente 7 — Directiva N° 001-2026-PCM/SIP • D.L. N° 1327 (Reserva de Identidad)
@@ -272,48 +273,48 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
       {/* Estadísticas Generales Agregadas (Numeral 7.2.7.3 — sin exponer identidades) */}
       {resumen && (
         <div data-tour="den-resumen" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
+          <div className="animate-card-up stagger-1 card-elevate p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
             <div className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400">
               Reportes Recibidos
             </div>
             <div className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono mt-1">
-              {resumen.total_recibidas}
+              <AnimatedNumber value={resumen.total_recibidas} />
             </div>
             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
               Indicador público agregado
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/30">
+          <div className="animate-card-up stagger-2 card-elevate p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/30">
             <div className="text-[11px] font-bold uppercase text-amber-800 dark:text-amber-300">
               En Evaluación / Trámite
             </div>
             <div className="text-2xl font-extrabold text-amber-900 dark:text-amber-200 font-mono mt-1">
-              {resumen.en_tramite}
+              <AnimatedNumber value={resumen.en_tramite} />
             </div>
             <div className="text-[11px] text-amber-800/80 dark:text-amber-300/80 mt-0.5">
               Dentro de plazo SLA (7 días)
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-cyan-950/20 border border-blue-200 dark:border-cyan-500/30">
+          <div className="animate-card-up stagger-3 card-elevate p-4 rounded-2xl bg-blue-50/70 dark:bg-cyan-950/20 border border-blue-200 dark:border-cyan-500/30">
             <div className="text-[11px] font-bold uppercase text-blue-800 dark:text-cyan-300">
               Derivadas a Control / PAD
             </div>
             <div className="text-2xl font-extrabold text-blue-900 dark:text-cyan-200 font-mono mt-1">
-              {resumen.derivadas}
+              <AnimatedNumber value={resumen.derivadas} />
             </div>
             <div className="text-[11px] text-blue-800/80 dark:text-cyan-300/80 mt-0.5">
               OCI, Secretaría Técnica PAD o Procuraduría
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-500/30">
+          <div className="animate-card-up stagger-4 card-elevate p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-500/30">
             <div className="text-[11px] font-bold uppercase text-emerald-800 dark:text-emerald-300">
               Con Protección al Denunciante
             </div>
             <div className="text-2xl font-extrabold text-emerald-900 dark:text-emerald-200 font-mono mt-1">
-              {resumen.con_medida_proteccion}
+              <AnimatedNumber value={resumen.con_medida_proteccion} />
             </div>
             <div className="text-[11px] text-emerald-800/80 dark:text-emerald-300/80 mt-0.5">
               Reserva de identidad (D.L. N° 1327)
@@ -327,7 +328,7 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
         {/* Tarjeta Izquierda: Registrar Denuncia Reservada */}
         <div
           data-tour="den-registrar"
-          className="p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4"
+          className="animate-card-up stagger-2 p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4"
         >
           <div>
             <h2 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
@@ -340,7 +341,10 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
           </div>
 
           {reciboCreado && (
-            <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/35 border border-emerald-300 dark:border-emerald-500/50 space-y-1.5 text-xs">
+            <div
+              key={reciboCreado.codigo_seguimiento}
+              className="animate-modal-pop p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/35 border border-emerald-300 dark:border-emerald-500/50 space-y-1.5 text-xs"
+            >
               <div className="flex items-center gap-1.5 font-extrabold text-emerald-900 dark:text-emerald-200">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 Denuncia registrada con código reservado:{' '}
@@ -446,7 +450,7 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
             <button
               type="submit"
               disabled={enviando}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold text-xs shadow-sm transition"
+              className="btn-tactile w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold text-xs shadow-sm"
             >
               <Lock className="w-4 h-4" />
               {enviando ? 'Cifrando y Registrando...' : 'Enviar Reporte con Reserva de Identidad'}
@@ -457,7 +461,7 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
         {/* Tarjeta Derecha: Consultar Estado por Código Reservado */}
         <div
           data-tour="den-consultar"
-          className="p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4"
+          className="animate-card-up stagger-3 p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4"
         >
           <div>
             <h2 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
@@ -481,7 +485,7 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
               type="button"
               onClick={() => handleConsultarCodigo()}
               disabled={buscandoCodigo}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950 font-bold text-xs transition"
+              className="btn-tactile inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950 font-bold text-xs"
             >
               <Search className="w-3.5 h-3.5" />
               Consultar
@@ -496,7 +500,7 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
                 key={codDemo}
                 type="button"
                 onClick={() => handleConsultarCodigo(codDemo)}
-                className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-blue-800 dark:text-cyan-300 font-mono font-semibold transition"
+                className="btn-tactile px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-blue-800 dark:text-cyan-300 font-mono font-semibold"
               >
                 {codDemo}
               </button>
@@ -510,7 +514,10 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
           )}
 
           {resultadoConsulta ? (
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3 text-xs">
+            <div
+              key={resultadoConsulta.codigo_seguimiento}
+              className="animate-page-enter p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3 text-xs"
+            >
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2.5">
                 <span className="font-mono font-extrabold text-blue-800 dark:text-cyan-300">
                   {resultadoConsulta.codigo_seguimiento}
@@ -566,7 +573,7 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
       {esAuditorOCI ? (
         <div
           data-tour="den-bandeja"
-          className="p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-emerald-200 dark:border-emerald-500/35 shadow-sm dark:shadow-none space-y-4"
+          className="animate-card-up stagger-4 p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-emerald-200 dark:border-emerald-500/35 shadow-sm dark:shadow-none space-y-4"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -580,7 +587,7 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
             </div>
             <button
               onClick={cargarDatos}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200"
+              className="btn-tactile inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               Actualizar
@@ -593,10 +600,10 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
             </div>
           ) : (
             <div className="space-y-3">
-              {denunciasOci.map((den) => (
+              {denunciasOci.map((den, idx) => (
                 <div
                   key={den.id}
-                  className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3 text-xs"
+                  className={`animate-card-up stagger-${Math.min(idx + 1, 6)} card-elevate p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 space-y-3 text-xs`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
@@ -649,7 +656,7 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
                   <div className="flex justify-end pt-1">
                     <button
                       onClick={() => abrirModalGestion(den)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-bold text-xs shadow-sm transition"
+                      className="btn-tactile inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-bold text-xs shadow-sm"
                     >
                       <ShieldCheck className="w-4 h-4" />
                       Gestionar / Otorgar Protección y Derivar
@@ -785,14 +792,14 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
               <button
                 type="button"
                 onClick={() => setDenunciaEdit(null)}
-                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold"
+                className="btn-tactile px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={guardandoGestion}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold shadow-sm"
+                className="btn-tactile inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold shadow-sm"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 {guardandoGestion ? 'Guardando...' : 'Guardar y Registrar en Bitácora'}

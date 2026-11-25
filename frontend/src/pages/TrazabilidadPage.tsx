@@ -196,7 +196,7 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
   return (
     <div className="space-y-8">
       {/* Barra Superior: Selector de Expediente + Acciones Forenses */}
-      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-5">
+      <div className="animate-card-up p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2.5">
@@ -246,7 +246,7 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
                   onClick={handleSimularAlteracion}
                   disabled={procesandoAccion}
                   title="Simula editar un documento antiguo en base de datos para comprobar cómo la alerta SHA-256 detecta el cambio"
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 dark:hover:bg-rose-500 disabled:opacity-40 text-white font-bold text-xs shadow-sm transition"
+                  className="btn-tactile inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 dark:hover:bg-rose-500 disabled:opacity-40 text-white font-bold text-xs shadow-sm"
                 >
                   <Zap className="w-4 h-4" />
                   Probar Cambio Oculto
@@ -256,7 +256,7 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
                   <button
                     onClick={handleRestaurarIntegridad}
                     disabled={procesandoAccion}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 font-bold text-xs transition"
+                    className="btn-tactile inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 font-bold text-xs"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                     Restaurar Documento
@@ -274,7 +274,7 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
               href={centinelaApi.obtenerUrlReportePdf(detalle.id)}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0B1F3A] hover:bg-[#14335D] dark:bg-gradient-to-r dark:from-emerald-500 dark:to-cyan-500 dark:hover:from-emerald-400 dark:hover:to-cyan-400 text-white dark:text-slate-950 font-extrabold text-xs shadow-sm transition"
+              className="btn-tactile inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0B1F3A] hover:bg-[#14335D] dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold text-xs shadow-sm"
             >
               <FileDown className="w-4 h-4" />
               Descargar Reporte PDF
@@ -348,17 +348,18 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {cadena.eslabones.map((eslabon) => {
+          {cadena.eslabones.map((eslabon, idx) => {
             const integroTotal = eslabon.es_integro && eslabon.enlace_anterior_valido;
+            const staggerClass = `stagger-${Math.min(idx + 1, 6)}`;
             return (
               <div
-                key={eslabon.id}
-                className={`p-5 rounded-2xl border transition-all flex flex-col justify-between space-y-4 shadow-sm dark:shadow-none ${
+                key={`${detalle.id}-${eslabon.id}`}
+                className={`animate-card-up ${staggerClass} card-elevate p-5 rounded-2xl border flex flex-col justify-between space-y-4 shadow-sm dark:shadow-none ${
                   !eslabon.es_integro
                     ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-500 shadow-rose-200/60 dark:shadow-rose-500/15'
                     : !eslabon.enlace_anterior_valido
                     ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-500/60'
-                    : 'bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-800'
+                    : 'bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                 }`}
               >
                 <div className="space-y-3">
@@ -482,7 +483,11 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
             </div>
 
             {detalle.pago_bloqueado_preventivo ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-500/50 text-xs font-extrabold">
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-500/50 text-xs font-extrabold">
+                <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
+                  <span className="animate-radar-ring absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600 dark:bg-rose-400" />
+                </span>
                 <Ban className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                 DESEMBOLSO BLOQUEADO EN TESORERÍA
               </span>
@@ -498,7 +503,7 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
             {detalle.entregables_tdr.map((ent) => (
               <div
                 key={ent.id}
-                className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 text-xs ${
+                className={`card-elevate p-4 rounded-xl border flex flex-col justify-between space-y-3 text-xs ${
                   ent.cumplido
                     ? 'bg-emerald-50/50 dark:bg-emerald-950/15 border-emerald-200 dark:border-emerald-500/30'
                     : 'bg-rose-50 dark:bg-rose-950/30 border-rose-300 dark:border-rose-500/50'
@@ -548,7 +553,7 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
                         type="button"
                         onClick={() => abrirVerificacionEntregable(ent)}
                         disabled={procesandoAccion}
-                        className="w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition"
+                        className="btn-tactile w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px]"
                       >
                         Verificar y Adjuntar Sustento Técnico
                       </button>
@@ -557,7 +562,7 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
                         type="button"
                         onClick={() => handleRevertirEntregable(ent)}
                         disabled={procesandoAccion}
-                        className="w-full py-1.5 px-3 rounded-lg bg-white hover:bg-rose-50 dark:bg-slate-900 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-500/30 font-semibold text-[11px] transition"
+                        className="btn-tactile w-full py-1.5 px-3 rounded-lg bg-white hover:bg-rose-50 dark:bg-slate-900 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-500/30 font-semibold text-[11px]"
                       >
                         Observar / Marcar Sin Sustento
                       </button>
@@ -624,9 +629,9 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
           </div>
 
           <div className="space-y-3.5">
-            {nlp.comparaciones.slice(0, 5).map((comp) => (
+            {nlp.comparaciones.slice(0, 5).map((comp, idx) => (
               <div
-                key={comp.proveedor_codigo}
+                key={`${detalle.id}-${comp.proveedor_codigo}`}
                 className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800/90 space-y-2"
               >
                 <div className="flex items-center justify-between text-xs">
@@ -641,7 +646,7 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
                     )}
                   </div>
                   <span
-                    className={`font-mono font-extrabold ${
+                    className={`font-mono font-extrabold tabular-nums ${
                       comp.alerta_direccionamiento
                         ? 'text-rose-700 dark:text-rose-400'
                         : 'text-emerald-700 dark:text-emerald-400'
@@ -653,12 +658,15 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
 
                 <div className="w-full h-2.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
                   <div
-                    className={`h-full rounded-full ${
+                    className={`h-full rounded-full animate-bar-grow ${
                       comp.alerta_direccionamiento
-                        ? 'bg-gradient-to-r from-rose-600 to-amber-500'
-                        : 'bg-gradient-to-r from-emerald-600 to-blue-600 dark:from-emerald-500 dark:to-cyan-500'
+                        ? 'bg-rose-600 dark:bg-rose-500'
+                        : 'bg-emerald-600 dark:bg-emerald-400'
                     }`}
-                    style={{ width: `${Math.max(6, comp.porcentaje_similitud)}%` }}
+                    style={{
+                      width: `${Math.max(6, comp.porcentaje_similitud)}%`,
+                      animationDelay: `${100 + idx * 80}ms`,
+                    }}
                   />
                 </div>
 
@@ -815,14 +823,14 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
               <button
                 type="button"
                 onClick={() => setEntregableEdit(null)}
-                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold"
+                className="btn-tactile px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={procesandoAccion}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                className="btn-tactile px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
               >
                 Confirmar Verificación y Registrar en Bitácora
               </button>
