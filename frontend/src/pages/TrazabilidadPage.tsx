@@ -21,6 +21,7 @@ import { centinelaApi } from '../api/client';
 import { EntregableTdrItem, ExpedienteDetalle, ExpedienteListItem, RolUsuario } from '../types';
 import { IntegrityBadge, RiskBadge } from '../components/AlertBadge';
 import { Modal } from '../components/Modal';
+import { formatTipologia } from '../utils/formatters';
 
 interface TrazabilidadPageProps {
   rolActivo: RolUsuario;
@@ -293,9 +294,9 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
           >
             {listaExpedientes.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.codigo} | {item.nivel_riesgo}{' '}
-                {item.tipo_trampa ? `[${item.tipo_trampa}]` : '[LIMPIO]'} —{' '}
-                {item.objeto.slice(0, 68)}
+                {item.codigo} | {item.nivel_riesgo === 'LIMPIO' ? 'Sin alerta' : `Riesgo ${item.nivel_riesgo}`}
+                {item.tipo_trampa ? ` (${formatTipologia(item.tipo_trampa)})` : ''} —{' '}
+                {item.objeto.slice(0, 62)}
               </option>
             ))}
           </select>
@@ -331,13 +332,13 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Link2 className="w-5 h-5 text-blue-700 dark:text-cyan-400" />
-              Cadena Secuencial de Trazabilidad SHA-256 (Blockchain-Lite)
+              Historial de las 6 Etapas del Proceso (Sellado SHA-256)
             </h2>
-            <p className="text-xs text-slate-600 dark:text-slate-400">
-              Fórmula forense:{' '}
-              <code className="text-blue-800 dark:text-cyan-300 font-mono bg-blue-50 dark:bg-transparent px-1.5 py-0.5 rounded">
-                hash_actual = SHA256(id_exp + etapa + usuario_rol + timestamp + documento_texto + hash_anterior)
-              </code>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+              Cada paso queda encadenado al anterior: si alguien altera un documento antiguo, el sello digital se rompe y alerta al instante.{' '}
+              <span className="font-mono text-[11px] text-slate-500 dark:text-slate-500">
+                (SHA-256 sobre etapa, responsable, fecha y contenido)
+              </span>
             </p>
           </div>
         </div>

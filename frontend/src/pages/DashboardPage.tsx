@@ -24,6 +24,7 @@ import { DashboardKPIs, MapaRiesgosData, RolUsuario } from '../types';
 import { IntegrityBadge, RiskBadge } from '../components/AlertBadge';
 import { MapaRiesgosPanel } from '../components/MapaRiesgosPanel';
 import { ROLE_PROFILES } from '../config/roles';
+import { formatTipologia } from '../utils/formatters';
 
 interface DashboardPageProps {
   rolActivo: RolUsuario;
@@ -685,20 +686,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 text-xs">
               {kpis.casos_destacados.map((exp) => {
-                const TIPOLOGIA_LABEL: Record<string, string> = {
-                  CASO_1_PROYECTORES_UNT: 'Caso 1 UNT • Fracc. + Conflicto',
-                  FRACCIONAMIENTO_8UIT: 'Fraccionamiento (<= 8 UIT)',
-                  COLUSION_PROVEEDORES: 'Red de Colusión',
-                  DIRECCIONAMIENTO_TDR: 'Direccionamiento TDR',
-                  CONFLICTO_SEGREGACION: 'Segregación de Funciones',
-                  PAGO_SIN_CONFORMIDAD: 'Pago sin Conformidad',
-                  INCONSISTENCIA_VERSION_SUSTENTO: 'Versión / Sin Sustento',
-                  ENTREGABLE_INCOMPLETO_CONFORMIDAD: 'Caso 2 UNT • Sin Pozo a Tierra',
-                };
-                const tipologiaTexto =
-                  (exp.tipo_trampa && TIPOLOGIA_LABEL[exp.tipo_trampa]) ||
-                  exp.tipo_trampa ||
-                  'Señal Preventiva XAI';
+                const tipologiaTexto = exp.tipo_trampa
+                  ? formatTipologia(exp.tipo_trampa)
+                  : 'Señal Preventiva XAI';
 
                 return (
                   <tr

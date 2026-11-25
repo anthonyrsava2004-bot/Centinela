@@ -253,8 +253,8 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
 
   return (
     <div className="space-y-6">
-      {/* Encabezado */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-white via-emerald-50/40 to-white dark:from-slate-900 dark:to-emerald-950/25 border border-emerald-200 dark:border-emerald-500/30 shadow-sm dark:shadow-none space-y-2">
+      {/* Encabezado (Superficie Sólida Limpia) */}
+      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 border-t-[3px] border-t-[#0B1F3A] dark:border-t-emerald-500 shadow-sm dark:shadow-none space-y-2">
         <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-xs font-semibold">
           <Lock className="w-3.5 h-3.5" />
           Componente 7 — Directiva N° 001-2026-PCM/SIP • D.L. N° 1327 (Reserva de Identidad)

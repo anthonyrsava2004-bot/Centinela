@@ -20,6 +20,7 @@ import {
 } from '../types';
 import { IntegrityBadge, RiskBadge } from '../components/AlertBadge';
 import { Modal } from '../components/Modal';
+import { formatTipologia } from '../utils/formatters';
 import { ROLE_PROFILES } from '../config/roles';
 
 interface ExpedientesPageProps {
@@ -288,10 +289,10 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">
-            Padrón Institucional de Expedientes Auditados (Ley N° 32069)
+            Lista de Compras y Procesos (Ley N° 32069)
           </h1>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-            Exploración del dataset sintético y evaluación en tiempo real con cadena SHA-256, NLP TF-IDF y motor XAI
+            Consulte los 120 expedientes simulados o registre una compra nueva para evaluarla en tiempo real (SHA-256, NLP y reglas XAI)
           </p>
         </div>
 
@@ -306,8 +307,8 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
           >
             <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400" />
             {soloTrampas
-              ? 'Mostrando Solo Casos con Señal Forense'
-              : 'Filtrar Solo Casos con Señal Forense'}
+              ? 'Mostrando Solo Compras con Alerta'
+              : 'Ver Solo Compras con Alerta'}
           </button>
 
           {esSoloLectura ? (
@@ -319,10 +320,10 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
             <button
               onClick={() => setModalAbierto(true)}
               title="Registrar un nuevo expediente sintético y evaluarlo en vivo con XAI + SHA-256 + NLP"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0B1F3A] hover:bg-[#14335D] dark:bg-gradient-to-r dark:from-emerald-500 dark:to-cyan-500 dark:hover:from-emerald-400 dark:hover:to-cyan-400 text-white dark:text-slate-950 font-extrabold text-xs shadow-sm transition"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0B1F3A] hover:bg-[#14335D] dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold text-xs shadow-sm transition"
             >
               <PlusCircle className="w-4 h-4" />
-              Registrar y Auditar Expediente en Vivo
+              Registrar Nueva Compra
             </button>
           )}
         </div>
@@ -415,8 +416,8 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
                     <td className="py-3.5 px-4 font-mono font-bold text-blue-700 dark:text-cyan-300 whitespace-nowrap">
                       {exp.codigo}
                       {exp.es_caso_trampa && (
-                        <span className="block text-[10px] text-amber-700 dark:text-amber-300 font-semibold mt-0.5">
-                          {exp.tipo_trampa}
+                        <span className="block font-sans text-[10px] text-amber-800 dark:text-amber-300 font-semibold mt-0.5">
+                          {formatTipologia(exp.tipo_trampa)}
                         </span>
                       )}
                     </td>

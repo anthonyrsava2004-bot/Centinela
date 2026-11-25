@@ -153,6 +153,19 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
     (c) => c.estado === 'ABSTENIDO_Y_REASIGNADO',
   ).length;
 
+  // Priorizar arriba los conflictos pendientes de atención (DETECTADO -> DECLARADO -> ABSTENIDO)
+  const conflictosOrdenados = [...conflictos].sort((a, b) => {
+    const prioridad: Record<string, number> = {
+      DETECTADO: 0,
+      DECLARADO_OPORTUNO: 1,
+      ABSTENIDO_Y_REASIGNADO: 2,
+    };
+    const pa = prioridad[a.estado] ?? 3;
+    const pb = prioridad[b.estado] ?? 3;
+    if (pa !== pb) return pa - pb;
+    return b.id - a.id;
+  });
+
   const abrirModalRevision = (alerta: AlertaGestion) => {
     if (esSoloLectura) return;
     setErrorModal(null);
@@ -252,14 +265,14 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
 
   return (
     <div className="space-y-6">
-      {/* Encabezado Diferenciado por Rol */}
+      {/* Encabezado Diferenciado por Rol (Superficie Sólida Limpia) */}
       <div
-        className={`flex flex-wrap items-center justify-between gap-4 p-6 rounded-2xl border shadow-sm dark:shadow-none ${
+        className={`flex flex-wrap items-center justify-between gap-4 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 border-t-[3px] shadow-sm dark:shadow-none ${
           esAuditorOCI
-            ? 'bg-gradient-to-r from-white via-emerald-50/40 to-white dark:from-slate-900 dark:to-emerald-950/25 border-emerald-200 dark:border-emerald-500/30'
+            ? 'border-t-[#0B1F3A] dark:border-t-emerald-500'
             : esSoloLectura
-            ? 'bg-gradient-to-r from-white via-amber-50/40 to-white dark:from-slate-900 dark:to-amber-950/25 border-amber-200 dark:border-amber-500/30'
-            : 'bg-gradient-to-r from-white via-blue-50/50 to-white dark:from-slate-900 dark:to-blue-950/30 border-blue-200 dark:border-cyan-500/30'
+            ? 'border-t-amber-600 dark:border-t-amber-400'
+            : 'border-t-blue-700 dark:border-t-cyan-500'
         }`}
       >
         <div className="space-y-1">
@@ -562,7 +575,7 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
                         className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold transition"
                       >
                         <FileSearch className="w-3.5 h-3.5 text-blue-700 dark:text-cyan-400" />
-                        Inspeccionar Cadena SHA-256
+                        Ver Detalle y Seguridad
                       </button>
                       <a
                         href={centinelaApi.obtenerUrlReportePdf(alerta.expediente_id)}
@@ -682,7 +695,7 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
             </div>
           ) : (
             <div className="space-y-4">
-              {conflictos.map((ci) => {
+              {conflictosOrdenados.map((ci) => {
                 const esResuelto = ci.estado === 'ABSTENIDO_Y_REASIGNADO';
                 const esDetectado = ci.estado === 'DETECTADO';
                 return (
