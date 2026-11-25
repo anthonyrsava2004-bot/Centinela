@@ -56,9 +56,8 @@ export const GrafoColusionPage: React.FC = () => {
 
   const handleFit = () => {
     if (cyRef.current) {
-      cyRef.current.fit(undefined, 45);
       cyRef.current
-        .layout({ name: 'cose', animate: true, idealEdgeLength: 120, nodeRepulsion: 6500 })
+        .layout({ name: 'preset', animate: true, animationDuration: 350, fit: true, padding: 42 })
         .run();
     }
   };
@@ -140,11 +139,13 @@ export const GrafoColusionPage: React.FC = () => {
           'target-arrow-shape': 'triangle',
           'curve-style': 'bezier',
           label: 'data(label)',
-          'font-size': '8px',
+          'font-size': '9px',
+          'font-weight': '600',
           color: isDark ? '#cbd5e1' : '#334155',
-          'text-background-color': isDark ? '#0f172a' : '#ffffff',
-          'text-background-opacity': 0.9,
+          'text-background-color': isDark ? '#0f172a' : '#f8fafc',
+          'text-background-opacity': 0.94,
           'text-background-padding': '2px',
+          'text-margin-y': -6,
         },
       },
       {
@@ -310,18 +311,18 @@ export const GrafoColusionPage: React.FC = () => {
               </div>
             ) : (
               <CytoscapeComponent
+                key={soloRiesgo ? 'riesgo' : 'extendido'}
                 elements={cytoscapeElements}
                 style={{ width: '100%', height: '100%' }}
                 stylesheet={stylesheet}
                 layout={{
-                  name: 'cose',
-                  animate: false,
-                  idealEdgeLength: 120,
-                  nodeRepulsion: 6500,
-                  padding: 45,
+                  name: 'preset',
+                  fit: true,
+                  padding: 42,
                 }}
                 cy={(cy: any) => {
                   cyRef.current = cy;
+                  cy.fit(undefined, 42);
                   cy.off('tap', 'node');
                   cy.on('tap', 'node', (evt: any) => {
                     const node = evt.target;

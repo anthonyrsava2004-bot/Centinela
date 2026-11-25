@@ -46,7 +46,7 @@ def construir_grafo_colusion(db: Session, solo_riesgo: bool = True) -> dict:
         if len(lista_p) > 1:
             atributos_compartidos[dir_id] = {
                 "subtipo": "DIRECCION_FISCAL",
-                "etiqueta": f"Dirección Fiscal\n{dir_id}",
+                "etiqueta": f"Dirección\n{dir_id}",
                 "valor": dir_id,
                 "proveedores": [x.codigo for x in lista_p],
             }
@@ -57,32 +57,30 @@ def construir_grafo_colusion(db: Session, solo_riesgo: bool = True) -> dict:
         if len(lista_p) > 1:
             atributos_compartidos[tel_id] = {
                 "subtipo": "TELEFONO_CONTACTO",
-                "etiqueta": f"Teléfono Hash\n{tel_id}",
+                "etiqueta": f"Teléfono\n{tel_id}",
                 "valor": tel_id,
                 "proveedores": [x.codigo for x in lista_p],
             }
             for x in lista_p:
                 proveedores_en_red_ids.add(x.id)
 
-    #Construir grafo en NetworkX
+    # Construir grafo en NetworkX
     G = nx.Graph()
 
-    # Si solo_riesgo=False, incluimos también una muestra de proveedores regulares para contraste visual
+    # Solo incluir proveedores realmente conectados por atributos compartidos (sin nodos huérfanos)
     proveedores_visibles = []
     for p in proveedores:
-        if p.id in proveedores_en_red_ids or p.es_colusorio:
+        if p.id in proveedores_en_red_ids:
             proveedores_visibles.append(p)
-        elif not solo_riesgo and len(proveedores_visibles) < 18:
+        elif not solo_riesgo and len(proveedores_visibles) < 14:
             proveedores_visibles.append(p)
-
-    ids_prov_visibles = {p.id for p in proveedores_visibles}
 
     for p in proveedores_visibles:
-        es_sospechoso = p.id in proveedores_en_red_ids or p.es_colusorio
+        es_sospechoso = p.id in proveedores_en_red_ids
         G.add_node(
             p.codigo,
             id=p.codigo,
-            label=f"{p.codigo}\n({p.rubro[:18]})",
+            label=p.codigo,
             titulo_completo=p.alias_comercial,
             tipo="PROVEEDOR",
             riesgo="ALTO" if es_sospechoso else "LIMPIO",
@@ -91,10 +89,16 @@ def construir_grafo_colusion(db: Session, solo_riesgo: bool = True) -> dict:
             direccion_hash=p.direccion_hash,
             telefono_hash=p.telefono_hash,
             detalle=(
-                f"Proveedor anonimizado {p.codigo} ({p.alias_comercial}). "
+                f"Proveedor anonimizado {p.codigo} ({p.alias_comercial} — {p.rubro}). "
                 f"Rep: {p.representante_id} | Dir: {p.direccion_hash} | Tel: {p.telefono_hash}"
             ),
         )
+
+    etiqueta_enlace_corta = {
+        "REPRESENTANTE_LEGAL": "Rep. Legal",
+        "DIRECCION_FISCAL": "Dirección",
+        "TELEFONO_CONTACTO": "Teléfono",
+    }
 
     # Añadir nodos de atributos compartidos y enlaces Proveedor <-> Atributo
     for attr_id, info in atributos_compartidos.items():
@@ -117,7 +121,7 @@ def construir_grafo_colusion(db: Session, solo_riesgo: bool = True) -> dict:
                     prov_code,
                     attr_id,
                     id=f"edge-{prov_code}-{attr_id}",
-                    label=info["subtipo"].replace("_", " "),
+                    label=etiqueta_enlace_corta.get(info["subtipo"], info["subtipo"]),
                     tipo_enlace="VINCULO_ATRIBUTO",
                     riesgo="ALTO",
                 )
@@ -137,10 +141,8 @@ def construir_grafo_colusion(db: Session, solo_riesgo: bool = True) -> dict:
             post for post in lista_post if post.proveedor_id in proveedores_en_red_ids
         ]
 
-        # Incluir expediente en el grafo si tiene >=2 postores vinculados o si es caso trampa de colusión
+        # Incluir expediente si co-participan >= 2 postores con atributos compartidos
         incluir_exp = (len(postores_red_en_exp) >= 2) or (exp.tipo_trampa == "COLUSION_PROVEEDORES")
-        if not solo_riesgo and exp.es_caso_trampa:
-            incluir_exp = True
 
         if incluir_exp:
             expedientes_colusorios.append((exp, lista_post))
@@ -168,22 +170,22 @@ def construir_grafo_colusion(db: Session, solo_riesgo: bool = True) -> dict:
                     G.add_node(
                         prov.codigo,
                         id=prov.codigo,
-                        label=f"{prov.codigo}\n({prov.rubro[:18]})",
+                        label=prov.codigo,
                         titulo_completo=prov.alias_comercial,
                         tipo="PROVEEDOR",
-                        riesgo="ALTO" if prov.es_colusorio else "LIMPIO",
+                        riesgo="ALTO" if (prov.id in proveedores_en_red_ids) else "LIMPIO",
                         rubro=prov.rubro,
                         representante_id=prov.representante_id,
                         direccion_hash=prov.direccion_hash,
                         telefono_hash=prov.telefono_hash,
-                        detalle=f"Proveedor {prov.codigo} ({prov.alias_comercial})",
+                        detalle=f"Proveedor {prov.codigo} ({prov.alias_comercial} — {prov.rubro})",
                     )
-                rol_postor = "ADJUDICADO" if post.es_ganador else "POSTOR COTIZANTE"
+                rol_corto = "Adjudicado" if post.es_ganador else "Postor"
                 G.add_edge(
                     prov.codigo,
                     exp.codigo,
                     id=f"edge-{prov.codigo}-{exp.codigo}",
-                    label=f"{rol_postor} (S/ {post.monto_ofertado:,.0f})",
+                    label=rol_corto,
                     tipo_enlace="POSTULACION_GANADORA" if post.es_ganador else "POSTULACION",
                     riesgo="ALTO" if (prov.id in proveedores_en_red_ids) else "MEDIO",
                 )
@@ -252,12 +254,75 @@ def construir_grafo_colusion(db: Session, solo_riesgo: bool = True) -> dict:
             }
         )
 
-    # Formatear elementos para Cytoscape.js
+    # Calcular posiciones deterministas por componente conexa para evitar solapamientos
+    posiciones: dict[str, dict[str, float]] = {}
+    cursor_x = 0.0
+    espacio_x = 185.0
+    gap_cluster = 150.0
+
+    for cluster in clusters_detectados:
+        provs_c = list(cluster["proveedores_vinculados"])
+        # Colocar al proveedor puente (mayor grado) al centro para minimizar cruces de aristas
+        if len(provs_c) == 3:
+            provs_por_grado = sorted(provs_c, key=lambda n: G.degree(n), reverse=True)
+            puente = provs_por_grado[0]
+            extremos = sorted([n for n in provs_c if n != puente])
+            provs_ordenados = [extremos[0], puente, extremos[1]]
+        else:
+            provs_ordenados = provs_c
+
+        # Atributos vinculados a este clúster ordenados según el promedio de índice de sus proveedores
+        idx_prov = {p_cod: idx for idx, p_cod in enumerate(provs_ordenados)}
+        attrs_c = [
+            n
+            for n in G.nodes()
+            if G.nodes[n].get("tipo") == "ATRIBUTO"
+            and any(nb in idx_prov for nb in G.neighbors(n))
+        ]
+        attrs_c.sort(
+            key=lambda a: (
+                sum(idx_prov[nb] for nb in G.neighbors(a) if nb in idx_prov)
+                / max(1, sum(1 for nb in G.neighbors(a) if nb in idx_prov)),
+                a,
+            )
+        )
+
+        exps_c = [e["codigo"] for e in cluster["expedientes_afectados"] if G.has_node(e["codigo"])]
+
+        ancho_filas = max(len(attrs_c), len(provs_ordenados), len(exps_c), 1)
+        centro_cluster = cursor_x + ((ancho_filas - 1) * espacio_x) / 2.0
+
+        def _ubicar_fila(nodos_fila: list[str], y_pos: float):
+            if not nodos_fila:
+                return
+            inicio = centro_cluster - ((len(nodos_fila) - 1) * espacio_x) / 2.0
+            for idx_n, nid in enumerate(nodos_fila):
+                posiciones[nid] = {"x": round(inicio + idx_n * espacio_x, 1), "y": y_pos}
+
+        _ubicar_fila(attrs_c, 0.0)
+        _ubicar_fila(provs_ordenados, 165.0)
+        _ubicar_fila(exps_c, 330.0)
+
+        cursor_x += ancho_filas * espacio_x + gap_cluster
+
+    # Ubicar nodos adicionales (ej. vista extendida con postores limpios) ordenados en fila inferior
+    nodos_restantes = [n for n in G.nodes() if n not in posiciones]
+    for idx_r, nid in enumerate(nodos_restantes):
+        col = idx_r % 6
+        fila = idx_r // 6
+        posiciones[nid] = {"x": round(col * 175.0, 1), "y": round(490.0 + fila * 130.0, 1)}
+
+    # Formatear elementos para Cytoscape.js con posiciones deterministas
     nodes_cytoscape = []
     for node_id, attrs in G.nodes(data=True):
         data_dict = dict(attrs)
         data_dict["centralidad"] = round(centralidad.get(node_id, 0.0), 3)
-        nodes_cytoscape.append({"data": data_dict})
+        nodes_cytoscape.append(
+            {
+                "data": data_dict,
+                "position": posiciones.get(node_id, {"x": 0.0, "y": 0.0}),
+            }
+        )
 
     edges_cytoscape = []
     for u, v, attrs in G.edges(data=True):

@@ -259,7 +259,7 @@ export interface GrafoColusionData {
   };
   clusters_detectados: ClusterColusion[];
   elements: {
-    nodes: { data: Record<string, any> }[];
+    nodes: { data: Record<string, any>; position?: { x: number; y: number } }[];
     edges: { data: Record<string, any> }[];
   };
 }
