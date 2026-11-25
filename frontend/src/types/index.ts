@@ -107,6 +107,8 @@ export interface ExpedienteCreatePayload {
   pago_sin_conformidad?: boolean;
   modificacion_extemporanea_tdr?: boolean;
   sin_sustento_documental?: boolean;
+  entregable_incompleto_obra?: boolean;
+  conflicto_interes_familiar?: boolean;
   rol_usuario: RolUsuario;
 }
 
@@ -149,12 +151,65 @@ export interface ExpedienteListItem {
   total_alertas: number;
 }
 
+export interface EntregableTdrItem {
+  id: number;
+  expediente_id: number;
+  orden: number;
+  nombre: string;
+  obligatorio: boolean;
+  cumplido: boolean;
+  evidencia_tecnica?: string | null;
+  verificado_por?: string | null;
+  fecha_verificacion?: string | null;
+}
+
+export interface ConflictoInteresItem {
+  id: number;
+  expediente_id: number;
+  expediente_codigo?: string;
+  expediente_objeto?: string;
+  funcionario_codigo: string;
+  proveedor_vinculado_codigo: string;
+  tipo_vinculo: string;
+  descripcion: string;
+  estado: 'DETECTADO' | 'DECLARADO_OPORTUNO' | 'ABSTENIDO_Y_REASIGNADO' | string;
+  funcionario_reasignado?: string | null;
+  fecha_registro: string;
+  fecha_resolucion?: string | null;
+  resuelto_por?: string | null;
+}
+
+export interface MapaRiesgoEtapa {
+  orden: number;
+  etapa: string;
+  riesgo_principal: string;
+  causa_raiz: string;
+  probabilidad: number;
+  impacto: number;
+  puntaje_inherente: number;
+  nivel: 'CRÍTICO' | 'ALTO' | 'MEDIO' | 'BAJO' | string;
+  expedientes_afectados: number;
+  alertas_activas: number;
+  control_centinela: string;
+  componente_modelo_integridad: string;
+}
+
+export interface MapaRiesgosData {
+  marco_referencia: string;
+  total_expedientes: number;
+  total_etapas_criticas: number;
+  etapas: MapaRiesgoEtapa[];
+}
+
 export interface ExpedienteDetalle extends Omit<ExpedienteListItem, 'total_alertas'> {
   tdr_texto: string;
   verificacion_sha256: VerificacionCadena;
   postulaciones: PostulacionDetalle[];
   alertas: AlertaGestion[];
   analisis_nlp: NlpResultado;
+  entregables_tdr: EntregableTdrItem[];
+  pago_bloqueado_preventivo: boolean;
+  conflictos_interes: ConflictoInteresItem[];
 }
 
 export interface DashboardKPIs {
@@ -233,4 +288,48 @@ export interface AuditLogResumen {
   evento_comprometido_id?: number | null;
   mensaje_integridad: string;
   eventos: AuditLogItem[];
+}
+
+export interface DenunciaItem {
+  id: number;
+  codigo_seguimiento: string;
+  hash_reserva: string;
+  categoria: string;
+  area_involucrada: string;
+  expediente_codigo?: string | null;
+  descripcion_hechos: string;
+  solicita_proteccion: boolean;
+  medida_proteccion: string;
+  estado: 'RECIBIDA' | 'EN_EVALUACION' | 'DERIVADA' | 'ATENDIDA' | 'ARCHIVADA_MOTIVADA' | string;
+  organo_derivado: string;
+  fecha_registro: string;
+  fecha_limite_sla: string;
+  ultima_actualizacion: string;
+  respuesta_seguimiento: string;
+  nota_interna_oci?: string | null;
+  gestionado_por?: string | null;
+}
+
+export interface DenunciaConsultaPublica {
+  codigo_seguimiento: string;
+  hash_reserva: string;
+  categoria: string;
+  area_involucrada: string;
+  expediente_codigo?: string | null;
+  estado: string;
+  organo_derivado: string;
+  medida_proteccion: string;
+  fecha_registro: string;
+  fecha_limite_sla: string;
+  ultima_actualizacion: string;
+  respuesta_seguimiento: string;
+}
+
+export interface DenunciaResumenPublico {
+  total_recibidas: number;
+  en_tramite: number;
+  derivadas: number;
+  atendidas_o_archivadas: number;
+  con_medida_proteccion: number;
+  por_categoria: { categoria: string; cantidad: number }[];
 }

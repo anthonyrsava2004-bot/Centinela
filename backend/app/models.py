@@ -39,6 +39,17 @@ class Expediente(Base):
         back_populates="expediente",
         cascade="all, delete-orphan",
     )
+    entregables_tdr = relationship(
+        "EntregableTDR",
+        back_populates="expediente",
+        cascade="all, delete-orphan",
+        order_by="EntregableTDR.orden",
+    )
+    conflictos_interes = relationship(
+        "ConflictoInteres",
+        back_populates="expediente",
+        cascade="all, delete-orphan",
+    )
 
 
 class Actuacion(Base):
@@ -157,3 +168,82 @@ class AuditLog(Base):
     ip_origen = Column(String(60), nullable=False, default="127.0.0.1")
     hash_anterior = Column(String(64), nullable=False)
     hash_actual = Column(String(64), nullable=False)
+
+
+class EntregableTDR(Base):
+    """
+    Entregables obligatorios definidos en los TDR de un expediente.
+    Impide conformidades genéricas y bloquea preventivamente el desembolso en Tesorería
+    cuando falta verificar un entregable o su sustento técnico/fotográfico (Caso 2 UNT).
+    """
+    __tablename__ = "entregables_tdr"
+
+    id = Column(Integer, primary_key=True, index=True)
+    expediente_id = Column(Integer, ForeignKey("expedientes.id", ondelete="CASCADE"), nullable=False, index=True)
+    orden = Column(Integer, nullable=False)
+    nombre = Column(String(220), nullable=False)
+    obligatorio = Column(Boolean, nullable=False, default=True)
+    cumplido = Column(Boolean, nullable=False, default=True)
+    evidencia_tecnica = Column(Text, nullable=True)
+    verificado_por = Column(String(60), nullable=True)
+    fecha_verificacion = Column(String(35), nullable=True)
+
+    expediente = relationship("Expediente", back_populates="entregables_tdr")
+
+
+class ConflictoInteres(Base):
+    """
+    Registro preventivo de Conflictos de Interés (D.S. N° 148-2024-PCM, Ley N° 27815 y
+    Resolución Rectoral N° 0490-2026/UNT). Soporta declaración oportuna, abstención
+    y reasignación auditable de funcionario seudonimizado.
+    """
+    __tablename__ = "conflictos_interes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    expediente_id = Column(Integer, ForeignKey("expedientes.id", ondelete="CASCADE"), nullable=False, index=True)
+    funcionario_codigo = Column(String(50), nullable=False, index=True)
+    proveedor_vinculado_codigo = Column(String(50), nullable=False)
+    tipo_vinculo = Column(String(120), nullable=False)
+    descripcion = Column(Text, nullable=False)
+    estado = Column(String(40), nullable=False, default="DETECTADO")  # DETECTADO | DECLARADO_OPORTUNO | ABSTENIDO_Y_REASIGNADO
+    funcionario_reasignado = Column(String(50), nullable=True)
+    fecha_registro = Column(String(35), nullable=False)
+    fecha_resolucion = Column(String(35), nullable=True)
+    resuelto_por = Column(String(80), nullable=True)
+
+    expediente = relationship("Expediente", back_populates="conflictos_interes")
+
+
+class DenunciaReservada(Base):
+    """
+    Canal de Denuncia con Reserva de Identidad (Directiva N° 001-2026-PCM/SIP - Componente 7,
+    D.S. N° 148-2024-PCM y D.L. N° 1327 Protección al Denunciante).
+    No almacena DNI ni datos personales reales; usa código cifrado de seguimiento y hash SHA-256.
+    """
+    __tablename__ = "denuncias_reservadas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    codigo_seguimiento = Column(String(40), unique=True, index=True, nullable=False)
+    hash_reserva = Column(String(64), nullable=False)
+    categoria = Column(String(120), nullable=False)
+    area_involucrada = Column(String(80), nullable=False, default="Por determinar")
+    expediente_codigo = Column(String(50), nullable=True)
+    descripcion_hechos = Column(Text, nullable=False)
+    solicita_proteccion = Column(Boolean, nullable=False, default=True)
+    medida_proteccion = Column(
+        String(140),
+        nullable=False,
+        default="Reserva de Identidad (D.L. N° 1327)",
+    )
+    estado = Column(String(40), nullable=False, default="RECIBIDA")  # RECIBIDA | EN_EVALUACION | DERIVADA | ATENDIDA | ARCHIVADA_MOTIVADA
+    organo_derivado = Column(
+        String(140),
+        nullable=False,
+        default="Oficina de Integridad — Evaluación de Admisibilidad",
+    )
+    fecha_registro = Column(String(35), nullable=False)
+    fecha_limite_sla = Column(String(20), nullable=False)
+    ultima_actualizacion = Column(String(35), nullable=False)
+    respuesta_seguimiento = Column(Text, nullable=False)
+    nota_interna_oci = Column(Text, nullable=True)
+    gestionado_por = Column(String(80), nullable=True)

@@ -111,6 +111,8 @@ class ExpedienteCreateInput(BaseModel):
     pago_sin_conformidad: bool = False
     modificacion_extemporanea_tdr: bool = False
     sin_sustento_documental: bool = False
+    entregable_incompleto_obra: bool = False
+    conflicto_interes_familiar: bool = False
     rol_usuario: str = "Especialista Logística (DEC)"
 
 
@@ -165,6 +167,81 @@ class VerificacionCadenaOut(BaseModel):
     eslabones: List[ActuacionOut]
 
 
+class EntregableTdrOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    expediente_id: int
+    orden: int
+    nombre: str
+    obligatorio: bool
+    cumplido: bool
+    evidencia_tecnica: Optional[str] = None
+    verificado_por: Optional[str] = None
+    fecha_verificacion: Optional[str] = None
+
+
+class EntregableVerificarInput(BaseModel):
+    cumplido: bool
+    evidencia_tecnica: str
+    rol_usuario: Optional[str] = None
+
+
+class ConflictoInteresOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    expediente_id: int
+    expediente_codigo: Optional[str] = None
+    expediente_objeto: Optional[str] = None
+    funcionario_codigo: str
+    proveedor_vinculado_codigo: str
+    tipo_vinculo: str
+    descripcion: str
+    estado: str
+    funcionario_reasignado: Optional[str] = None
+    fecha_registro: str
+    fecha_resolucion: Optional[str] = None
+    resuelto_por: Optional[str] = None
+
+
+class ConflictoCreateInput(BaseModel):
+    expediente_id: int
+    funcionario_codigo: str
+    proveedor_vinculado_codigo: str
+    tipo_vinculo: str
+    descripcion: str
+    abstenerse_de_inmediato: bool = False
+    funcionario_reasignado: Optional[str] = None
+
+
+class ConflictoAbstencionInput(BaseModel):
+    funcionario_reasignado: str
+    comentario: Optional[str] = None
+
+
+class MapaRiesgoEtapaOut(BaseModel):
+    orden: int
+    etapa: str
+    riesgo_principal: str
+    causa_raiz: str
+    probabilidad: int
+    impacto: int
+    puntaje_inherente: int
+    nivel: str
+    expedientes_afectados: int
+    alertas_activas: int
+    control_centinela: str
+    componente_modelo_integridad: str
+
+
+class MapaRiesgosOut(BaseModel):
+    marco_referencia: str
+    total_expedientes: int
+    total_etapas_criticas: int
+    etapas: List[MapaRiesgoEtapaOut]
+
+
 class ExpedienteDetalleOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -188,6 +265,9 @@ class ExpedienteDetalleOut(BaseModel):
     postulaciones: List[PostulacionDetalleOut]
     alertas: List[AlertaGestionOut]
     analisis_nlp: NlpResultadoOut
+    entregables_tdr: List[EntregableTdrOut] = []
+    pago_bloqueado_preventivo: bool = False
+    conflictos_interes: List[ConflictoInteresOut] = []
 
 
 class TamperSimulationRequest(BaseModel):
@@ -240,3 +320,66 @@ class AuditLogResumenOut(BaseModel):
     evento_comprometido_id: Optional[int] = None
     mensaje_integridad: str
     eventos: List[AuditLogItemOut]
+
+
+class DenunciaCreateInput(BaseModel):
+    categoria: str
+    area_involucrada: str = "Por determinar"
+    expediente_codigo: Optional[str] = None
+    descripcion_hechos: str
+    solicita_proteccion: bool = True
+
+
+class DenunciaGestionInput(BaseModel):
+    estado: str  # EN_EVALUACION | DERIVADA | ATENDIDA | ARCHIVADA_MOTIVADA
+    organo_derivado: str
+    medida_proteccion: str
+    fecha_limite_sla: Optional[str] = None
+    respuesta_seguimiento: str
+    nota_interna_oci: str
+
+
+class DenunciaOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    codigo_seguimiento: str
+    hash_reserva: str
+    categoria: str
+    area_involucrada: str
+    expediente_codigo: Optional[str] = None
+    descripcion_hechos: str
+    solicita_proteccion: bool
+    medida_proteccion: str
+    estado: str
+    organo_derivado: str
+    fecha_registro: str
+    fecha_limite_sla: str
+    ultima_actualizacion: str
+    respuesta_seguimiento: str
+    nota_interna_oci: Optional[str] = None
+    gestionado_por: Optional[str] = None
+
+
+class DenunciaConsultaPublicaOut(BaseModel):
+    codigo_seguimiento: str
+    hash_reserva: str
+    categoria: str
+    area_involucrada: str
+    expediente_codigo: Optional[str] = None
+    estado: str
+    organo_derivado: str
+    medida_proteccion: str
+    fecha_registro: str
+    fecha_limite_sla: str
+    ultima_actualizacion: str
+    respuesta_seguimiento: str
+
+
+class DenunciaResumenPublicoOut(BaseModel):
+    total_recibidas: int
+    en_tramite: int
+    derivadas: int
+    atendidas_o_archivadas: int
+    con_medida_proteccion: int
+    por_categoria: List[dict]

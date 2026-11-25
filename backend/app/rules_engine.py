@@ -2,10 +2,23 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Dict, List, Set
 from sqlalchemy.orm import Session
-from .models import Actuacion, AlertaGestion, Expediente, HistorialAlerta, Postulacion, Proveedor
+from .models import (
+    Actuacion,
+    AlertaGestion,
+    ConflictoInteres,
+    EntregableTDR,
+    Expediente,
+    HistorialAlerta,
+    Postulacion,
+    Proveedor,
+)
 from .nlp_tdr import UMBRAL_DIRECCIONAMIENTO, analizar_similitud_tdr
 
 TOPE_8_UIT_PEN = 42800.0  # Referencia 8 UIT (UIT = S/ 5,350)
+MARCO_INTEGRIDAD_UNT = (
+    "D.S. N° 148-2024-PCM (Modelo de Integridad); R.S. N° 002-2026-PCM/SIP "
+    "(Directiva N° 001-2026-PCM/SIP); D.S. N° 092-2017-PCM; Resolución Rectoral N° 0490-2026/UNT."
+)
 
 
 def _fecha_limite_sla(dias: int = 5) -> str:
@@ -17,12 +30,14 @@ def _evaluar_reglas_expediente(
     exp: Expediente,
     actuaciones: List[Actuacion],
     postulaciones: List[Postulacion],
+    entregables: List[EntregableTDR],
+    conflictos: List[ConflictoInteres],
     proveedores_lista: List[Proveedor],
     proveedores_map: Dict[int, Proveedor],
     ahora_iso: str,
 ) -> List[AlertaGestion]:
     """
-    Evalúa las reglas explicables individuales (R-02, R-03, R-04, R-05 y R-07)
+    Evalúa las reglas explicables individuales (R-02, R-03, R-04, R-05, R-07 y R-08)
     sobre un expediente sin depender de banderas artificiales.
     """
     nuevas_alertas: List[AlertaGestion] = []
@@ -89,44 +104,56 @@ def _evaluar_reglas_expediente(
         exp.estado_expediente = "En Revisión OCI"
 
     # -------------------------------------------------------------------------
-    # REGLA R-03: DEVENGADO Y PAGO SIN CONFORMIDAD TÉCNICA VÁLIDA
+    # REGLA R-03: DEVENGADO Y PAGO SIN CONFORMIDAD VÁLIDA O ENTREGABLES INCOMPLETOS
     # -------------------------------------------------------------------------
     act_conf = act_por_etapa.get("Conformidad")
     act_pago = act_por_etapa.get("Pago")
+    entregables_pendientes = [
+        ent for ent in entregables if ent.obligatorio and (not ent.cumplido or not (ent.evidencia_tecnica or "").strip())
+    ]
+
     if act_conf and act_pago:
         texto_conf_upper = act_conf.documento_texto.upper()
         inconsistencia_conf = (
             "SIN ACTA DE RECEPCIÓN" in texto_conf_upper
             or "PENDIENTE DE VERIFICACIÓN" in texto_conf_upper
             or "OBSERVADO" in texto_conf_upper
+            or "CONFORMIDAD GENÉRICA" in texto_conf_upper
             or (not act_conf.tiene_sustento)
             or act_pago.timestamp < act_conf.timestamp
+            or len(entregables_pendientes) > 0
         )
         if inconsistencia_conf:
+            detalle_entregables = ""
+            if entregables_pendientes:
+                nombres_pend = ", ".join(f"'{e.nombre}'" for e in entregables_pendientes)
+                detalle_entregables = (
+                    f" Entregables obligatorios del TDR sin cumplimiento/evidencia técnica ni fotográfica: {nombres_pend}. "
+                    f"Desembolso bloqueado preventivamente en Tesorería."
+                )
             alerta = AlertaGestion(
                 expediente_id=exp.id,
                 codigo_regla="R-03-PAGO-SIN-CONF",
                 categoria="Ejecución Contractual / Pago",
                 titulo=(
-                    "Señal de riesgo que amerita revisión humana: Ejecución de devengado y pago "
-                    "con conformidad técnica incompleta, sin sustento o extemporánea"
+                    "Señal de riesgo que amerita revisión humana: Conformidad genérica o pago "
+                    "con entregables obligatorios del TDR sin verificar ni sustento técnico/fotográfico"
                 ),
                 severidad="ALTO",
                 regla_activada=(
-                    "Regla XAI R-03 (Pre-requisito de Conformidad para Pago): Verifica que la etapa de Pago "
-                    "esté precedida cronológicamente por un Acta de Conformidad firme, con sustento documental "
-                    "completo y sin observaciones pendientes emitida por el área usuaria."
+                    "Regla XAI R-03 (Pre-requisito de Conformidad Verificada por Entregable): Verifica que la etapa "
+                    "de Pago esté precedida por un Acta de Conformidad firme y que el 100% de entregables obligatorios "
+                    "del TDR cuenten con verificación individual y sustento técnico/fotográfico."
                 ),
                 evidencia_exacta=(
                     f"En el expediente {exp.codigo}, la etapa 5 (Conformidad, rol {act_conf.usuario_rol}, "
-                    f"fecha {act_conf.timestamp}, versión {act_conf.version_doc}) registra: '{act_conf.documento_texto}'. "
-                    f"Pese a ello, la etapa 6 (Pago, rol {act_pago.usuario_rol}, fecha {act_pago.timestamp}) autorizó "
-                    f"el desembolso por S/ {exp.monto_estimado:,.2f} a favor de {exp.proveedor_adjudicado_codigo}."
+                    f"fecha {act_conf.timestamp}, versión {act_conf.version_doc}) registra: '{act_conf.documento_texto}'.{detalle_entregables} "
+                    f"Pese a ello, se tramitó el desembolso por S/ {exp.monto_estimado:,.2f} a favor de {exp.proveedor_adjudicado_codigo}."
                 ),
                 base_normativa=(
-                    "Ley N° 32069 (Art. 67: Recepción, conformidad y pago oportuno sujeto a verificación de calidad); "
-                    "D.S. N° 009-2025-EF (Requisitos previos al devengado y responsabilidad funcional por pago sin conformidad); "
-                    "D.L. N° 1441 (Sistema Nacional de Tesorería - Reconocimiento del Devengado)."
+                    "Ley N° 32069 (Art. 67: Recepción, conformidad y pago sujeto a verificación de entregables); "
+                    "D.S. N° 009-2025-EF; D.L. N° 1441 (Sistema Nacional de Tesorería); "
+                    + MARCO_INTEGRIDAD_UNT
                 ),
                 estado_revision="PENDIENTE",
                 area_asignada="Tesorería / Control Previo + OCI",
@@ -138,7 +165,7 @@ def _evaluar_reglas_expediente(
             nuevas_alertas.append(alerta)
             exp.nivel_riesgo = "ALTO"
             exp.puntaje_riesgo = max(exp.puntaje_riesgo, 95)
-            exp.estado_expediente = "En Revisión OCI"
+            exp.estado_expediente = "Pago Bloqueado — Revisión OCI"
 
     # -------------------------------------------------------------------------
     # REGLA R-04: COLUSIÓN DE POSTORES POR GRAFOS (ATRIBUTOS COMPARTIDOS)
@@ -318,6 +345,49 @@ def _evaluar_reglas_expediente(
         exp.puntaje_riesgo = max(exp.puntaje_riesgo, 91)
         exp.estado_expediente = "En Revisión OCI"
 
+    # -------------------------------------------------------------------------
+    # REGLA R-08: CONFLICTO DE INTERÉS ACTIVO SIN ABSTENCIÓN NI REASIGNACIÓN
+    # -------------------------------------------------------------------------
+    conflictos_activos = [c for c in conflictos if c.estado == "DETECTADO"]
+    if conflictos_activos:
+        detalles_ci = "; ".join(
+            f"{c.funcionario_codigo} vinculado con {c.proveedor_vinculado_codigo} ({c.tipo_vinculo})"
+            for c in conflictos_activos
+        )
+        alerta = AlertaGestion(
+            expediente_id=exp.id,
+            codigo_regla="R-08-CONFLICTO-INTERES",
+            categoria="Conflicto de Interés",
+            titulo=(
+                "Señal de riesgo que amerita revisión humana: Posible conflicto de interés detectado "
+                "sin registro de abstención ni reasignación de funcionario"
+            ),
+            severidad="ALTO",
+            regla_activada=(
+                "Regla XAI R-08 (Control Preventivo de Conflictos de Interés): Detecta vínculos personales, "
+                "familiares o societarios entre un interviniente del proceso y un postor sin declaración oportuna "
+                "de abstención y reasignación documentada."
+            ),
+            evidencia_exacta=(
+                f"En el expediente {exp.codigo} ({exp.objeto}) se registran vínculos pendientes de abstención: "
+                f"{detalles_ci}. Se requiere evaluación de la Oficina de Integridad / OCI y reasignación preventiva."
+            ),
+            base_normativa=(
+                "Constitución Política del Perú (Art. 39); Ley N° 27815 (Código de Ética de la Función Pública, Art. 8); "
+                "Ley N° 27444 (Art. 99 Causales de abstención); " + MARCO_INTEGRIDAD_UNT
+            ),
+            estado_revision="PENDIENTE",
+            area_asignada="Oficina de Integridad / OCI — Abstención y Reasignación",
+            fecha_limite=_fecha_limite_sla(2),
+            comentario_descargo=None,
+            rol_ultimo_cambio="MOTOR-XAI-CENTINELA",
+            fecha_actualizacion=ahora_iso,
+        )
+        nuevas_alertas.append(alerta)
+        exp.nivel_riesgo = "ALTO"
+        exp.puntaje_riesgo = max(exp.puntaje_riesgo, 96)
+        exp.estado_expediente = "En Revisión OCI"
+
     return nuevas_alertas
 
 
@@ -401,6 +471,14 @@ def ejecutar_motor_reglas_xai(db: Session) -> dict:
     for post in db.query(Postulacion).all():
         postulaciones_por_exp[post.expediente_id].append(post)
 
+    entregables_por_exp: Dict[int, List[EntregableTDR]] = defaultdict(list)
+    for ent in db.query(EntregableTDR).order_by(EntregableTDR.expediente_id.asc(), EntregableTDR.orden.asc()).all():
+        entregables_por_exp[ent.expediente_id].append(ent)
+
+    conflictos_por_exp: Dict[int, List[ConflictoInteres]] = defaultdict(list)
+    for ci in db.query(ConflictoInteres).all():
+        conflictos_por_exp[ci.expediente_id].append(ci)
+
     ahora_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     alertas_creadas = 0
     expedientes_con_alerta: Set[int] = set()
@@ -420,13 +498,15 @@ def ejecutar_motor_reglas_xai(db: Session) -> dict:
             alertas_creadas += 1
             expedientes_con_alerta.add(al.expediente_id)
 
-    # 2. REGLAS INDIVIDUALES (R-02, R-03, R-04, R-05, R-07)
+    # 2. REGLAS INDIVIDUALES (R-02, R-03, R-04, R-05, R-07, R-08)
     for exp in expedientes:
         nuevas = _evaluar_reglas_expediente(
             db=db,
             exp=exp,
             actuaciones=actuaciones_por_exp.get(exp.id, []),
             postulaciones=postulaciones_por_exp.get(exp.id, []),
+            entregables=entregables_por_exp.get(exp.id, []),
+            conflictos=conflictos_por_exp.get(exp.id, []),
             proveedores_lista=proveedores_lista,
             proveedores_map=proveedores_map,
             ahora_iso=ahora_iso,
@@ -463,12 +543,23 @@ def evaluar_expediente_individual(db: Session, exp: Expediente) -> List[AlertaGe
     postulaciones = (
         db.query(Postulacion).filter(Postulacion.expediente_id == exp.id).all()
     )
+    entregables = (
+        db.query(EntregableTDR)
+        .filter(EntregableTDR.expediente_id == exp.id)
+        .order_by(EntregableTDR.orden.asc())
+        .all()
+    )
+    conflictos = (
+        db.query(ConflictoInteres).filter(ConflictoInteres.expediente_id == exp.id).all()
+    )
 
     generadas = _evaluar_reglas_expediente(
         db=db,
         exp=exp,
         actuaciones=actuaciones,
         postulaciones=postulaciones,
+        entregables=entregables,
+        conflictos=conflictos,
         proveedores_lista=proveedores_lista,
         proveedores_map=proveedores_map,
         ahora_iso=ahora_iso,
@@ -511,3 +602,152 @@ def evaluar_expediente_individual(db: Session, exp: Expediente) -> List[AlertaGe
     for al in generadas:
         db.refresh(al)
     return generadas
+
+
+def construir_mapa_riesgos(db: Session) -> dict:
+    """
+    Construye el Mapa de Riesgos de Integridad (Probabilidad x Impacto por etapa crítica)
+    conforme al Modelo de Integridad (D.S. N° 148-2024-PCM, R.S. N° 002-2026-PCM/SIP y
+    estándares OCDE de gestión de riesgos) alimentado dinámicamente desde las alertas reales.
+    """
+    total_exp = db.query(Expediente).count()
+    alertas = db.query(AlertaGestion).all()
+
+    def _contar(reglas: tuple[str, ...]) -> tuple[int, int]:
+        filtradas = [a for a in alertas if a.codigo_regla in reglas]
+        return len({a.expediente_id for a in filtradas}), len(filtradas)
+
+    c_req_exp, c_req_al = _contar(("R-01-FRACCIONAMIENTO",))
+    c_tdr_exp, c_tdr_al = _contar(("R-05-TDR-NLP", "R-07-CRONO-VERSION"))
+    c_cot_exp, c_cot_al = _contar(("R-04-COLUSION-GRAFO", "R-06-SHA256"))
+    c_sel_exp, c_sel_al = _contar(("R-02-SEGREGACION", "R-08-CONFLICTO-INTERES"))
+    c_conf_exp, c_conf_al = _contar(("R-03-PAGO-SIN-CONF",))
+    ent_pendientes_exps = {
+        e.expediente_id
+        for e in db.query(EntregableTDR).filter(EntregableTDR.obligatorio.is_(True), EntregableTDR.cumplido.is_(False)).all()
+    }
+
+    def _nivel(score: int) -> str:
+        if score >= 16:
+            return "CRÍTICO"
+        if score >= 10:
+            return "ALTO"
+        if score >= 5:
+            return "MEDIO"
+        return "BAJO"
+
+    definiciones = [
+        (
+            1,
+            "1. Requerimiento y Programación",
+            "Fraccionamiento indebido bajo tope de 8 UIT",
+            "División de compras similares en órdenes menores sucesivas para evadir selección competitiva.",
+            min(5, 3 + (1 if c_req_al >= 3 else 0)),
+            5,
+            c_req_exp,
+            c_req_al,
+            "Regla R-01: Agrupación mensual por área, rubro y proveedor (> 8 UIT)",
+            "Gestión de Riesgos (D.S. N° 148-2024-PCM)",
+        ),
+        (
+            2,
+            "2. Formulación de TDR y Versiones",
+            "Direccionamiento técnico o modificación extemporánea sin sustento",
+            "Copia literal de catálogos exclusivos o alteración tardía de especificaciones (v2.1).",
+            min(5, 3 + (1 if c_tdr_al >= 2 else 0)),
+            5,
+            c_tdr_exp,
+            c_tdr_al,
+            "Reglas R-05 (NLP TF-IDF > 78%) y R-07 (Control de versiones y fechas)",
+            "Controles y Auditoría Preventiva",
+        ),
+        (
+            3,
+            "3. Cotizaciones y Estudio de Mercado",
+            "Colusión de postores y adulteración ex-post de expedientes",
+            "Proveedores aparentemente competidores comparten domicilio, representante o teléfono.",
+            min(5, 3 + (1 if c_cot_al >= 2 else 0)),
+            5,
+            c_cot_exp,
+            c_cot_al,
+            "Regla R-04 (Grafos NetworkX) + Cadena Criptográfica SHA-256 (R-06)",
+            "Gestión de Riesgos y Trazabilidad Digital",
+        ),
+        (
+            4,
+            "4. Evaluación y Buena Pro",
+            "Conflictos de interés y concentración de funciones incompatibles",
+            "Falta de declaración oportuna, abstención o segregación entre requerimiento y adjudicación.",
+            min(5, 2 + (1 if c_sel_al >= 1 else 0) + (1 if c_sel_al >= 2 else 0)),
+            4,
+            c_sel_exp,
+            c_sel_al,
+            "Reglas R-02 (Segregación) y R-08 (Declaración, Abstención y Reasignación)",
+            "Políticas de Integridad y Ética (Ley 27815)",
+        ),
+        (
+            5,
+            "5. Conformidad y Entregables del TDR",
+            "Conformidades genéricas sin verificar entregables obligatorios",
+            "Aprobación sin validar pruebas técnicas ni sustento fotográfico por entregable.",
+            min(5, 3 + (1 if len(ent_pendientes_exps) >= 1 else 0)),
+            5,
+            max(c_conf_exp, len(ent_pendientes_exps)),
+            c_conf_al,
+            "Checklist obligatorio por entregable TDR con evidencia técnica/fotográfica (R-03)",
+            "Supervisión y Monitoreo del Modelo",
+        ),
+        (
+            6,
+            "6. Devengado, Pago y Transparencia",
+            "Desembolso en Tesorería previo a conformidad firme y opacidad",
+            "Falta de bloqueo preventivo de pago y ausencia de bitácora auditable de usuarios.",
+            min(5, 2 + (1 if c_conf_al >= 1 else 0)),
+            4,
+            c_conf_exp,
+            c_conf_al,
+            "Bloqueo preventivo Tesorería + Bitácora SHA-256 + Datos Abiertos (Ley 27806)",
+            "Transparencia y Rendición de Cuentas",
+        ),
+    ]
+
+    etapas_out = []
+    for (
+        orden,
+        etapa,
+        riesgo,
+        causa,
+        prob,
+        imp,
+        exps_af,
+        als_act,
+        ctrl,
+        comp,
+    ) in definiciones:
+        puntaje = prob * imp
+        etapas_out.append(
+            {
+                "orden": orden,
+                "etapa": etapa,
+                "riesgo_principal": riesgo,
+                "causa_raiz": causa,
+                "probabilidad": prob,
+                "impacto": imp,
+                "puntaje_inherente": puntaje,
+                "nivel": _nivel(puntaje),
+                "expedientes_afectados": exps_af,
+                "alertas_activas": als_act,
+                "control_centinela": ctrl,
+                "componente_modelo_integridad": comp,
+            }
+        )
+
+    return {
+        "marco_referencia": (
+            "Modelo de Integridad (D.S. N° 148-2024-PCM • Directiva N° 001-2026-PCM/SIP • "
+            "Resolución Rectoral N° 0490-2026/UNT • Estándares OCDE)"
+        ),
+        "total_expedientes": total_exp,
+        "total_etapas_criticas": sum(1 for e in etapas_out if e["nivel"] in ("CRÍTICO", "ALTO")),
+        "etapas": etapas_out,
+    }

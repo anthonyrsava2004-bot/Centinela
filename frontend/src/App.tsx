@@ -7,6 +7,7 @@ import { TrazabilidadPage } from './pages/TrazabilidadPage';
 import { GrafoColusionPage } from './pages/GrafoColusionPage';
 import { CompliancePage } from './pages/CompliancePage';
 import { AuditoriaPage } from './pages/AuditoriaPage';
+import { DenunciasPage } from './pages/DenunciasPage';
 import { ThemeProvider } from './context/ThemeContext';
 import { RolUsuario } from './types';
 import { ROLE_PROFILES } from './config/roles';
@@ -55,6 +56,10 @@ export const App: React.FC = () => {
           <Route
             path="/compliance"
             element={<CompliancePage rolActivo={rolActivo} />}
+          />
+          <Route
+            path="/denuncias"
+            element={<DenunciasPage rolActivo={rolActivo} />}
           />
           <Route
             path="/auditoria"

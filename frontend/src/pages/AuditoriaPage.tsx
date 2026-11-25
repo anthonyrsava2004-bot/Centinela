@@ -32,6 +32,11 @@ const ACCION_LABELS: Record<string, string> = {
   EXPORTACION_DATOS_CSV: 'Exportación Datos CSV',
   EXPORTACION_BITACORA_CSV: 'Exportación Bitácora CSV',
   REINICIO_DATASET: 'Reinicio Dataset Demo',
+  VERIFICACION_ENTREGABLE_TDR: 'Verificación Entregable TDR',
+  DECLARACION_CONFLICTO_INTERES: 'Declaración Conflicto de Interés',
+  ABSTENCION_Y_REASIGNACION: 'Abstención y Reasignación',
+  REGISTRO_DENUNCIA_RESERVADA: 'Nueva Denuncia Reservada',
+  GESTION_DENUNCIA_RESERVADA: 'Gestión / Derivación Denuncia',
   ACCESO_DENEGADO_RBAC: 'Intento Bloqueado (RBAC)',
 };
 

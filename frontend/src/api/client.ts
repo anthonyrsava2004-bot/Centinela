@@ -2,11 +2,17 @@ import axios from 'axios';
 import {
   AlertaGestion,
   AuditLogResumen,
+  ConflictoInteresItem,
   DashboardKPIs,
+  DenunciaConsultaPublica,
+  DenunciaItem,
+  DenunciaResumenPublico,
+  EntregableTdrItem,
   ExpedienteCreatePayload,
   ExpedienteDetalle,
   ExpedienteListItem,
   GrafoColusionData,
+  MapaRiesgosData,
   ProveedorItem,
   RolUsuario,
   VerificacionCadena,
@@ -205,5 +211,99 @@ export const centinelaApi = {
     } catch {
       // Se espera HTTP 403 y el backend ya registró el evento BLOQUEADO_403 en la bitácora
     }
+  },
+
+  obtenerMapaRiesgos: async (): Promise<MapaRiesgosData> => {
+    const { data } = await apiClient.get<MapaRiesgosData>('/api/mapa-riesgos');
+    return data;
+  },
+
+  verificarEntregableTdr: async (
+    entregableId: number,
+    payload: { cumplido: boolean; evidencia_tecnica: string; rol_usuario?: string },
+  ): Promise<EntregableTdrItem> => {
+    const { data } = await apiClient.patch<EntregableTdrItem>(
+      `/api/entregables/${entregableId}/verificar`,
+      payload,
+    );
+    return data;
+  },
+
+  listarConflictosInteres: async (): Promise<ConflictoInteresItem[]> => {
+    const { data } = await apiClient.get<ConflictoInteresItem[]>('/api/conflictos-interes');
+    return data;
+  },
+
+  declararConflictoInteres: async (payload: {
+    expediente_id: number;
+    funcionario_codigo: string;
+    proveedor_vinculado_codigo: string;
+    tipo_vinculo: string;
+    descripcion: string;
+    abstenerse_de_inmediato: boolean;
+    funcionario_reasignado?: string;
+  }): Promise<ConflictoInteresItem> => {
+    const { data } = await apiClient.post<ConflictoInteresItem>(
+      '/api/conflictos-interes',
+      payload,
+    );
+    return data;
+  },
+
+  abstenerYReasignarConflicto: async (
+    conflictoId: number,
+    payload: { funcionario_reasignado: string; comentario?: string },
+  ): Promise<ConflictoInteresItem> => {
+    const { data } = await apiClient.patch<ConflictoInteresItem>(
+      `/api/conflictos-interes/${conflictoId}/abstener-reasignar`,
+      payload,
+    );
+    return data;
+  },
+
+  obtenerResumenDenuncias: async (): Promise<DenunciaResumenPublico> => {
+    const { data } = await apiClient.get<DenunciaResumenPublico>('/api/denuncias/resumen');
+    return data;
+  },
+
+  consultarDenunciaPorCodigo: async (codigo: string): Promise<DenunciaConsultaPublica> => {
+    const { data } = await apiClient.get<DenunciaConsultaPublica>(
+      `/api/denuncias/consultar/${encodeURIComponent(codigo.trim())}`,
+    );
+    return data;
+  },
+
+  registrarDenunciaReservada: async (payload: {
+    categoria: string;
+    area_involucrada: string;
+    expediente_codigo?: string;
+    descripcion_hechos: string;
+    solicita_proteccion: boolean;
+  }): Promise<DenunciaConsultaPublica> => {
+    const { data } = await apiClient.post<DenunciaConsultaPublica>('/api/denuncias', payload);
+    return data;
+  },
+
+  listarDenunciasConfidenciales: async (): Promise<DenunciaItem[]> => {
+    const { data } = await apiClient.get<DenunciaItem[]>('/api/denuncias');
+    return data;
+  },
+
+  gestionarDenunciaReservada: async (
+    denunciaId: number,
+    payload: {
+      estado: string;
+      organo_derivado: string;
+      medida_proteccion: string;
+      fecha_limite_sla?: string;
+      respuesta_seguimiento: string;
+      nota_interna_oci: string;
+    },
+  ): Promise<DenunciaItem> => {
+    const { data } = await apiClient.patch<DenunciaItem>(
+      `/api/denuncias/${denunciaId}`,
+      payload,
+    );
+    return data;
   },
 };

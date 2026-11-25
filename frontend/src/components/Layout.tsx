@@ -58,54 +58,62 @@ export const Layout: React.FC<LayoutProps> = ({
       label: profile.isReadOnly
         ? 'Resumen Público'
         : profile.canSubmitDescargo
-        ? 'Panel Operativo'
+        ? 'Panel de Compras'
         : 'Resumen General',
       sub: profile.isReadOnly
         ? 'Indicadores y datos abiertos'
-        : 'Indicadores y ahorro',
+        : 'Indicadores y mapa de riesgos',
       icon: LayoutDashboard,
       visible: true,
       badge: undefined as number | undefined,
     },
     {
       to: '/compliance',
-      label: profile.canSubmitDescargo ? 'Descargos Pendientes' : 'Alertas y Descargos',
+      label: profile.canSubmitDescargo ? 'Alertas por Responder' : 'Alertas y Conflictos',
       sub: profile.canSubmitDescargo
-        ? 'Responder y subsanar'
-        : 'Revisión y seguimiento',
+        ? 'Responder y declarar vínculos'
+        : 'Revisar casos y conflictos',
       icon: BellRing,
       visible: !profile.isReadOnly,
       badge: alertasPendientes > 0 ? alertasPendientes : undefined,
     },
     {
       to: '/expedientes',
-      label: 'Expedientes',
+      label: 'Lista de Compras',
       sub: profile.isReadOnly
-        ? 'Padrón público anonimizado'
-        : 'Buscar y evaluar procesos',
+        ? 'Procesos públicos anonimizados'
+        : 'Buscar y registrar procesos',
       icon: FolderSearch,
       visible: true,
       badge: undefined,
     },
     {
       to: '/trazabilidad',
-      label: 'Historial e Integridad',
-      sub: 'Cadena documental y TDR',
+      label: 'Detalle y Seguridad',
+      sub: 'Documentos, pagos y sello SHA-256',
       icon: Link2,
       visible: true,
       badge: undefined,
     },
     {
       to: '/grafo-colusion',
-      label: 'Red de Proveedores',
-      sub: 'Vínculos y posible colusión',
+      label: 'Empresas Vinculadas',
+      sub: 'Proveedores con datos repetidos',
       icon: Network,
       visible: !profile.isReadOnly,
       badge: undefined,
     },
     {
+      to: '/denuncias',
+      label: 'Canal de Denuncia',
+      sub: 'Reserva de identidad y plazos',
+      icon: ShieldCheck,
+      visible: true,
+      badge: undefined,
+    },
+    {
       to: '/auditoria',
-      label: 'Bitácora de Auditoría',
+      label: 'Registro de Actividad',
       sub: 'Quién hizo qué y cuándo',
       icon: History,
       visible: profile.canDictaminarOci,
@@ -136,9 +144,9 @@ export const Layout: React.FC<LayoutProps> = ({
 
   return (
     <div className="min-h-screen flex bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200">
-      {/* Sidebar con Identidad Dinámica por Rol */}
+      {/* Sidebar con Identidad Dinámica por Rol (Fijo en altura de pantalla) */}
       <aside
-        className={`w-72 ${profile.sidebarBgLight} border-r ${profile.sidebarBorderLight} text-slate-100 flex flex-col justify-between shrink-0 shadow-lg dark:shadow-none transition-colors duration-300`}
+        className={`w-72 sticky top-0 h-screen overflow-y-auto ${profile.sidebarBgLight} border-r ${profile.sidebarBorderLight} text-slate-100 flex flex-col justify-between shrink-0 shadow-lg dark:shadow-none transition-colors duration-300`}
       >
         <div>
           {/* Branding CENTINELA */}
@@ -182,17 +190,17 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
 
             {/* Badges Normativos */}
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <div className="px-2.5 py-1.5 rounded-lg bg-black/20 border border-white/10 flex items-center gap-1.5">
+            <div className="mt-3 space-y-1.5">
+              <div className="px-2.5 py-1.5 rounded-lg bg-black/20 border border-white/10 flex items-center gap-2">
                 <Scale className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
-                <span className="text-[11px] font-semibold text-white/85">
-                  Ley N° 32069
+                <span className="text-[10px] font-semibold text-white/90">
+                  D.S. N° 148-2024-PCM • R.S. 002-2026
                 </span>
               </div>
-              <div className="px-2.5 py-1.5 rounded-lg bg-black/20 border border-white/10 flex items-center gap-1.5">
+              <div className="px-2.5 py-1.5 rounded-lg bg-black/20 border border-white/10 flex items-center gap-2">
                 <Lock className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-                <span className="text-[11px] font-semibold text-white/85">
-                  Ley N° 29733
+                <span className="text-[10px] font-semibold text-white/90">
+                  R.R. N° 0490-2026/UNT • Ley N° 32069
                 </span>
               </div>
             </div>
@@ -267,7 +275,7 @@ export const Layout: React.FC<LayoutProps> = ({
               <span className="truncate">{profile.workspaceTitle}</span>
             </span>
             <p className="hidden 2xl:block text-[11px] text-slate-500 dark:text-slate-400 truncate">
-              Capa externa no intrusiva (no reemplaza SEACE/SIGA/SIAF)
+              Radar preventivo conectado sobre SEACE, SIGA y SIAF (sin reemplazarlos)
             </p>
           </div>
 

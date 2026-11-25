@@ -90,8 +90,9 @@ def generar_pdf_expediente(db: Session, expediente: Expediente) -> bytes:
     )
     story.append(
         Paragraph(
-            "Marco Legal: Ley N° 32069 (Ley General de Contrataciones Públicas) | D.S. N° 009-2025-EF | "
-            "Ley N° 29733 (Protección de Datos Personales - Anonimización por Diseño) | Ley N° 27444 (Presunción de Licitud)",
+            "Marco Legal: Ley N° 32069 | D.S. N° 009-2025-EF | D.S. N° 148-2024-PCM (Modelo de Integridad) | "
+            "R.S. N° 002-2026-PCM/SIP (Directiva N° 001-2026-PCM/SIP) | D.S. N° 092-2017-PCM | "
+            "Resolución Rectoral N° 0490-2026/UNT | Ley N° 29733 | Ley N° 27815 | Ley N° 27444",
             subtitle_style,
         )
     )
@@ -403,7 +404,7 @@ def generar_pdf_reporte_institucional(db: Session) -> bytes:
         Paragraph(
             "Hackathon Innova Norte 3G (UNT) • Desafío 2: Integridad Institucional y Compliance | "
             "Capa de Observabilidad Externa No Intrusiva (No reemplaza SEACE / SIGA / SIAF) | "
-            "Ley N° 32069 • Ley N° 27806 • Ley N° 29733 • Ley N° 27444",
+            "D.S. N° 148-2024-PCM • R.S. N° 002-2026-PCM/SIP • R.R. N° 0490-2026/UNT • Ley N° 32069 • Ley N° 27806 • Ley N° 29733",
             subtitle_style,
         ),
         Paragraph("1. INDICADORES AGREGADOS DE CONTROL PREVENTIVO", section_style),

@@ -1,7 +1,8 @@
 from collections import Counter, defaultdict
 from contextlib import asynccontextmanager
 import csv
-from datetime import datetime
+from datetime import datetime, timedelta
+import hashlib
 import io
 from typing import List, Optional
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
@@ -24,25 +25,50 @@ from .crypto_audit import (
 )
 from .database import Base, SessionLocal, engine, get_db
 from .graph_engine import construir_grafo_colusion
-from .models import AlertaGestion, AuditLog, Expediente, HistorialAlerta, Postulacion, Proveedor
+from .models import (
+    AlertaGestion,
+    AuditLog,
+    ConflictoInteres,
+    DenunciaReservada,
+    EntregableTDR,
+    Expediente,
+    HistorialAlerta,
+    Postulacion,
+    Proveedor,
+)
 from .nlp_tdr import analizar_similitud_tdr
 from .pdf_report import generar_pdf_expediente, generar_pdf_reporte_institucional
-from .rules_engine import evaluar_expediente_individual
+from .rules_engine import construir_mapa_riesgos, evaluar_expediente_individual
 from .schemas import (
     AlertaGestionOut,
     AlertaUpdateInput,
     AuditLogResumenOut,
+    ConflictoAbstencionInput,
+    ConflictoCreateInput,
+    ConflictoInteresOut,
     DashboardKPIsOut,
+    DenunciaConsultaPublicaOut,
+    DenunciaCreateInput,
+    DenunciaGestionInput,
+    DenunciaOut,
+    DenunciaResumenPublicoOut,
+    EntregableTdrOut,
+    EntregableVerificarInput,
     ExpedienteCreateInput,
     ExpedienteDetalleOut,
     ExpedienteListOut,
     HistorialAlertaOut,
+    MapaRiesgosOut,
     PostulacionDetalleOut,
     ProveedorOut,
     TamperSimulationRequest,
     VerificacionCadenaOut,
 )
-from .seed_synthetic import crear_actuaciones_secuenciales, poblar_base_datos_sintetica
+from .seed_synthetic import (
+    crear_actuaciones_secuenciales,
+    poblar_base_datos_sintetica,
+    sembrar_denuncias_base,
+)
 
 
 def _asegurar_esquema_actualizado():
@@ -78,14 +104,18 @@ def _asegurar_esquema_actualizado():
 async def lifespan(app: FastAPI):
     """
     Inicializa esquemas en PostgreSQL / SQLite y ejecuta el seed automático de los
-    120 expedientes sintéticos si la base de datos se encuentra vacía o recién migrada.
+    120 expedientes sintéticos (incluyendo entregables TDR y conflictos de interés)
+    si la base de datos se encuentra vacía o recién ampliada.
     """
     _asegurar_esquema_actualizado()
     db = SessionLocal()
     try:
         total = db.query(Expediente).count()
-        if total == 0:
+        total_ent = db.query(EntregableTDR).count()
+        if total == 0 or total_ent == 0:
             poblar_base_datos_sintetica(db)
+        elif db.query(DenunciaReservada).count() == 0:
+            sembrar_denuncias_base(db)
         inicializar_bitacora_si_vacia(db)
     finally:
         db.close()
@@ -201,6 +231,43 @@ def _construir_detalle_expediente(db: Session, exp: Expediente) -> ExpedienteDet
         for a in alertas_db
     ]
 
+    entregables_db = (
+        db.query(EntregableTDR)
+        .filter(EntregableTDR.expediente_id == exp.id)
+        .order_by(EntregableTDR.orden.asc())
+        .all()
+    )
+    entregables_out = [EntregableTdrOut.model_validate(ent) for ent in entregables_db]
+    pago_bloqueado = any(
+        ent.obligatorio and (not ent.cumplido or not (ent.evidencia_tecnica or "").strip())
+        for ent in entregables_db
+    )
+
+    conflictos_db = (
+        db.query(ConflictoInteres)
+        .filter(ConflictoInteres.expediente_id == exp.id)
+        .order_by(ConflictoInteres.id.asc())
+        .all()
+    )
+    conflictos_out = [
+        ConflictoInteresOut(
+            id=c.id,
+            expediente_id=c.expediente_id,
+            expediente_codigo=exp.codigo,
+            expediente_objeto=exp.objeto,
+            funcionario_codigo=c.funcionario_codigo,
+            proveedor_vinculado_codigo=c.proveedor_vinculado_codigo,
+            tipo_vinculo=c.tipo_vinculo,
+            descripcion=c.descripcion,
+            estado=c.estado,
+            funcionario_reasignado=c.funcionario_reasignado,
+            fecha_registro=c.fecha_registro,
+            fecha_resolucion=c.fecha_resolucion,
+            resuelto_por=c.resuelto_por,
+        )
+        for c in conflictos_db
+    ]
+
     return ExpedienteDetalleOut(
         id=exp.id,
         codigo=exp.codigo,
@@ -222,6 +289,9 @@ def _construir_detalle_expediente(db: Session, exp: Expediente) -> ExpedienteDet
         postulaciones=postulaciones_out,
         alertas=alertas_out,
         analisis_nlp=nlp_res,
+        entregables_tdr=entregables_out,
+        pago_bloqueado_preventivo=pago_bloqueado,
+        conflictos_interes=conflictos_out,
     )
 
 
@@ -229,10 +299,15 @@ def _construir_detalle_expediente(db: Session, exp: Expediente) -> ExpedienteDet
 def health_check():
     return {
         "sistema": "CENTINELA",
-        "version": "1.1.0",
+        "version": "1.2.0",
         "estado": "OPERATIVO",
         "arquitectura": "Capa de Observabilidad Externa No Intrusiva (No reemplaza SEACE/SIGA/SIAF)",
         "marco_normativo": [
+            "Constitución Política del Perú (Art. 39)",
+            "D.S. N° 148-2024-PCM (Modelo de Integridad)",
+            "R.S. N° 002-2026-PCM/SIP (Directiva N° 001-2026-PCM/SIP)",
+            "D.S. N° 092-2017-PCM",
+            "Resolución Rectoral N° 0490-2026/UNT",
             "Ley N° 32069",
             "D.S. N° 009-2025-EF",
             "Ley N° 29733",
@@ -243,12 +318,13 @@ def health_check():
         ],
         "modulos_activos": [
             "Cadena Criptográfica SHA-256 con Control de Versiones",
-            "Motor XAI Sin Caja Negra (7 Reglas Normativas Reales)",
+            "Motor XAI Sin Caja Negra (8 Reglas Normativas Reales)",
+            "Mapa de Riesgos de Integridad (Probabilidad x Impacto)",
+            "Gestión de Conflictos de Interés (Declaración, Abstención y Reasignación)",
+            "Checklist de Entregables Obligatorios del TDR (Bloqueo Preventivo de Pago)",
             "Grafos de Colusión NetworkX + Cytoscape",
             "Detector Semántico TDR (TF-IDF + Coseno Local)",
-            "Panel Compliance Human-in-the-Loop con RBAC y Bitácora",
-            "Evaluador de Expedientes Sintéticos en Vivo",
-            "Reportes Forenses Individuales y Agregados (PDF + CSV)",
+            "Bitácora Global de Auditoría SHA-256 + RBAC",
         ],
     }
 
@@ -610,6 +686,50 @@ def registrar_y_auditar_expediente_vivo(
     ]
 
     crear_actuaciones_secuenciales(db, exp, etapas_data)
+
+    # Sembrar Entregables Obligatorios del TDR para el nuevo expediente
+    if payload.entregable_incompleto_obra:
+        ent_list = [
+            (1, "Diagnóstico técnico inicial del sistema eléctrico", True, True, "Informe Técnico INF-DEMO + 4 fotos", f"FUNC-{area_tag}-01", f"{fecha_dia}T17:10:00"),
+            (2, "Instalación de tableros eléctricos con pruebas certificadas de pozo a tierra", True, False, None, None, None),
+            (3, "Pintado general de aulas universitarias", True, True, "Acta Fotográfica de Pintado General", f"FUNC-{area_tag}-01", f"{fecha_dia}T18:00:00"),
+        ]
+    else:
+        ent_ok = not payload.pago_sin_conformidad
+        ent_list = [
+            (1, "Entrega de bienes/servicios conforme a especificaciones del TDR", True, ent_ok, "Guía de Remisión y Evidencia Fotográfica" if ent_ok else None, f"FUNC-{area_tag}-01" if ent_ok else None, f"{fecha_dia}T17:30:00" if ent_ok else None),
+            (2, "Pruebas técnicas de operatividad y acta de recepción", True, ent_ok, "Acta Técnica Verificada" if ent_ok else None, f"FUNC-{area_tag}-01" if ent_ok else None, f"{fecha_dia}T18:10:00" if ent_ok else None),
+        ]
+    for ord_e, nom_e, obl_e, cump_e, evid_e, ver_e, fver_e in ent_list:
+        db.add(
+            EntregableTDR(
+                expediente_id=exp.id,
+                orden=ord_e,
+                nombre=nom_e,
+                obligatorio=obl_e,
+                cumplido=cump_e,
+                evidencia_tecnica=evid_e,
+                verificado_por=ver_e,
+                fecha_verificacion=fver_e,
+            )
+        )
+
+    if payload.conflicto_interes_familiar:
+        db.add(
+            ConflictoInteres(
+                expediente_id=exp.id,
+                funcionario_codigo="FUNC-LOG-04",
+                proveedor_vinculado_codigo=prov_ganador.codigo,
+                tipo_vinculo="Vínculo Familiar Directo con Representante Legal",
+                descripcion=(
+                    f"Detección preventiva en vivo: el código funcional FUNC-LOG-04 presenta vínculo familiar "
+                    f"directo con el representante del postor {prov_ganador.codigo} sin declaración de abstención."
+                ),
+                estado="DETECTADO",
+                fecha_registro=f"{fecha_dia}T14:25:00",
+            )
+        )
+
     db.commit()
 
     # Evaluar en tiempo real con el motor XAI completo (sin hardcodes)
@@ -1122,3 +1242,551 @@ def exportar_bitacora_auditoria_csv(request: Request, db: Session = Depends(get_
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@app.get("/api/mapa-riesgos", response_model=MapaRiesgosOut)
+def obtener_mapa_riesgos(db: Session = Depends(get_db)):
+    """Mapa de Riesgos de Integridad (Probabilidad x Impacto por etapa crítica — D.S. N° 148-2024-PCM)."""
+    return construir_mapa_riesgos(db)
+
+
+@app.patch("/api/entregables/{entregable_id}/verificar", response_model=EntregableTdrOut)
+def verificar_entregable_tdr(
+    entregable_id: int,
+    payload: EntregableVerificarInput,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Verifica o revierte un entregable obligatorio del TDR con sustento técnico/fotográfico.
+    Si todos los entregables obligatorios se verifican, levanta el bloqueo preventivo de pago.
+    """
+    usuario, rol, ip_origen = extraer_actor_request(request, rol_fallback=payload.rol_usuario)
+    ent = db.query(EntregableTDR).filter(EntregableTDR.id == entregable_id).first()
+    if not ent:
+        raise HTTPException(status_code=404, detail="Entregable del TDR no encontrado")
+
+    exp = db.query(Expediente).filter(Expediente.id == ent.expediente_id).first()
+    recurso_lbl = f"{exp.codigo if exp else ent.expediente_id} / ENTREGABLE-#{ent.orden}"
+
+    if _es_solo_lectura(rol):
+        registrar_evento_auditoria(
+            db=db,
+            usuario_codigo=usuario,
+            rol_usuario=rol,
+            accion="ACCESO_DENEGADO_RBAC",
+            recurso=recurso_lbl,
+            resultado="BLOQUEADO_403",
+            detalle="Intento bloqueado de verificar entregable del TDR desde rol Solo Lectura.",
+            ip_origen=ip_origen,
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado (RBAC): El rol Consulta Transparencia es de solo lectura.",
+        )
+
+    ahora_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    ent.cumplido = payload.cumplido
+    ent.evidencia_tecnica = payload.evidencia_tecnica.strip() if payload.cumplido else None
+    ent.verificado_por = f"{usuario} ({rol})" if payload.cumplido else None
+    ent.fecha_verificacion = ahora_iso if payload.cumplido else None
+
+    db.commit()
+    db.refresh(ent)
+
+    if exp:
+        pendientes = (
+            db.query(EntregableTDR)
+            .filter(
+                EntregableTDR.expediente_id == exp.id,
+                EntregableTDR.obligatorio.is_(True),
+                EntregableTDR.cumplido.is_(False),
+            )
+            .count()
+        )
+        if pendientes == 0 and exp.estado_expediente == "Pago Bloqueado — Revisión OCI":
+            exp.estado_expediente = "Conformidad Subsanada — Habilitado"
+            db.commit()
+        elif pendientes > 0:
+            exp.estado_expediente = "Pago Bloqueado — Revisión OCI"
+            db.commit()
+
+    registrar_evento_auditoria(
+        db=db,
+        usuario_codigo=usuario,
+        rol_usuario=rol,
+        accion="VERIFICACION_ENTREGABLE_TDR",
+        recurso=recurso_lbl,
+        resultado="PERMITIDO",
+        detalle=(
+            f"Marcó entregable '{ent.nombre}' como {'CUMPLIDO con sustento: ' + (ent.evidencia_tecnica or '') if ent.cumplido else 'PENDIENTE / SIN EVIDENCIA'}."
+        ),
+        ip_origen=ip_origen,
+    )
+    return EntregableTdrOut.model_validate(ent)
+
+
+@app.get("/api/conflictos-interes", response_model=List[ConflictoInteresOut])
+def listar_conflictos_interes(db: Session = Depends(get_db)):
+    """Lista las declaraciones y detecciones de Conflictos de Interés (Ley 27815 / D.S. 148-2024-PCM)."""
+    conflictos = db.query(ConflictoInteres).order_by(ConflictoInteres.id.desc()).all()
+    exp_map = {e.id: e for e in db.query(Expediente).all()}
+    return [
+        ConflictoInteresOut(
+            id=c.id,
+            expediente_id=c.expediente_id,
+            expediente_codigo=exp_map[c.expediente_id].codigo if c.expediente_id in exp_map else f"EXP-{c.expediente_id}",
+            expediente_objeto=exp_map[c.expediente_id].objeto if c.expediente_id in exp_map else "",
+            funcionario_codigo=c.funcionario_codigo,
+            proveedor_vinculado_codigo=c.proveedor_vinculado_codigo,
+            tipo_vinculo=c.tipo_vinculo,
+            descripcion=c.descripcion,
+            estado=c.estado,
+            funcionario_reasignado=c.funcionario_reasignado,
+            fecha_registro=c.fecha_registro,
+            fecha_resolucion=c.fecha_resolucion,
+            resuelto_por=c.resuelto_por,
+        )
+        for c in conflictos
+    ]
+
+
+@app.post("/api/conflictos-interes", response_model=ConflictoInteresOut)
+def declarar_conflicto_interes(
+    payload: ConflictoCreateInput,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Registra una Declaración Oportuna de Conflicto de Interés (opcionalmente con abstención inmediata)."""
+    usuario, rol, ip_origen = extraer_actor_request(request)
+    if _es_solo_lectura(rol):
+        registrar_evento_auditoria(
+            db=db,
+            usuario_codigo=usuario,
+            rol_usuario=rol,
+            accion="ACCESO_DENEGADO_RBAC",
+            recurso="CONFLICTO-INTERES",
+            resultado="BLOQUEADO_403",
+            detalle="Intento bloqueado de registrar declaración de conflicto de interés desde rol Solo Lectura.",
+            ip_origen=ip_origen,
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado (RBAC): El rol Consulta Transparencia es de solo lectura.",
+        )
+
+    exp = db.query(Expediente).filter(Expediente.id == payload.expediente_id).first()
+    if not exp:
+        raise HTTPException(status_code=404, detail="Expediente no encontrado")
+
+    ahora_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    estado = "ABSTENIDO_Y_REASIGNADO" if payload.abstenerse_de_inmediato else "DECLARADO_OPORTUNO"
+    reasignado = (
+        (payload.funcionario_reasignado or "FUNC-COM-ALT-03").strip()
+        if payload.abstenerse_de_inmediato
+        else None
+    )
+
+    ci = ConflictoInteres(
+        expediente_id=exp.id,
+        funcionario_codigo=payload.funcionario_codigo.strip(),
+        proveedor_vinculado_codigo=payload.proveedor_vinculado_codigo.strip(),
+        tipo_vinculo=payload.tipo_vinculo.strip(),
+        descripcion=payload.descripcion.strip(),
+        estado=estado,
+        funcionario_reasignado=reasignado,
+        fecha_registro=ahora_iso,
+        fecha_resolucion=ahora_iso if payload.abstenerse_de_inmediato else None,
+        resuelto_por=f"{usuario} ({rol})" if payload.abstenerse_de_inmediato else None,
+    )
+    db.add(ci)
+    db.commit()
+    db.refresh(ci)
+
+    registrar_evento_auditoria(
+        db=db,
+        usuario_codigo=usuario,
+        rol_usuario=rol,
+        accion="DECLARACION_CONFLICTO_INTERES",
+        recurso=f"{exp.codigo} / CI-#{ci.id}",
+        resultado="PERMITIDO",
+        detalle=(
+            f"Registró declaración de conflicto de interés ({ci.funcionario_codigo} ↔ {ci.proveedor_vinculado_codigo}, "
+            f"'{ci.tipo_vinculo}'). Estado: {ci.estado}"
+            + (f" — Reasignado a {ci.funcionario_reasignado}." if ci.funcionario_reasignado else ".")
+        ),
+        ip_origen=ip_origen,
+    )
+
+    return ConflictoInteresOut(
+        id=ci.id,
+        expediente_id=ci.expediente_id,
+        expediente_codigo=exp.codigo,
+        expediente_objeto=exp.objeto,
+        funcionario_codigo=ci.funcionario_codigo,
+        proveedor_vinculado_codigo=ci.proveedor_vinculado_codigo,
+        tipo_vinculo=ci.tipo_vinculo,
+        descripcion=ci.descripcion,
+        estado=ci.estado,
+        funcionario_reasignado=ci.funcionario_reasignado,
+        fecha_registro=ci.fecha_registro,
+        fecha_resolucion=ci.fecha_resolucion,
+        resuelto_por=ci.resuelto_por,
+    )
+
+
+@app.patch("/api/conflictos-interes/{conflicto_id}/abstener-reasignar", response_model=ConflictoInteresOut)
+def registrar_abstencion_y_reasignacion(
+    conflicto_id: int,
+    payload: ConflictoAbstencionInput,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Formaliza la abstención del funcionario vinculado y su reasignación a un alterno sin conflicto."""
+    usuario, rol, ip_origen = extraer_actor_request(request)
+    ci = db.query(ConflictoInteres).filter(ConflictoInteres.id == conflicto_id).first()
+    if not ci:
+        raise HTTPException(status_code=404, detail="Registro de conflicto de interés no encontrado")
+
+    exp = db.query(Expediente).filter(Expediente.id == ci.expediente_id).first()
+    recurso_lbl = f"{exp.codigo if exp else ci.expediente_id} / CI-#{ci.id}"
+
+    if _es_solo_lectura(rol):
+        registrar_evento_auditoria(
+            db=db,
+            usuario_codigo=usuario,
+            rol_usuario=rol,
+            accion="ACCESO_DENEGADO_RBAC",
+            recurso=recurso_lbl,
+            resultado="BLOQUEADO_403",
+            detalle="Intento bloqueado de aprobar abstención/reasignación desde rol Solo Lectura.",
+            ip_origen=ip_origen,
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado (RBAC): El rol Consulta Transparencia es de solo lectura.",
+        )
+
+    ahora_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    ci.estado = "ABSTENIDO_Y_REASIGNADO"
+    ci.funcionario_reasignado = payload.funcionario_reasignado.strip()
+    ci.fecha_resolucion = ahora_iso
+    ci.resuelto_por = f"{usuario} ({rol})"
+    if payload.comentario and payload.comentario.strip():
+        ci.descripcion = f"{ci.descripcion} | Resolución de abstención: {payload.comentario.strip()}"
+
+    db.commit()
+    db.refresh(ci)
+
+    registrar_evento_auditoria(
+        db=db,
+        usuario_codigo=usuario,
+        rol_usuario=rol,
+        accion="ABSTENCION_Y_REASIGNACION",
+        recurso=recurso_lbl,
+        resultado="PERMITIDO",
+        detalle=(
+            f"Formalizó abstención de {ci.funcionario_codigo} (vínculo con {ci.proveedor_vinculado_codigo}) "
+            f"y reasignó la competencia al funcionario alterno {ci.funcionario_reasignado}."
+        ),
+        ip_origen=ip_origen,
+    )
+
+    return ConflictoInteresOut(
+        id=ci.id,
+        expediente_id=ci.expediente_id,
+        expediente_codigo=exp.codigo if exp else f"EXP-{ci.expediente_id}",
+        expediente_objeto=exp.objeto if exp else "",
+        funcionario_codigo=ci.funcionario_codigo,
+        proveedor_vinculado_codigo=ci.proveedor_vinculado_codigo,
+        tipo_vinculo=ci.tipo_vinculo,
+        descripcion=ci.descripcion,
+        estado=ci.estado,
+        funcionario_reasignado=ci.funcionario_reasignado,
+        fecha_registro=ci.fecha_registro,
+        fecha_resolucion=ci.fecha_resolucion,
+        resuelto_por=ci.resuelto_por,
+    )
+
+
+# =============================================================================
+# CANAL DE DENUNCIA CON RESERVA DE IDENTIDAD (COMPONENTE 7 - DIRECTIVA 001-2026)
+# =============================================================================
+
+
+@app.get("/api/denuncias/resumen", response_model=DenunciaResumenPublicoOut)
+def resumen_publico_denuncias(db: Session = Depends(get_db)):
+    """
+    Estadísticas generales agregadas del Canal de Denuncia sin exponer identidades
+    ni detalles confidenciales (Numeral 7.2.7.3 de la Directiva N° 001-2026-PCM/SIP).
+    """
+    denuncias = db.query(DenunciaReservada).all()
+    total = len(denuncias)
+    en_tramite = sum(1 for d in denuncias if d.estado in ("RECIBIDA", "EN_EVALUACION"))
+    derivadas = sum(1 for d in denuncias if d.estado == "DERIVADA")
+    cerradas = sum(1 for d in denuncias if d.estado in ("ATENDIDA", "ARCHIVADA_MOTIVADA"))
+    con_proteccion = sum(1 for d in denuncias if d.solicita_proteccion)
+
+    conteo_cat = Counter(d.categoria for d in denuncias)
+    por_categoria = [
+        {"categoria": cat, "cantidad": cant}
+        for cat, cant in conteo_cat.most_common()
+    ]
+
+    return DenunciaResumenPublicoOut(
+        total_recibidas=total,
+        en_tramite=en_tramite,
+        derivadas=derivadas,
+        atendidas_o_archivadas=cerradas,
+        con_medida_proteccion=con_proteccion,
+        por_categoria=por_categoria,
+    )
+
+
+@app.get(
+    "/api/denuncias/consultar/{codigo_seguimiento}",
+    response_model=DenunciaConsultaPublicaOut,
+)
+def consultar_denuncia_por_codigo(
+    codigo_seguimiento: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Permite al denunciante consultar el estado y plazo SLA usando únicamente su código
+    cifrado de seguimiento (DEN-2026-XXXX), ocultando notas internas confidenciales de OCI.
+    """
+    cod_norm = codigo_seguimiento.strip().upper()
+    den = (
+        db.query(DenunciaReservada)
+        .filter(DenunciaReservada.codigo_seguimiento == cod_norm)
+        .first()
+    )
+    if not den:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No se encontró un reporte con el código reservado '{cod_norm}'.",
+        )
+    return DenunciaConsultaPublicaOut(
+        codigo_seguimiento=den.codigo_seguimiento,
+        hash_reserva=den.hash_reserva,
+        categoria=den.categoria,
+        area_involucrada=den.area_involucrada,
+        expediente_codigo=den.expediente_codigo,
+        estado=den.estado,
+        organo_derivado=den.organo_derivado,
+        medida_proteccion=den.medida_proteccion,
+        fecha_registro=den.fecha_registro,
+        fecha_limite_sla=den.fecha_limite_sla,
+        ultima_actualizacion=den.ultima_actualizacion,
+        respuesta_seguimiento=den.respuesta_seguimiento,
+    )
+
+
+@app.post("/api/denuncias", response_model=DenunciaConsultaPublicaOut)
+def registrar_denuncia_reservada(
+    payload: DenunciaCreateInput,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Registra una nueva denuncia con reserva estricta de identidad (D.L. N° 1327 y
+    Componente 7 de la Directiva N° 001-2026-PCM/SIP). Disponible para cualquier rol,
+    incluido acceso ciudadano/transparencia, sin recopilar datos personales reales.
+    """
+    _, _, ip_origen = extraer_actor_request(request)
+    desc_limpia = payload.descripcion_hechos.strip()
+    if len(desc_limpia) < 15:
+        raise HTTPException(
+            status_code=400,
+            detail="Describa brevemente los hechos (mínimo 15 caracteres) para iniciar la evaluación.",
+        )
+
+    ahora = datetime.utcnow()
+    ahora_iso = ahora.strftime("%Y-%m-%dT%H:%M:%S")
+    sla_fecha = (ahora + timedelta(days=7)).strftime("%Y-%m-%d")
+
+    total_actual = db.query(DenunciaReservada).count()
+    siguiente_num = total_actual + 1
+    codigo = f"DEN-2026-{siguiente_num:04d}"
+    while (
+        db.query(DenunciaReservada)
+        .filter(DenunciaReservada.codigo_seguimiento == codigo)
+        .first()
+    ):
+        siguiente_num += 1
+        codigo = f"DEN-2026-{siguiente_num:04d}"
+
+    hash_reserva = hashlib.sha256(
+        f"RESERVA-UNT-2026|{codigo}|{ahora_iso}|{payload.categoria}".encode("utf-8")
+    ).hexdigest()
+
+    medida_inicial = (
+        "Reserva de Identidad (D.L. N° 1327) — Medida de Protección Solicitada"
+        if payload.solicita_proteccion
+        else "Reserva de Identidad (D.L. N° 1327)"
+    )
+
+    exp_cod = (payload.expediente_codigo or "").strip().upper() or None
+    den = DenunciaReservada(
+        codigo_seguimiento=codigo,
+        hash_reserva=hash_reserva,
+        categoria=payload.categoria.strip(),
+        area_involucrada=payload.area_involucrada.strip() or "Por determinar",
+        expediente_codigo=exp_cod,
+        descripcion_hechos=desc_limpia,
+        solicita_proteccion=payload.solicita_proteccion,
+        medida_proteccion=medida_inicial,
+        estado="RECIBIDA",
+        organo_derivado="Oficina de Integridad — Recepción Confidencial",
+        fecha_registro=ahora_iso,
+        fecha_limite_sla=sla_fecha,
+        ultima_actualizacion=ahora_iso,
+        respuesta_seguimiento=(
+            f"Reporte registrado exitosamente con código cifrado {codigo}. "
+            f"Identidad protegida bajo D.L. N° 1327. Plazo máximo de evaluación de admisibilidad: {sla_fecha}."
+        ),
+        nota_interna_oci=None,
+        gestionado_por=None,
+    )
+    db.add(den)
+    db.commit()
+    db.refresh(den)
+
+    # Registrar en bitácora global SIN almacenar identidad del denunciante (reserva estricta)
+    registrar_evento_auditoria(
+        db=db,
+        usuario_codigo="DENUNCIANTE-RESERVADO",
+        rol_usuario="Canal de Denuncia (Identidad Protegida D.L. 1327)",
+        accion="REGISTRO_DENUNCIA_RESERVADA",
+        recurso=den.codigo_seguimiento,
+        resultado="PERMITIDO",
+        detalle=(
+            f"Se ingresó denuncia reservada en categoría '{den.categoria}' "
+            f"(Área: {den.area_involucrada}"
+            + (f", Ref: {den.expediente_codigo}" if den.expediente_codigo else "")
+            + f"). Protección solicitada: {'Sí' if den.solicita_proteccion else 'No'}. SLA: {den.fecha_limite_sla}."
+        ),
+        ip_origen="RESERVA-CIFRADA",
+    )
+
+    return DenunciaConsultaPublicaOut(
+        codigo_seguimiento=den.codigo_seguimiento,
+        hash_reserva=den.hash_reserva,
+        categoria=den.categoria,
+        area_involucrada=den.area_involucrada,
+        expediente_codigo=den.expediente_codigo,
+        estado=den.estado,
+        organo_derivado=den.organo_derivado,
+        medida_proteccion=den.medida_proteccion,
+        fecha_registro=den.fecha_registro,
+        fecha_limite_sla=den.fecha_limite_sla,
+        ultima_actualizacion=den.ultima_actualizacion,
+        respuesta_seguimiento=den.respuesta_seguimiento,
+    )
+
+
+@app.get("/api/denuncias", response_model=List[DenunciaOut])
+def listar_denuncias_confidenciales(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Bandeja confidencial de gestión del Canal de Denuncia.
+    EXCLUSIVA para Auditor OCI / Oficina de Integridad conforme a la reserva exigida
+    en el numeral 7.2.7.3 de la Directiva N° 001-2026-PCM/SIP.
+    """
+    usuario, rol, ip_origen = extraer_actor_request(request)
+    if not _es_auditor_oci(rol):
+        registrar_evento_auditoria(
+            db=db,
+            usuario_codigo=usuario,
+            rol_usuario=rol,
+            accion="ACCESO_DENEGADO_RBAC",
+            recurso="CANAL-DENUNCIA-CONFIDENCIAL",
+            resultado="BLOQUEADO_403",
+            detalle=(
+                f"Intento bloqueado de consultar la bandeja confidencial de denuncias desde rol '{rol}' "
+                "(reserva protegida por Directiva N° 001-2026-PCM/SIP 7.2.7.3)."
+            ),
+            ip_origen=ip_origen,
+        )
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Acceso reservado (Directiva N° 001-2026-PCM/SIP): Solo la Oficina de Integridad / "
+                "Auditor OCI puede visualizar el detalle de denuncias recibidas."
+            ),
+        )
+
+    denuncias = db.query(DenunciaReservada).order_by(DenunciaReservada.id.desc()).all()
+    return [DenunciaOut.model_validate(d) for d in denuncias]
+
+
+@app.patch("/api/denuncias/{denuncia_id}", response_model=DenunciaOut)
+def gestionar_denuncia_reservada(
+    denuncia_id: int,
+    payload: DenunciaGestionInput,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Evalúa admisibilidad, otorga medidas de protección al denunciante (Tarea 7.2) y deriva
+    a órgano competente (OCI, Secretaría Técnica PAD o Procuraduría Pública — Tarea 7.1).
+    EXCLUSIVO Auditor OCI / Oficina de Integridad.
+    """
+    usuario, rol, ip_origen = extraer_actor_request(request)
+    den = db.query(DenunciaReservada).filter(DenunciaReservada.id == denuncia_id).first()
+    if not den:
+        raise HTTPException(status_code=404, detail="Denuncia no encontrada")
+
+    if not _es_auditor_oci(rol):
+        registrar_evento_auditoria(
+            db=db,
+            usuario_codigo=usuario,
+            rol_usuario=rol,
+            accion="ACCESO_DENEGADO_RBAC",
+            recurso=den.codigo_seguimiento,
+            resultado="BLOQUEADO_403",
+            detalle=f"Intento bloqueado de modificar la denuncia '{den.codigo_seguimiento}' desde rol '{rol}'.",
+            ip_origen=ip_origen,
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado (RBAC): Solo el Auditor OCI / Oficina de Integridad puede gestionar y derivar denuncias.",
+        )
+
+    if len(payload.nota_interna_oci.strip()) < 10:
+        raise HTTPException(
+            status_code=400,
+            detail="Debe registrar un sustento motivado (mínimo 10 caracteres) para actualizar o derivar la denuncia.",
+        )
+
+    ahora_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    estado_previo = den.estado
+    den.estado = payload.estado.strip()
+    den.organo_derivado = payload.organo_derivado.strip()
+    den.medida_proteccion = payload.medida_proteccion.strip()
+    if payload.fecha_limite_sla and payload.fecha_limite_sla.strip():
+        den.fecha_limite_sla = payload.fecha_limite_sla.strip()
+    den.respuesta_seguimiento = payload.respuesta_seguimiento.strip()
+    den.nota_interna_oci = payload.nota_interna_oci.strip()
+    den.ultima_actualizacion = ahora_iso
+    den.gestionado_por = f"{usuario} ({rol})"
+
+    db.commit()
+    db.refresh(den)
+
+    registrar_evento_auditoria(
+        db=db,
+        usuario_codigo=usuario,
+        rol_usuario=rol,
+        accion="GESTION_DENUNCIA_RESERVADA",
+        recurso=den.codigo_seguimiento,
+        resultado="PERMITIDO",
+        detalle=(
+            f"Actualizó denuncia {den.codigo_seguimiento} ({estado_previo} → {den.estado}). "
+            f"Derivada a: {den.organo_derivado}. Medida de protección: {den.medida_proteccion}."
+        ),
+        ip_origen=ip_origen,
+    )
+    return DenunciaOut.model_validate(den)

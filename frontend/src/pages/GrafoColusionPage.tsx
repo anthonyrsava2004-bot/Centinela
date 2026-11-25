@@ -184,10 +184,10 @@ export const GrafoColusionPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2.5">
             <Network className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-            Detección de Colusión y Pluralidad Ficticia por Grafos (NetworkX + Cytoscape)
+            Empresas con Datos Compartidos (Posible Colusión)
           </h1>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-            Identificación topológica de proveedores aparentemente independientes que comparten Representante Legal, Dirección Fiscal o Teléfono Hash en un mismo proceso (Art. 30 Ley N° 32069)
+            Identifica proveedores que compiten en un mismo proceso pero comparten representante legal, dirección o teléfono (Art. 30 Ley N° 32069 • Grafo NetworkX)
           </p>
         </div>
 
@@ -201,8 +201,8 @@ export const GrafoColusionPage: React.FC = () => {
             }`}
           >
             {soloRiesgo
-              ? 'Vista: Anillos de Colusión Detectados'
-              : 'Vista: Red Extendida con Postores Limpios'}
+              ? 'Vista: Grupos con Datos Compartidos'
+              : 'Vista: Todos los Proveedores'}
           </button>
         </div>
       </div>
@@ -212,10 +212,10 @@ export const GrafoColusionPage: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
           <div className="p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
             <div className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-bold">
-              Anillos de Colusión
+              Grupos Vinculados
             </div>
             <div className="text-xl xl:text-2xl font-extrabold text-rose-700 dark:text-rose-400 mt-1">
-              {grafoData.metricas_grafo.total_clusters_colusion} Clústeres
+              {grafoData.metricas_grafo.total_clusters_colusion} Grupos
             </div>
           </div>
           <div className="p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
@@ -223,12 +223,12 @@ export const GrafoColusionPage: React.FC = () => {
               Proveedores Vinculados
             </div>
             <div className="text-xl xl:text-2xl font-extrabold text-amber-700 dark:text-amber-300 mt-1">
-              {grafoData.metricas_grafo.proveedores_en_colusion} Postores
+              {grafoData.metricas_grafo.proveedores_en_colusion} Empresas
             </div>
           </div>
           <div className="p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
             <div className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-bold">
-              Expedientes Afectados
+              Compras Afectadas
             </div>
             <div className="text-xl xl:text-2xl font-extrabold text-blue-700 dark:text-cyan-300 mt-1">
               {grafoData.metricas_grafo.expedientes_comprometidos} Procesos
@@ -236,7 +236,7 @@ export const GrafoColusionPage: React.FC = () => {
           </div>
           <div className="p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
             <div className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-bold">
-              Nodos en Grafo
+              Elementos en el Mapa
             </div>
             <div className="text-xl xl:text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
               {grafoData.metricas_grafo.total_nodos}
@@ -244,7 +244,7 @@ export const GrafoColusionPage: React.FC = () => {
           </div>
           <div className="p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
             <div className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-bold">
-              Enlaces Forenses
+              Conexiones Detectadas
             </div>
             <div className="text-xl xl:text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">
               {grafoData.metricas_grafo.total_enlaces}

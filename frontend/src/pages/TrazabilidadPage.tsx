@@ -13,10 +13,14 @@ import {
   AlertTriangle,
   RefreshCw,
   Users,
+  ClipboardCheck,
+  Ban,
+  Camera,
 } from 'lucide-react';
 import { centinelaApi } from '../api/client';
-import { ExpedienteDetalle, ExpedienteListItem, RolUsuario } from '../types';
+import { EntregableTdrItem, ExpedienteDetalle, ExpedienteListItem, RolUsuario } from '../types';
 import { IntegrityBadge, RiskBadge } from '../components/AlertBadge';
+import { Modal } from '../components/Modal';
 
 interface TrazabilidadPageProps {
   rolActivo: RolUsuario;
@@ -24,6 +28,7 @@ interface TrazabilidadPageProps {
 
 export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo }) => {
   const esAuditorOCI = rolActivo.startsWith('Auditor OCI');
+  const esSoloLectura = rolActivo.startsWith('Consulta Transparencia');
   const [searchParams, setSearchParams] = useSearchParams();
   const initialId = Number(searchParams.get('id')) || 6;
 
@@ -34,6 +39,8 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
   const [etapaSimulacion, setEtapaSimulacion] = useState<string>('Cotizaciones');
   const [loading, setLoading] = useState<boolean>(true);
   const [procesandoAccion, setProcesandoAccion] = useState<boolean>(false);
+  const [entregableEdit, setEntregableEdit] = useState<EntregableTdrItem | null>(null);
+  const [evidenciaInput, setEvidenciaInput] = useState<string>('');
 
   const cargarDetalle = async (idToLoad: number, listaFallback?: ExpedienteListItem[]) => {
     try {
@@ -114,6 +121,46 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
     }
   };
 
+  const abrirVerificacionEntregable = (ent: EntregableTdrItem) => {
+    setEntregableEdit(ent);
+    setEvidenciaInput(
+      ent.evidencia_tecnica ||
+        'Certificado Técnico de Pruebas de Pozo a Tierra CNE-2025 (< 5 Ohm) + Registro Fotográfico (6 fotos georreferenciadas)',
+    );
+  };
+
+  const handleGuardarEntregable = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!entregableEdit || !detalle) return;
+    try {
+      setProcesandoAccion(true);
+      await centinelaApi.verificarEntregableTdr(entregableEdit.id, {
+        cumplido: true,
+        evidencia_tecnica: evidenciaInput,
+        rol_usuario: rolActivo,
+      });
+      setEntregableEdit(null);
+      await cargarDetalle(detalle.id);
+    } finally {
+      setProcesandoAccion(false);
+    }
+  };
+
+  const handleRevertirEntregable = async (ent: EntregableTdrItem) => {
+    if (!detalle) return;
+    try {
+      setProcesandoAccion(true);
+      await centinelaApi.verificarEntregableTdr(ent.id, {
+        cumplido: false,
+        evidencia_tecnica: '',
+        rol_usuario: rolActivo,
+      });
+      await cargarDetalle(detalle.id);
+    } finally {
+      setProcesandoAccion(false);
+    }
+  };
+
   if (loading && !detalle) {
     return (
       <div className="h-96 flex flex-col items-center justify-center space-y-3">
@@ -153,7 +200,7 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2.5">
               <span className="text-xs font-mono uppercase px-2.5 py-0.5 rounded bg-blue-50 dark:bg-cyan-500/15 text-blue-800 dark:text-cyan-300 border border-blue-200 dark:border-cyan-500/30 font-semibold">
-                Auditoría Forense Digital
+                Detalle del Proceso y Seguridad Documental
               </span>
               <IntegrityBadge integra={cadena.integridad_global} />
               <RiskBadge nivel={detalle.nivel_riesgo} puntaje={detalle.puntaje_riesgo} />
@@ -197,11 +244,11 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
                 <button
                   onClick={handleSimularAlteracion}
                   disabled={procesandoAccion}
-                  title="Simula una alteración clandestina directa en BD para validar la ruptura SHA-256"
+                  title="Simula editar un documento antiguo en base de datos para comprobar cómo la alerta SHA-256 detecta el cambio"
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 dark:hover:bg-rose-500 disabled:opacity-40 text-white font-bold text-xs shadow-sm transition"
                 >
                   <Zap className="w-4 h-4" />
-                  Simular Alteración Ex Post
+                  Probar Cambio Oculto
                 </button>
 
                 {!cadena.integridad_global && (
@@ -211,7 +258,7 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 font-bold text-xs transition"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    Restaurar Cadena
+                    Restaurar Documento
                   </button>
                 )}
               </div>
@@ -271,8 +318,8 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
         <div className="space-y-1">
           <h2 className="text-sm font-extrabold uppercase tracking-wide">
             {cadena.integridad_global
-              ? 'Verificación Criptográfica SHA-256 Exitosa (Cadena Inmutable Intacta)'
-              : `¡Alerta Forense Crítica! Ruptura de Cadena Detectada desde Eslabón #${cadena.orden_comprometido} (${cadena.etapa_comprometida})`}
+              ? 'Documentos sin Alteraciones (Sello Criptográfico SHA-256 Verificado)'
+              : `¡Alerta! Se Detectó un Cambio No Autorizado desde la Etapa #${cadena.orden_comprometido} (${cadena.etapa_comprometida})`}
           </h2>
           <p className="text-xs leading-relaxed opacity-90">{cadena.mensaje_forense}</p>
         </div>
@@ -411,6 +458,109 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
           })}
         </div>
       </div>
+
+      {/* SECCIÓN 1.5: CHECKLIST DE ENTREGABLES OBLIGATORIOS DEL TDR (BLOQUEO PREVENTIVO DE PAGO) */}
+      {detalle.entregables_tdr && detalle.entregables_tdr.length > 0 && (
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <ClipboardCheck className="w-5 h-5 text-blue-700 dark:text-cyan-400" />
+                Verificación de Entregables Obligatorios del TDR (Control Previo a Conformidad y Pago)
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Impide conformidades genéricas exigiendo evidencia técnica y fotográfica por cada entregable antes de habilitar el desembolso en Tesorería
+              </p>
+            </div>
+
+            {detalle.pago_bloqueado_preventivo ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-500/50 text-xs font-extrabold">
+                <Ban className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                DESEMBOLSO BLOQUEADO EN TESORERÍA
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/40 text-xs font-bold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                CONFORMIDAD HABILITADA PARA PAGO (100% VERIFICADO)
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {detalle.entregables_tdr.map((ent) => (
+              <div
+                key={ent.id}
+                className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 text-xs ${
+                  ent.cumplido
+                    ? 'bg-emerald-50/50 dark:bg-emerald-950/15 border-emerald-200 dark:border-emerald-500/30'
+                    : 'bg-rose-50 dark:bg-rose-950/30 border-rose-300 dark:border-rose-500/50'
+                }`}
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                      Entregable #{ent.orden} {ent.obligatorio ? '• OBLIGATORIO' : ''}
+                    </span>
+                    {ent.cumplido ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 font-bold text-[10px]">
+                        <CheckCircle2 className="w-3 h-3" /> VERIFICADO
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-600 text-white font-bold text-[10px]">
+                        <AlertTriangle className="w-3 h-3" /> PENDIENTE / SIN EVIDENCIA
+                      </span>
+                    )}
+                  </div>
+                  <div className="font-bold text-slate-900 dark:text-white leading-snug">
+                    {ent.nombre}
+                  </div>
+                  {ent.evidencia_tecnica ? (
+                    <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 text-[11px] text-slate-700 dark:text-slate-300">
+                      <div className="flex items-center gap-1 font-semibold text-blue-700 dark:text-cyan-300 mb-0.5">
+                        <Camera className="w-3 h-3" /> Sustento Técnico / Fotográfico:
+                      </div>
+                      {ent.evidencia_tecnica}
+                      {ent.verificado_por && (
+                        <div className="text-[10px] font-mono text-slate-500 mt-1">
+                          Verificado por {ent.verificado_por} ({ent.fecha_verificacion})
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-2.5 rounded-lg bg-rose-100/70 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-500/40 text-[11px] text-rose-900 dark:text-rose-200">
+                      Sin sustento técnico ni registro fotográfico adjunto. Impide emitir conformidad válida y bloquea el giro en Tesorería.
+                    </div>
+                  )}
+                </div>
+
+                {!esSoloLectura && (
+                  <div className="pt-1">
+                    {!ent.cumplido ? (
+                      <button
+                        type="button"
+                        onClick={() => abrirVerificacionEntregable(ent)}
+                        disabled={procesandoAccion}
+                        className="w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition"
+                      >
+                        Verificar y Adjuntar Sustento Técnico
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleRevertirEntregable(ent)}
+                        disabled={procesandoAccion}
+                        className="w-full py-1.5 px-3 rounded-lg bg-white hover:bg-rose-50 dark:bg-slate-900 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-500/30 font-semibold text-[11px] transition"
+                      >
+                        Observar / Marcar Sin Sustento
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* SECCIÓN 2: DETECTOR SEMÁNTICO DE DIRECCIONAMIENTO EN TDR (TF-IDF + COSENO) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -629,6 +779,49 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
           </div>
         </div>
       </div>
+      {/* Modal: Verificar Entregable Obligatorio del TDR */}
+      <Modal
+        isOpen={Boolean(entregableEdit)}
+        onClose={() => setEntregableEdit(null)}
+        title={`Verificar Entregable #${entregableEdit?.orden} — ${detalle.codigo}`}
+        subtitle="Adjunte la referencia de sustento técnico o registro fotográfico para habilitar la conformidad y desbloquear Tesorería"
+      >
+        {entregableEdit && (
+          <form onSubmit={handleGuardarEntregable} className="space-y-4 text-xs">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-bold text-slate-900 dark:text-white">
+              {entregableEdit.nombre}
+            </div>
+            <div className="space-y-1.5">
+              <label className="block font-bold text-slate-700 dark:text-slate-200">
+                Sustento Técnico / Evidencia Fotográfica (Sintética):
+              </label>
+              <textarea
+                rows={3}
+                required
+                value={evidenciaInput}
+                onChange={(e) => setEvidenciaInput(e.target.value)}
+                className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setEntregableEdit(null)}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={procesandoAccion}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+              >
+                Confirmar Verificación y Registrar en Bitácora
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 };

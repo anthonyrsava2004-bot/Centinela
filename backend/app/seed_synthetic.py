@@ -1,7 +1,116 @@
+import hashlib
 from sqlalchemy.orm import Session
 from .crypto_audit import GENESIS_HASH, calcular_hash_actuacion
-from .models import Actuacion, AlertaGestion, Expediente, HistorialAlerta, Postulacion, Proveedor
+from .models import (
+    Actuacion,
+    AlertaGestion,
+    ConflictoInteres,
+    DenunciaReservada,
+    EntregableTDR,
+    Expediente,
+    HistorialAlerta,
+    Postulacion,
+    Proveedor,
+)
 from .rules_engine import ejecutar_motor_reglas_xai
+
+
+def sembrar_denuncias_base(db: Session) -> int:
+    """Siembra 3 denuncias sintéticas demostrativas con reserva de identidad (Componente 7 Directiva 001-2026-PCM/SIP)."""
+    db.query(DenunciaReservada).delete()
+    casos = [
+        (
+            "DEN-2026-0001",
+            "Fraccionamiento / Compras Partidas",
+            "AREA-TI-03",
+            "EXP-2025-UNT-0001",
+            "Reporte confidencial sintético: se advierte división de compra de 15 proyectores multimedia en tres órdenes menores en 10 días y posible vínculo familiar entre un interviniente de logística y el proveedor ganador.",
+            True,
+            "Reserva de Identidad (D.L. N° 1327) — Solicitud de Protección Laboral en evaluación",
+            "EN_EVALUACION",
+            "Oficina de Integridad — Evaluación de Admisibilidad",
+            "2026-11-22T10:15:00",
+            "2026-11-29",
+            "2026-11-23T09:00:00",
+            "Su reporte con código DEN-2026-0001 fue admitido con reserva estricta de identidad y se encuentra en verificación cruzada con el expediente EXP-2025-UNT-0001.",
+            "Cruce preliminar positivo con alertas R-01 y R-08. Pendiente derivación formal a OCI / Secretaría Técnica PAD y emisión de medida de protección laboral.",
+            "FUNC-OCI-01 (Auditor OCI)",
+        ),
+        (
+            "DEN-2026-0002",
+            "Pago sin Entregables Completos",
+            "AREA-INFRA-01",
+            "EXP-2025-UNT-0010",
+            "Reporte confidencial sintético: en la renovación eléctrica y pintado de 8 aulas se tramitó conformidad general sin haber ejecutado ni certificado las pruebas de pozo a tierra exigidas en el TDR.",
+            True,
+            "Protección Laboral Anti-Represalias + Reserva de Identidad (Concedida)",
+            "DERIVADA",
+            "OCI — Órgano de Control Institucional",
+            "2026-11-20T16:40:00",
+            "2026-11-27",
+            "2026-11-23T14:20:00",
+            "Reporte verificado y derivado al Órgano de Control Institucional (OCI). Se concedió medida de protección laboral y el desembolso fue bloqueado preventivamente.",
+            "Derivado con Informe de Admisibilidad N° 018-2026-OI. Bloqueo de pago activo en Tesorería hasta acreditar pruebas de pozo a tierra.",
+            "FUNC-OCI-01 (Auditor OCI)",
+        ),
+        (
+            "DEN-2026-0003",
+            "Posible Direccionamiento o Colusión",
+            "AREA-LAB-01",
+            "EXP-2025-UNT-0004",
+            "Reporte confidencial sintético: tres empresas que cotizaron en el proceso de equipamiento de laboratorio operarían desde la misma oficina comercial.",
+            True,
+            "Reserva de Identidad (D.L. N° 1327)",
+            "RECIBIDA",
+            "Oficina de Integridad — Recepción Confidencial",
+            "2026-11-24T08:30:00",
+            "2026-12-01",
+            "2026-11-24T08:30:00",
+            "Reporte recibido exitosamente con código reservado DEN-2026-0003. Plazo de evaluación inicial de admisibilidad: 7 días calendario.",
+            None,
+            None,
+        ),
+    ]
+    for (
+        cod,
+        cat,
+        area,
+        exp_cod,
+        desc,
+        sol_prot,
+        med_prot,
+        est,
+        org,
+        f_reg,
+        f_sla,
+        f_upd,
+        resp_seg,
+        nota_oci,
+        gest,
+    ) in casos:
+        h_res = hashlib.sha256(f"RESERVA-UNT-2026|{cod}|{f_reg}|{cat}".encode("utf-8")).hexdigest()
+        db.add(
+            DenunciaReservada(
+                codigo_seguimiento=cod,
+                hash_reserva=h_res,
+                categoria=cat,
+                area_involucrada=area,
+                expediente_codigo=exp_cod,
+                descripcion_hechos=desc,
+                solicita_proteccion=sol_prot,
+                medida_proteccion=med_prot,
+                estado=est,
+                organo_derivado=org,
+                fecha_registro=f_reg,
+                fecha_limite_sla=f_sla,
+                ultima_actualizacion=f_upd,
+                respuesta_seguimiento=resp_seg,
+                nota_interna_oci=nota_oci,
+                gestionado_por=gest,
+            )
+        )
+    db.commit()
+    return len(casos)
 
 
 def crear_actuaciones_secuenciales(
@@ -45,9 +154,11 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
     cumpliendo estrictamente con la Ley N° 29733 (Privacidad por Diseño - códigos anonimizados)
     y la Ley N° 32069 (Ley General de Contrataciones Públicas).
     """
-    # Limpiar tablas en orden de dependencias
+    # Limpiar tablas en orden de dependencias (preservando la bitácora global AuditLog)
     db.query(HistorialAlerta).delete()
     db.query(AlertaGestion).delete()
+    db.query(ConflictoInteres).delete()
+    db.query(EntregableTDR).delete()
     db.query(Postulacion).delete()
     db.query(Actuacion).delete()
     db.query(Expediente).delete()
@@ -134,13 +245,14 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
     prov_por_codigo = {p.codigo: p for p in proveedores_lista}
 
     # -------------------------------------------------------------------------
-    # 2. DEFINIR LOS 8 CASOS TRAMPA (EXP-2025-UNT-0001 AL EXP-2025-UNT-0008)
+    # 2. DEFINIR LOS 10 CASOS FORENSES (EXP-2025-UNT-0001 AL EXP-2025-UNT-0010)
+    # Incluye Caso Práctico 1 UNT (15 Proyectores) y Caso Práctico 2 UNT (8 Aulas)
     # -------------------------------------------------------------------------
     trampas_spec = [
-        # Caso 1, 2 y 3: Fraccionamiento Indebido <= 8 UIT en AREA-TI-03 (mismo mes y rubro)
+        # Caso Práctico 1 UNT (Órdenes 1, 2 y 3 en 10 días): Fraccionamiento <= 8 UIT + Conflicto de Interés
         {
             "num": 1,
-            "objeto": "Adquisición de Módulos de Almacenamiento SAN para Servidores Académicos - Lote I",
+            "objeto": "Caso 1 UNT — Adquisición de 15 Proyectores Multimedia para Laboratorios (Orden 1/3 - 5 uds.)",
             "rubro": "Tecnología y Equipamiento Computacional",
             "area_usuaria": "AREA-TI-03",
             "modalidad": "Contratación Menor (<= 8 UIT)",
@@ -148,42 +260,42 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
             "fecha": "2025-02-04T09:10:00",
             "prov_ganador": "PROV-SYN-014",
             "postores": [("PROV-SYN-014", 41500.00, True), ("PROV-SYN-001", 42600.00, False)],
-            "tipo_trampa": "FRACCIONAMIENTO_8UIT",
+            "tipo_trampa": "CASO_1_PROYECTORES_UNT",
             "tdr": (
-                "Requerimiento técnico para adquisición de arreglos de discos estado sólido empresariales "
-                "con interfaz estándar SAS 12Gbps, capacidad 15TB brutos y soporte multiprotocolo estándar."
+                "Requerimiento técnico para adquisición de 5 proyectores multimedia láser de 5000 lúmenes ANSI "
+                "para aulas y laboratorios universitarios, conectividad HDMI/USB-C y garantía de 24 meses."
             ),
         },
         {
             "num": 2,
-            "objeto": "Adquisición de Unidades de Expansión y Controladoras SAN para Servidores - Lote II",
+            "objeto": "Caso 1 UNT — Adquisición de 15 Proyectores Multimedia para Laboratorios (Orden 2/3 - 5 uds.)",
             "rubro": "Tecnología y Equipamiento Computacional",
             "area_usuaria": "AREA-TI-03",
             "modalidad": "Contratación Menor (<= 8 UIT)",
             "monto": 40900.00,
-            "fecha": "2025-02-11T10:30:00",
+            "fecha": "2025-02-09T10:30:00",
             "prov_ganador": "PROV-SYN-014",
             "postores": [("PROV-SYN-014", 40900.00, True), ("PROV-SYN-019", 42100.00, False)],
             "tipo_trampa": "FRACCIONAMIENTO_8UIT",
             "tdr": (
-                "Especificaciones técnicas para bandejas de expansión de almacenamiento institucional "
-                "compatibles con gabinetes rack estándar de 19 pulgadas y fuentes redundantes estándar."
+                "Especificaciones técnicas para adquisición del segundo lote de 5 proyectores multimedia láser "
+                "destinados a laboratorios académicos de facultad con soporte de techo estándar."
             ),
         },
         {
             "num": 3,
-            "objeto": "Adquisición de Switches de Fibra Canal y Transceptores SAN para Servidores - Lote III",
+            "objeto": "Caso 1 UNT — Adquisición de 15 Proyectores Multimedia para Laboratorios (Orden 3/3 - 5 uds.)",
             "rubro": "Tecnología y Equipamiento Computacional",
             "area_usuaria": "AREA-TI-03",
             "modalidad": "Contratación Menor (<= 8 UIT)",
             "monto": 42100.00,
-            "fecha": "2025-02-19T11:45:00",
+            "fecha": "2025-02-13T11:45:00",
             "prov_ganador": "PROV-SYN-014",
             "postores": [("PROV-SYN-014", 42100.00, True), ("PROV-SYN-013", 42750.00, False)],
             "tipo_trampa": "FRACCIONAMIENTO_8UIT",
             "tdr": (
-                "Requerimiento de conmutadores de red de área de almacenamiento con 24 puertos activos "
-                "ópticos SFP+ bajo estándares abiertos IEEE para centro de procesamiento de datos."
+                "Requerimiento del tercer lote de 5 proyectores multimedia láser en lapso de 10 días calendario "
+                "para completar el equipamiento audiovisual de laboratorios universitarios."
             ),
         },
         # Caso 4: Colusión de Proveedores en Grafos (Anillo #1: PROV-SYN-004, 005, 006)
@@ -315,6 +427,28 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
                 "sistema UPS online doble conversión de 20 kVA y certificación de pozo a tierra según CNE."
             ),
         },
+        # Caso Práctico 2 UNT: Renovación Eléctrica y Pintado de 8 Aulas (Sin Pruebas de Pozo a Tierra)
+        {
+            "num": 10,
+            "objeto": "Caso 2 UNT — Renovación del Sistema Eléctrico y Pintado General de 8 Aulas Universitarias",
+            "rubro": "Infraestructura y Mantenimiento Eléctrico",
+            "area_usuaria": "AREA-INFRA-01",
+            "modalidad": "Concurso Público Abreviado",
+            "monto": 136400.00,
+            "fecha": "2025-03-25T09:15:00",
+            "prov_ganador": "PROV-SYN-015",
+            "postores": [
+                ("PROV-SYN-015", 136400.00, True),
+                ("PROV-SYN-018", 141200.00, False),
+                ("PROV-SYN-021", 143500.00, False),
+            ],
+            "tipo_trampa": "ENTREGABLE_INCOMPLETO_CONFORMIDAD",
+            "tdr": (
+                "Servicio integral de renovación del sistema eléctrico y pintado de 8 aulas académicas con tres "
+                "entregables obligatorios: (1) diagnóstico técnico inicial, (2) instalación de tableros eléctricos "
+                "con pruebas certificadas de pozo a tierra y (3) pintado general con evidencia fotográfica."
+            ),
+        },
     ]
 
     for spec in trampas_spec:
@@ -331,7 +465,13 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
             tdr_texto=spec["tdr"],
             proveedor_adjudicado_codigo=spec["prov_ganador"],
             nivel_riesgo="ALTO",
-            puntaje_riesgo=91 if spec["tipo_trampa"] == "INCONSISTENCIA_VERSION_SUSTENTO" else 92,
+            puntaje_riesgo=(
+                95
+                if spec["tipo_trampa"] in ("PAGO_SIN_CONFORMIDAD", "ENTREGABLE_INCOMPLETO_CONFORMIDAD")
+                else 91
+                if spec["tipo_trampa"] == "INCONSISTENCIA_VERSION_SUSTENTO"
+                else 92
+            ),
             integridad_valida=True,
             es_caso_trampa=True,
             tipo_trampa=spec["tipo_trampa"],
@@ -343,6 +483,7 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
         es_segregacion_rota = spec["tipo_trampa"] == "CONFLICTO_SEGREGACION"
         es_pago_sin_conf = spec["tipo_trampa"] == "PAGO_SIN_CONFORMIDAD"
         es_version_extemp = spec["tipo_trampa"] == "INCONSISTENCIA_VERSION_SUSTENTO"
+        es_caso2_aulas = spec["tipo_trampa"] == "ENTREGABLE_INCOMPLETO_CONFORMIDAD"
 
         etapas_data = [
             {
@@ -396,12 +537,17 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
                 "usuario_rol": "FUNC-LOG-01" if es_segregacion_rota else f"FUNC-{spec['area_usuaria'].split('-')[1]}-01",
                 "timestamp": f"{fecha_dia}T18:20:00" if not es_pago_sin_conf else f"{fecha_dia}T19:40:00",
                 "version_doc": "v1.0",
-                "tiene_sustento": False if es_pago_sin_conf else True,
+                "tiene_sustento": False if (es_pago_sin_conf or es_caso2_aulas) else True,
                 "documento_texto": (
                     "OBSERVADO - SIN ACTA DE RECEPCIÓN DEFINITIVA: Equipos pendientes de prueba de carga térmica; "
                     "pendiente de verificación técnica por el área usuaria."
                     if es_pago_sin_conf
-                    else f"Acta de Conformidad Técnica N° {500 + spec['num']}-2025 suscrita tras verificación en almacén."
+                    else (
+                        "CONFORMIDAD GENÉRICA SIN VERIFICAR ENTREGABLES: Se otorgó visto bueno global sin "
+                        "acreditar pruebas de pozo a tierra ni adjuntar sustento fotográfico/técnico."
+                        if es_caso2_aulas
+                        else f"Acta de Conformidad Técnica N° {500 + spec['num']}-2025 suscrita tras verificación en almacén."
+                    )
                 ),
             },
             {
@@ -411,12 +557,62 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
                 "version_doc": "v1.0",
                 "tiene_sustento": True,
                 "documento_texto": (
-                    f"Comprobante de Pago SIAF N° {8000 + spec['num']} girado a favor de {spec['prov_ganador']} "
-                    f"por S/ {spec['monto']:,.2f}."
+                    f"Solicitud de Devengado y Pago SIAF N° {8000 + spec['num']} por S/ {spec['monto']:,.2f} "
+                    f"a favor de {spec['prov_ganador']} (BLOQUEADO PREVENTIVAMENTE por entregable faltante)."
+                    if es_caso2_aulas
+                    else f"Comprobante de Pago SIAF N° {8000 + spec['num']} girado a favor de {spec['prov_ganador']} por S/ {spec['monto']:,.2f}."
                 ),
             },
         ]
         crear_actuaciones_secuenciales(db, exp, etapas_data)
+
+        # Sembrar Entregables Obligatorios del TDR por expediente
+        if es_caso2_aulas:
+            entregables_caso = [
+                (1, "Diagnóstico técnico inicial del sistema eléctrico", True, True, "Informe Diagnóstico INF-014-2025 + 6 fotos de tablero previo", "FUNC-INFRA-01", f"{fecha_dia}T17:10:00"),
+                (2, "Instalación de tableros eléctricos con pruebas certificadas de pozo a tierra", True, False, None, None, None),
+                (3, "Pintado general de 8 aulas académicas", True, True, "Acta Fotográfica de Pintado (8 aulas verificadas)", "FUNC-INFRA-01", f"{fecha_dia}T18:05:00"),
+            ]
+        else:
+            entregables_caso = [
+                (1, "Entrega de bienes/servicios según especificaciones del TDR", True, not es_pago_sin_conf, None if es_pago_sin_conf else f"Guía de Remisión y Acta N° {500 + spec['num']}-2025", None if es_pago_sin_conf else "FUNC-ALM-01", None if es_pago_sin_conf else f"{fecha_dia}T17:45:00"),
+                (2, "Pruebas de operatividad y verificación técnica en sede UNT", True, not es_pago_sin_conf, None if es_pago_sin_conf else "Informe Técnico de Pruebas + Evidencia Fotográfica", None if es_pago_sin_conf else f"FUNC-{spec['area_usuaria'].split('-')[1]}-01", None if es_pago_sin_conf else f"{fecha_dia}T18:10:00"),
+            ]
+
+        for ord_e, nom_e, oblig_e, cump_e, evid_e, verif_e, fver_e in entregables_caso:
+            db.add(
+                EntregableTDR(
+                    expediente_id=exp.id,
+                    orden=ord_e,
+                    nombre=nom_e,
+                    obligatorio=oblig_e,
+                    cumplido=cump_e,
+                    evidencia_tecnica=evid_e,
+                    verificado_por=verif_e,
+                    fecha_verificacion=fver_e,
+                )
+            )
+
+        # Sembrar Conflicto de Interés activo en Caso Práctico 1 UNT (EXP-2025-UNT-0001)
+        if spec["num"] == 1:
+            db.add(
+                ConflictoInteres(
+                    expediente_id=exp.id,
+                    funcionario_codigo="FUNC-LOG-04",
+                    proveedor_vinculado_codigo="PROV-SYN-014",
+                    tipo_vinculo="Vínculo Familiar Directo con Representante Legal",
+                    descripcion=(
+                        "Caso Práctico 1 UNT (Sintético): El código funcional FUNC-LOG-04 que participó "
+                        "en la indagación de mercado registra vínculo familiar directo con el representante "
+                        "del postor adjudicado PROV-SYN-014 sin haber presentado declaración de abstención."
+                    ),
+                    estado="DETECTADO",
+                    funcionario_reasignado=None,
+                    fecha_registro=f"{fecha_dia}T14:30:00",
+                    fecha_resolucion=None,
+                    resuelto_por=None,
+                )
+            )
 
         for cod_p, monto_of, ganador in spec["postores"]:
             prov_obj = prov_por_codigo[cod_p]
@@ -431,7 +627,7 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
             )
 
     # -------------------------------------------------------------------------
-    # 3. GENERAR 111 EXPEDIENTES LIMPIOS (EXP-2025-UNT-0010 AL EXP-2025-UNT-0120)
+    # 3. GENERAR 110 EXPEDIENTES LIMPIOS (EXP-2025-UNT-0011 AL EXP-2025-UNT-0120)
     # -------------------------------------------------------------------------
     areas_limpias = [
         "AREA-ACAD-01",
@@ -484,22 +680,22 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
         p for p in proveedores_lista if not p.es_colusorio
     ]
 
-    for num in range(10, 121):
-        idx_item = (num - 10) % len(objetos_limpios)
+    for num in range(11, 121):
+        idx_item = (num - 11) % len(objetos_limpios)
         obj_base, rubro, monto_base, modalidad = objetos_limpios[idx_item]
-        area = areas_limpias[(num - 10) % len(areas_limpias)]
+        area = areas_limpias[(num - 11) % len(areas_limpias)]
         variacion = ((num * 17) % 19) * 450.0
         monto_final = round(monto_base + variacion, 2)
         if "Menor" in modalidad and monto_final > 36000.0:
             monto_final = round(18500.0 + ((num * 313) % 14000), 2)
 
-        mes = ((num - 10) % 9) + 1
+        mes = ((num - 11) % 9) + 1
         dia = ((num * 3) % 27) + 1
         fecha_iso = f"2025-{mes:02d}-{dia:02d}T08:30:00"
         fecha_dia = f"2025-{mes:02d}-{dia:02d}"
 
-        p_ganador = proveedores_limpios[(num - 10) % len(proveedores_limpios)]
-        p_segundo = proveedores_limpios[(num - 9) % len(proveedores_limpios)]
+        p_ganador = proveedores_limpios[(num - 11) % len(proveedores_limpios)]
+        p_segundo = proveedores_limpios[(num - 10) % len(proveedores_limpios)]
 
         codigo_exp = f"EXP-2025-UNT-{num:04d}"
         tdr_generico = (
@@ -510,7 +706,7 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
 
         exp = Expediente(
             codigo=codigo_exp,
-            objeto=f"{obj_base} - Sede Lote #{num - 9}",
+            objeto=f"{obj_base} - Sede Lote #{num - 10}",
             rubro=rubro,
             area_usuaria=area,
             modalidad=modalidad,
@@ -595,17 +791,62 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
                 fecha_presentacion=f"{fecha_dia}T12:40:00",
             )
         )
+        db.add(
+            EntregableTDR(
+                expediente_id=exp.id,
+                orden=1,
+                nombre="Entrega de bienes/servicios conforme a especificaciones técnicas del TDR",
+                obligatorio=True,
+                cumplido=True,
+                evidencia_tecnica=f"Guía de Remisión + Registro Fotográfico en Almacén ({codigo_exp})",
+                verificado_por=f"FUNC-{area.split('-')[1]}-01",
+                fecha_verificacion=f"{fecha_dia}T16:50:00",
+            )
+        )
+        db.add(
+            EntregableTDR(
+                expediente_id=exp.id,
+                orden=2,
+                nombre="Acta de verificación técnica de operatividad y conformidad final",
+                obligatorio=True,
+                cumplido=True,
+                evidencia_tecnica=f"Acta de Conformidad Técnica N° {700 + num}-2025 firmada",
+                verificado_por=f"FUNC-{area.split('-')[1]}-01",
+                fecha_verificacion=f"{fecha_dia}T17:10:00",
+            )
+        )
+
+        # Caso ejemplar de prevención positiva: Declaración Oportuna + Abstención y Reasignación
+        if num == 11:
+            db.add(
+                ConflictoInteres(
+                    expediente_id=exp.id,
+                    funcionario_codigo="FUNC-COM-02",
+                    proveedor_vinculado_codigo=p_segundo.codigo,
+                    tipo_vinculo="Relación Laboral / Asesoría Previa (< 12 meses)",
+                    descripcion=(
+                        "Declaración oportuna registrada antes de la evaluación técnica: FUNC-COM-02 "
+                        "informó asesoría previa con un postor y solicitó abstención voluntaria."
+                    ),
+                    estado="ABSTENIDO_Y_REASIGNADO",
+                    funcionario_reasignado="FUNC-COM-ALT-03",
+                    fecha_registro=f"{fecha_dia}T11:20:00",
+                    fecha_resolucion=f"{fecha_dia}T12:00:00",
+                    resuelto_por="FUNC-OCI-01 (Auditor OCI — Oficina de Integridad)",
+                )
+            )
 
     db.commit()
 
     # 4. Ejecutar el motor de reglas explicables (XAI) sobre los 120 expedientes recién creados
     resumen_reglas = ejecutar_motor_reglas_xai(db)
+    sembrar_denuncias_base(db)
 
     return {
-        "mensaje": "Dataset sintético CENTINELA regenerado exitosamente (120 expedientes: 111 limpios + 9 casos forenses).",
+        "mensaje": "Dataset sintético CENTINELA regenerado exitosamente (120 expedientes: 110 limpios + 10 casos forenses incluyendo Caso 1 y Caso 2 UNT).",
         "total_expedientes": 120,
-        "expedientes_limpios": 111,
-        "expedientes_trampa": 9,
+        "expedientes_limpios": 110,
+        "expedientes_trampa": 10,
         "proveedores_sinteticos": len(proveedores_lista),
         "auditoria_xai": resumen_reglas,
     }

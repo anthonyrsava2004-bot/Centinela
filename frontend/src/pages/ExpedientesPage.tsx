@@ -86,6 +86,8 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
   const [pagoSinConformidad, setPagoSinConformidad] = useState<boolean>(false);
   const [modExtemporaneaTdr, setModExtemporaneaTdr] = useState<boolean>(false);
   const [sinSustentoDoc, setSinSustentoDoc] = useState<boolean>(false);
+  const [entregableIncompletoObra, setEntregableIncompletoObra] = useState<boolean>(false);
+  const [conflictoInteresFamiliar, setConflictoInteresFamiliar] = useState<boolean>(false);
 
   const cargarExpedientes = async () => {
     try {
@@ -138,6 +140,44 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
       setPagoSinConformidad(false);
       setModExtemporaneaTdr(false);
       setSinSustentoDoc(false);
+      setEntregableIncompletoObra(false);
+      setConflictoInteresFamiliar(false);
+    } else if (tipo === 'CASO_1_PROYECTORES') {
+      setObjeto('Caso 1 UNT — Adquisición de Proyectores Multimedia para Laboratorios (Orden Adicional en 10 días)');
+      setRubro('Tecnología y Equipamiento Computacional');
+      setAreaUsuaria('AREA-TI-03');
+      setModalidad('Contratación Menor (<= 8 UIT)');
+      setMontoEstimado('40200');
+      setFechaCreacion('2025-02-14T10:00:00');
+      setProvGanador('PROV-SYN-014');
+      setProvSegundo('PROV-SYN-001');
+      setTdrTexto(
+        'Solución exclusiva de identificación biométrica con arquitectura propietaria BioCore-X99 Quantum, equipada con sensor multiespectral NanoVein-770 de lectura subcutánea infrarroja a 940nm, protocolo cerrado de sincronización encriptada SyncLock-UNT v4.8, chasis blindado en aleación de magnesio anodizado IP69K serie Z-940 con procesador neuronal embebido TensorEdge-Pro 16 TOPS, fuente redundante HotSwap-550W y licencia perpetua del motor propietario OmniTrack-Enterprise.',
+      );
+      setMismoFuncionario(false);
+      setPagoSinConformidad(false);
+      setModExtemporaneaTdr(false);
+      setSinSustentoDoc(false);
+      setEntregableIncompletoObra(false);
+      setConflictoInteresFamiliar(true);
+    } else if (tipo === 'CASO_2_AULAS') {
+      setObjeto('Caso 2 UNT — Renovación del Sistema Eléctrico y Pintado de 8 Aulas (Sin Pruebas de Pozo a Tierra)');
+      setRubro('Infraestructura y Mantenimiento Eléctrico');
+      setAreaUsuaria('AREA-INFRA-01');
+      setModalidad('Concurso Público Abreviado');
+      setMontoEstimado('136400');
+      setFechaCreacion('2025-04-22T09:15:00');
+      setProvGanador('PROV-SYN-015');
+      setProvSegundo('PROV-SYN-018');
+      setTdrTexto(
+        'Renovación integral del sistema eléctrico y pintado general de 8 aulas académicas con 3 entregables obligatorios: diagnóstico técnico, instalación de tableros con pruebas de pozo a tierra y pintado general.',
+      );
+      setMismoFuncionario(false);
+      setPagoSinConformidad(false);
+      setModExtemporaneaTdr(false);
+      setSinSustentoDoc(false);
+      setEntregableIncompletoObra(true);
+      setConflictoInteresFamiliar(false);
     } else if (tipo === 'TDR_COPIADO') {
       setObjeto('Adquisición de Controladores Biométricos Avanzados para Campus Universitario');
       setRubro('Tecnología y Equipamiento Computacional');
@@ -225,6 +265,8 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
         pago_sin_conformidad: pagoSinConformidad,
         modificacion_extemporanea_tdr: modExtemporaneaTdr,
         sin_sustento_documental: sinSustentoDoc,
+        entregable_incompleto_obra: entregableIncompletoObra,
+        conflicto_interes_familiar: conflictoInteresFamiliar,
         rol_usuario: rolActivo,
       });
       setModalAbierto(false);
@@ -449,6 +491,20 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
             <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
+                onClick={() => aplicarPlantilla('CASO_1_PROYECTORES')}
+                className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold"
+              >
+                Caso 1 UNT: Proyectores (Fracc. + TDR + Conflicto)
+              </button>
+              <button
+                type="button"
+                onClick={() => aplicarPlantilla('CASO_2_AULAS')}
+                className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold"
+              >
+                Caso 2 UNT: 8 Aulas (Sin Pozo a Tierra)
+              </button>
+              <button
+                type="button"
                 onClick={() => aplicarPlantilla('LIMPIO')}
                 className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 font-semibold"
               >
@@ -658,6 +714,24 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
                 className="rounded border-slate-400 dark:border-slate-600"
               />
               Ausencia de sustento documental adjunto (R-07)
+            </label>
+            <label className="flex items-center gap-2 text-slate-700 dark:text-slate-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={entregableIncompletoObra}
+                onChange={(e) => setEntregableIncompletoObra(e.target.checked)}
+                className="rounded border-slate-400 dark:border-slate-600"
+              />
+              Entregable obligatorio TDR sin pruebas/evidencia (Caso 2 UNT — R-03)
+            </label>
+            <label className="flex items-center gap-2 text-slate-700 dark:text-slate-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={conflictoInteresFamiliar}
+                onChange={(e) => setConflictoInteresFamiliar(e.target.checked)}
+                className="rounded border-slate-400 dark:border-slate-600"
+              />
+              Vínculo familiar sin abstención (Conflicto de Interés — R-08)
             </label>
           </div>
 

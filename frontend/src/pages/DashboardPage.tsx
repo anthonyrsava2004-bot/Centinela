@@ -20,8 +20,9 @@ import {
   ClipboardCheck,
 } from 'lucide-react';
 import { centinelaApi } from '../api/client';
-import { DashboardKPIs, RolUsuario } from '../types';
+import { DashboardKPIs, MapaRiesgosData, RolUsuario } from '../types';
 import { IntegrityBadge, RiskBadge } from '../components/AlertBadge';
+import { MapaRiesgosPanel } from '../components/MapaRiesgosPanel';
 import { ROLE_PROFILES } from '../config/roles';
 
 interface DashboardPageProps {
@@ -33,6 +34,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
   const profile = ROLE_PROFILES[rolActivo];
 
   const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
+  const [mapaRiesgos, setMapaRiesgos] = useState<MapaRiesgosData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [regenerating, setRegenerating] = useState<boolean>(false);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
@@ -42,8 +44,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
     try {
       setLoading(true);
       setErrorMsg(null);
-      const data = await centinelaApi.getDashboardKPIs();
+      const [data, mapa] = await Promise.all([
+        centinelaApi.getDashboardKPIs(),
+        centinelaApi.obtenerMapaRiesgos(),
+      ]);
       setKpis(data);
+      setMapaRiesgos(mapa);
     } catch {
       setErrorMsg(
         'No se pudo conectar con el motor backend de CENTINELA. Verifique que FastAPI esté ejecutándose.',
@@ -111,16 +117,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
     : 'from-white via-amber-50/40 to-orange-50/60 border-amber-200 dark:from-slate-900 dark:via-slate-900 dark:to-amber-950/35 dark:border-amber-500/30';
 
   const heroTitle = profile.canDictaminarOci
-    ? 'Centro de Control Institucional y Auditoría Preventiva (OCI)'
+    ? 'Panel de Control Preventivo y Auditoría (OCI)'
     : profile.canSubmitDescargo
-    ? 'Panel Operativo de Contrataciones y Subsanaciones (DEC)'
-    : 'Portal Público de Transparencia e Integridad Institucional';
+    ? 'Panel de Gestión de Compras y Respuestas (DEC)'
+    : 'Portal Público de Transparencia en Compras';
 
   const heroSubtitle = profile.canDictaminarOci
-    ? 'Supervisión independiente sobre contrataciones sintéticas: verifique integridad SHA-256, derive alertas a áreas responsables y emita dictámenes de control simultáneo.'
+    ? 'Revise alertas tempranas en compras simuladas, compruebe que ningún documento fue alterado (SHA-256), gestione conflictos de interés y derive casos a las áreas responsables.'
     : profile.canSubmitDescargo
-    ? 'Gestione nuevos procesos antes de adjudicar, valide neutralidad de TDR y presente descargos técnicos o acciones correctivas ante alertas preventivas.'
-    : 'Consulta ciudadana abierta (Ley N° 27806) sobre presupuesto evaluado, cumplimiento normativo y datos abiertos anonimizados conforme a la Ley N° 29733.';
+    ? 'Registre nuevas compras para detectar riesgos antes de adjudicar, verifique entregables antes de pagar y responda a las alertas con sustento técnico.'
+    : 'Consulta ciudadana abierta (Ley N° 27806) con indicadores públicos de compras y datos anonimizados conforme a la Ley N° 29733.';
 
   return (
     <div className="space-y-7">
@@ -158,7 +164,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold text-xs shadow-sm transition"
               >
                 <BellRing className="w-4 h-4" />
-                Dictaminar Alertas ({kpis.alertas_pendientes})
+                Revisar Alertas ({kpis.alertas_pendientes})
               </button>
               <a
                 href={centinelaApi.obtenerUrlReporteInstitucionalPdf()}
@@ -197,14 +203,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950 font-extrabold text-xs shadow-sm transition"
               >
                 <PlusCircle className="w-4 h-4" />
-                Registrar y Evaluar Expediente
+                Registrar Nueva Compra
               </button>
               <button
                 onClick={() => navigate('/compliance')}
                 className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white hover:bg-blue-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-blue-300 dark:border-slate-700 text-blue-800 dark:text-cyan-300 font-bold text-xs shadow-sm dark:shadow-none transition"
               >
                 <ClipboardCheck className="w-4 h-4" />
-                Presentar Descargos ({kpis.alertas_pendientes})
+                Responder Alertas ({kpis.alertas_pendientes})
               </button>
               <a
                 href={centinelaApi.obtenerUrlReporteInstitucionalPdf()}
@@ -252,13 +258,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
           >
             <div>
               <div className="text-[11px] font-bold uppercase text-emerald-700 dark:text-emerald-400">
-                Acción de Control #1
+                Acceso Rápido #1
               </div>
               <div className="text-sm font-extrabold text-slate-900 dark:text-white mt-0.5">
-                {kpis.alertas_pendientes} alertas por derivar o dictaminar
+                {kpis.alertas_pendientes} alertas pendientes de revisar
               </div>
               <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                Validadas OCI: {kpis.alertas_validadas_oci} • En descargo DEC: {kpis.alertas_en_descargo}
+                Confirmadas OCI: {kpis.alertas_validadas_oci} • Con respuesta Compras: {kpis.alertas_en_descargo}
               </div>
             </div>
             <BellRing className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -270,13 +276,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
           >
             <div>
               <div className="text-[11px] font-bold uppercase text-blue-700 dark:text-cyan-400">
-                Acción de Control #2
+                Acceso Rápido #2
               </div>
               <div className="text-sm font-extrabold text-slate-900 dark:text-white mt-0.5">
-                Explorar Red de Proveedores Vinculados
+                Ver empresas con datos repetidos
               </div>
               <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                Anillos con representante, dirección o teléfono compartido
+                Proveedores que comparten dueño, dirección o teléfono
               </div>
             </div>
             <Network className="w-5 h-5 text-blue-700 dark:text-cyan-400 shrink-0" />
@@ -288,13 +294,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
           >
             <div>
               <div className="text-[11px] font-bold uppercase text-rose-700 dark:text-rose-400">
-                Acción de Control #3
+                Acceso Rápido #3
               </div>
               <div className="text-sm font-extrabold text-slate-900 dark:text-white mt-0.5">
-                Prueba Forense de Integridad SHA-256
+                Probar detección de cambios ocultos
               </div>
               <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                Simular alteración ex-post y verificar detección en cascada
+                Simula editar un documento antiguo y verifica la alerta SHA-256
               </div>
             </div>
             <Lock className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
@@ -306,19 +312,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
         <div className="p-5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/25 border border-blue-200 dark:border-blue-800/60 flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="text-xs font-extrabold uppercase tracking-wider text-blue-800 dark:text-cyan-300">
-              Estado de Atención del Área de Logística (DEC)
+              Pendientes del Área de Compras / Logística (DEC)
             </div>
             <p className="text-xs text-slate-700 dark:text-slate-300">
-              Tenés <strong className="text-rose-700 dark:text-rose-300">{kpis.alertas_pendientes} señales pendientes de descargo técnico</strong>,{' '}
-              <strong className="text-blue-800 dark:text-cyan-300">{kpis.alertas_en_descargo} enviadas a evaluación OCI</strong> y{' '}
-              <strong className="text-emerald-700 dark:text-emerald-300">{kpis.alertas_archivadas} archivadas con sustento</strong>. Recordá que la validación final corresponde exclusivamente al OCI.
+              Tiene <strong className="text-rose-700 dark:text-rose-300">{kpis.alertas_pendientes} alertas pendientes de respuesta</strong>,{' '}
+              <strong className="text-blue-800 dark:text-cyan-300">{kpis.alertas_en_descargo} enviadas a revisión OCI</strong> y{' '}
+              <strong className="text-emerald-700 dark:text-emerald-300">{kpis.alertas_archivadas} archivadas con sustento</strong>. Recuerde que la decisión final corresponde exclusivamente al OCI.
             </p>
           </div>
           <button
             onClick={() => navigate('/compliance')}
             className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950 text-xs font-bold inline-flex items-center gap-1.5 transition shrink-0"
           >
-            Ir a mis Descargos <ArrowRight className="w-3.5 h-3.5" />
+            Ir a Alertas por Responder <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
@@ -340,22 +346,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Universo Auditado
+              Compras Revisadas
             </span>
             <Layers className="w-5 h-5 text-blue-700 dark:text-cyan-400" />
           </div>
           <div className="text-3xl font-extrabold text-slate-900 dark:text-white">
             {kpis.total_expedientes}{' '}
             <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-              Expedientes
+              Procesos
             </span>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-2 border-t border-slate-100 dark:border-slate-800/80">
             <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
-              {kpis.expedientes_limpios} Limpios ({kpis.porcentaje_limpios.toFixed(1)}%)
+              {kpis.expedientes_limpios} Sin alerta ({kpis.porcentaje_limpios.toFixed(1)}%)
             </span>
             <span className="text-rose-700 dark:text-rose-400 font-semibold">
-              {kpis.expedientes_observados} En Revisión
+              {kpis.expedientes_observados} Con alerta
             </span>
           </div>
         </div>
@@ -363,7 +369,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Presupuesto Total Auditado
+              Monto Total Revisado
             </span>
             <Scale className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
           </div>
@@ -374,7 +380,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
             })}
           </div>
           <div className="text-xs text-slate-600 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800/80">
-            Monto con señales de riesgo:{' '}
+            Monto en compras con alerta:{' '}
             <span className="text-amber-700 dark:text-amber-300 font-mono font-semibold">
               S/ {kpis.monto_en_riesgo_preventivo.toLocaleString('es-PE')}
             </span>
@@ -395,33 +401,35 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
             })}
           </div>
           <div className="text-xs text-slate-600 dark:text-slate-400 pt-2 border-t border-emerald-200/70 dark:border-slate-800/80">
-            Detección temprana de sobrecostos, fraccionamiento y direccionamiento
+            Detección temprana de sobrecostos, compras partidas y direccionamiento
           </div>
         </div>
 
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Integridad Documental
+              Documentos Protegidos
             </span>
             <Lock className="w-5 h-5 text-blue-700 dark:text-cyan-400" />
           </div>
           <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
             {kpis.expedientes_integridad_rota === 0 ? (
-              <span className="text-blue-700 dark:text-cyan-300">100% Íntegra</span>
+              <span className="text-blue-700 dark:text-cyan-300" title="Verificación criptográfica SHA-256 al 100%">
+                100% Sin cambios
+              </span>
             ) : (
               <span className="text-rose-700 dark:text-rose-400">
-                {kpis.expedientes_integridad_rota} Cadena(s) Rota(s)
+                {kpis.expedientes_integridad_rota} Con alteración
               </span>
             )}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-2 border-t border-slate-100 dark:border-slate-800/80">
             <span className="text-slate-600 dark:text-slate-400">
-              Señales activas:{' '}
+              Alertas activas:{' '}
               <b className="text-slate-900 dark:text-white">{kpis.total_alertas_xai}</b>
             </span>
             <span className="text-amber-700 dark:text-amber-300 font-semibold">
-              {kpis.alertas_pendientes} Pendientes
+              {kpis.alertas_pendientes} Por revisar
             </span>
           </div>
         </div>
@@ -433,10 +441,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                Distribución de Señales Preventivas por Tipología Normativa
+                Alertas Detectadas por Tipo de Riesgo
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Cada señal explica regla activada, evidencia verificable y base legal (Ley N° 32069 / D.S. N° 009-2025-EF)
+                Cada alerta explica en lenguaje claro qué ocurrió, cuál es la evidencia y la base legal (Ley N° 32069 / D.S. N° 009-2025-EF)
               </p>
             </div>
             {!profile.isReadOnly && (
@@ -510,13 +518,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
             </li>
             <li className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200/80 dark:border-slate-800/80">
               <strong className="text-indigo-700 dark:text-indigo-300 block mb-0.5">
-                4. Capa Externa No Intrusiva (Ley N° 27806):
+                4. Modelo de Integridad & Capa No Intrusiva:
               </strong>
-              Complementa el control institucional sin duplicar ni reemplazar SEACE, SIGA ni SIAF.
+              Alineado al D.S. N° 148-2024-PCM, R.S. N° 002-2026-PCM/SIP y R.R. N° 0490-2026/UNT sin reemplazar SEACE, SIGA ni SIAF.
             </li>
           </ul>
         </div>
       </div>
+
+      {/* Mapa de Riesgos de Integridad (Probabilidad x Impacto por Etapa Crítica) */}
+      {mapaRiesgos && <MapaRiesgosPanel mapa={mapaRiesgos} />}
 
       {/* Tabla de Expedientes Prioritarios */}
       <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4">
@@ -524,82 +535,101 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white">
               {profile.isReadOnly
-                ? 'Procesos Públicos en Revisión Preventiva (Datos Anonimizados)'
-                : 'Expedientes Prioritarios con Señales Preventivas Detectadas'}
+                ? 'Compras Públicas en Revisión Preventiva (Datos Anonimizados)'
+                : 'Compras con Alertas Prioritarias para Revisar'}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Seleccione cualquier expediente para revisar su historial documental, análisis de TDR o descargar su reporte PDF
+              Haga clic en Revisar para inspeccionar documentos, entregables antes de pago, análisis de requisitos o descargar su reporte PDF
             </p>
           </div>
           <button
             onClick={() => navigate('/expedientes')}
             className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 inline-flex items-center gap-1.5 transition"
           >
-            Ver los {kpis.total_expedientes} Expedientes <ArrowRight className="w-3.5 h-3.5" />
+            Ver las {kpis.total_expedientes} Compras <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                <th className="py-3 px-3">Código</th>
-                <th className="py-3 px-3">Objeto de Contratación</th>
-                <th className="py-3 px-3">Área Usuaria</th>
-                <th className="py-3 px-3">Modalidad</th>
-                <th className="py-3 px-3">Monto (PEN)</th>
-                <th className="py-3 px-3">Tipología Detectada</th>
-                <th className="py-3 px-3">Integridad</th>
-                <th className="py-3 px-3">Riesgo</th>
-                <th className="py-3 px-3 text-right">Acción</th>
+              <tr className="border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <th className="py-2.5 px-2.5">Expediente y Objeto</th>
+                <th className="py-2.5 px-2.5">Monto / Modalidad</th>
+                <th className="py-2.5 px-2.5">Tipología Detectada</th>
+                <th className="py-2.5 px-2.5">Riesgo e Integridad</th>
+                <th className="py-2.5 px-2.5 text-right">Acción</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 text-xs">
-              {kpis.casos_destacados.map((exp) => (
-                <tr
-                  key={exp.id}
-                  className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
-                >
-                  <td className="py-3 px-3 font-mono font-bold text-blue-700 dark:text-cyan-300 whitespace-nowrap">
-                    {exp.codigo}
-                  </td>
-                  <td
-                    className="py-3 px-3 text-slate-800 dark:text-slate-200 max-w-xs truncate"
-                    title={exp.objeto}
+              {kpis.casos_destacados.map((exp) => {
+                const TIPOLOGIA_LABEL: Record<string, string> = {
+                  CASO_1_PROYECTORES_UNT: 'Caso 1 UNT • Fracc. + Conflicto',
+                  FRACCIONAMIENTO_8UIT: 'Fraccionamiento (<= 8 UIT)',
+                  COLUSION_PROVEEDORES: 'Red de Colusión',
+                  DIRECCIONAMIENTO_TDR: 'Direccionamiento TDR',
+                  CONFLICTO_SEGREGACION: 'Segregación de Funciones',
+                  PAGO_SIN_CONFORMIDAD: 'Pago sin Conformidad',
+                  INCONSISTENCIA_VERSION_SUSTENTO: 'Versión / Sin Sustento',
+                  ENTREGABLE_INCOMPLETO_CONFORMIDAD: 'Caso 2 UNT • Sin Pozo a Tierra',
+                };
+                const tipologiaTexto =
+                  (exp.tipo_trampa && TIPOLOGIA_LABEL[exp.tipo_trampa]) ||
+                  exp.tipo_trampa ||
+                  'Señal Preventiva XAI';
+
+                return (
+                  <tr
+                    key={exp.id}
+                    className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
                   >
-                    {exp.objeto}
-                  </td>
-                  <td className="py-3 px-3 font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                    {exp.area_usuaria}
-                  </td>
-                  <td className="py-3 px-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                    {exp.modalidad}
-                  </td>
-                  <td className="py-3 px-3 font-mono font-semibold text-slate-900 dark:text-white whitespace-nowrap">
-                    S/ {exp.monto_estimado.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="py-3 px-3">
-                    <span className="px-2 py-0.5 rounded bg-amber-50 dark:bg-slate-800 text-amber-800 dark:text-amber-300 font-mono text-[11px] border border-amber-200 dark:border-slate-700">
-                      {exp.tipo_trampa || 'ALTERACION_EX_POST'}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 whitespace-nowrap">
-                    <IntegrityBadge integra={exp.integridad_valida} />
-                  </td>
-                  <td className="py-3 px-3 whitespace-nowrap">
-                    <RiskBadge nivel={exp.nivel_riesgo} puntaje={exp.puntaje_riesgo} />
-                  </td>
-                  <td className="py-3 px-3 text-right whitespace-nowrap">
-                    <button
-                      onClick={() => navigate(`/trazabilidad?id=${exp.id}`)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 font-semibold transition"
-                    >
-                      <FileSearch className="w-3.5 h-3.5" />
-                      {profile.isReadOnly ? 'Ver Historial' : 'Auditar'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    <td className="py-2.5 px-2.5 max-w-[330px]">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-blue-700 dark:text-cyan-300 whitespace-nowrap">
+                          {exp.codigo}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono text-[10px] font-semibold whitespace-nowrap">
+                          {exp.area_usuaria}
+                        </span>
+                      </div>
+                      <div
+                        className="text-slate-700 dark:text-slate-300 text-[11px] truncate mt-0.5"
+                        title={exp.objeto}
+                      >
+                        {exp.objeto}
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-2.5 whitespace-nowrap">
+                      <div className="font-mono font-bold text-slate-900 dark:text-white">
+                        S/ {exp.monto_estimado.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                        {exp.modalidad}
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-2.5 whitespace-nowrap">
+                      <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-slate-800 text-amber-800 dark:text-amber-300 font-semibold text-[11px] border border-amber-200 dark:border-slate-700">
+                        {tipologiaTexto}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-2.5 whitespace-nowrap">
+                      <div className="flex flex-col items-start gap-1">
+                        <RiskBadge nivel={exp.nivel_riesgo} puntaje={exp.puntaje_riesgo} />
+                        <IntegrityBadge integra={exp.integridad_valida} />
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-2.5 text-right whitespace-nowrap">
+                      <button
+                        onClick={() => navigate(`/trazabilidad?id=${exp.id}`)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 font-semibold transition"
+                      >
+                        <FileSearch className="w-3.5 h-3.5" />
+                        {profile.isReadOnly ? 'Ver Historial' : 'Auditar'}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
