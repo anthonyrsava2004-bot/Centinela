@@ -210,7 +210,10 @@ export const GrafoColusionPage: React.FC = () => {
 
       {/* KPIs de Red */}
       {grafoData && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
+        <div
+          data-tour="grafo-kpis"
+          className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4"
+        >
           <div className="p-4 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
             <div className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-bold">
               Grupos Vinculados
@@ -256,7 +259,10 @@ export const GrafoColusionPage: React.FC = () => {
 
       {/* Lienzo Interactivo Cytoscape + Panel Inspector Forense */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden flex flex-col">
+        <div
+          data-tour="grafo-canvas"
+          className="lg:col-span-2 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden flex flex-col"
+        >
           {/* Barra de Leyenda y Zoom */}
           <div className="px-5 py-3 bg-slate-50 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-4 text-xs">
@@ -341,7 +347,10 @@ export const GrafoColusionPage: React.FC = () => {
         </div>
 
         {/* Panel Inspector de Nodo Seleccionado */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none flex flex-col justify-between space-y-4">
+        <div
+          data-tour="grafo-inspector"
+          className="p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none flex flex-col justify-between space-y-4"
+        >
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-800 pb-3">
               <Info className="w-4 h-4 text-blue-700 dark:text-cyan-400" />

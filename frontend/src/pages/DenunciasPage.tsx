@@ -271,7 +271,7 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
 
       {/* Estadísticas Generales Agregadas (Numeral 7.2.7.3 — sin exponer identidades) */}
       {resumen && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div data-tour="den-resumen" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
             <div className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400">
               Reportes Recibidos
@@ -325,7 +325,10 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
       {/* Bloque Dual: (1) Enviar Denuncia Reservada + (2) Consultar por Código */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* Tarjeta Izquierda: Registrar Denuncia Reservada */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4">
+        <div
+          data-tour="den-registrar"
+          className="p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4"
+        >
           <div>
             <h2 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
               <Send className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -452,7 +455,10 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
         </div>
 
         {/* Tarjeta Derecha: Consultar Estado por Código Reservado */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4">
+        <div
+          data-tour="den-consultar"
+          className="p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4"
+        >
           <div>
             <h2 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
               <KeyRound className="w-4 h-4 text-blue-700 dark:text-cyan-400" />
@@ -558,7 +564,10 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
 
       {/* Bandeja Confidencial de Gestión — EXCLUSIVA AUDITOR OCI / OFICINA DE INTEGRIDAD */}
       {esAuditorOCI ? (
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-emerald-200 dark:border-emerald-500/35 shadow-sm dark:shadow-none space-y-4">
+        <div
+          data-tour="den-bandeja"
+          className="p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-emerald-200 dark:border-emerald-500/35 shadow-sm dark:shadow-none space-y-4"
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
@@ -652,7 +661,10 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
           )}
         </div>
       ) : (
-        <div className="p-5 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 flex items-start gap-3 text-xs text-slate-600 dark:text-slate-400">
+        <div
+          data-tour="den-confidencialidad"
+          className="p-5 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 flex items-start gap-3 text-xs text-slate-600 dark:text-slate-400"
+        >
           <Lock className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
           <div>
             <strong className="text-slate-800 dark:text-slate-200 block mb-0.5">

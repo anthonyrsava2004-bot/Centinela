@@ -226,7 +226,7 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
           </div>
 
           {/* Botones Oficiales: Simulación Forense (solo OCI) + Descargar Reporte PDF */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div data-tour="traz-acciones" className="flex flex-wrap items-center gap-3">
             {esAuditorOCI ? (
               <div className="flex flex-wrap items-center gap-2 bg-slate-100 dark:bg-slate-950 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
                 <select
@@ -283,7 +283,10 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
         </div>
 
         {/* Selector Rápido de Expediente */}
-        <div className="pt-4 border-t border-slate-200 dark:border-slate-800/80 flex flex-wrap items-center gap-3">
+        <div
+          data-tour="traz-selector"
+          className="pt-4 border-t border-slate-200 dark:border-slate-800/80 flex flex-wrap items-center gap-3"
+        >
           <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
             Cambiar Expediente Inspeccionado:
           </label>
@@ -305,6 +308,7 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
 
       {/* Banner de Estado Criptográfico SHA-256 */}
       <div
+        data-tour="traz-banner-sha256"
         className={`p-5 rounded-2xl border flex items-start gap-4 ${
           cadena.integridad_global
             ? 'bg-emerald-50 dark:bg-emerald-950/25 border-emerald-200 dark:border-emerald-500/40 text-emerald-900 dark:text-emerald-200'
@@ -327,7 +331,7 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
       </div>
 
       {/* SECCIÓN 1: CADENA VISUAL SHA-256 (6 ETAPAS SECUENCIALES) */}
-      <div className="space-y-4">
+      <div data-tour="traz-etapas" className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -462,7 +466,10 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
 
       {/* SECCIÓN 1.5: CHECKLIST DE ENTREGABLES OBLIGATORIOS DEL TDR (BLOQUEO PREVENTIVO DE PAGO) */}
       {detalle.entregables_tdr && detalle.entregables_tdr.length > 0 && (
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4">
+        <div
+          data-tour="traz-candado-entregables"
+          className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4"
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">

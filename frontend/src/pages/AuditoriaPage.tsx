@@ -108,8 +108,11 @@ export const AuditoriaPage: React.FC<AuditoriaPageProps> = ({ rolActivo }) => {
 
   return (
     <div className="space-y-6">
-      {/* Encabezado */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-white via-emerald-50/40 to-white dark:from-slate-900 dark:to-emerald-950/30 p-6 rounded-2xl border border-emerald-200 dark:border-emerald-500/30 shadow-sm dark:shadow-none">
+      {/* Encabezado (Superficie Sólida Institucional Sin Degradados) */}
+      <div
+        data-tour="aud-header"
+        className="flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 border-t-[3px] border-t-[#0B1F3A] dark:border-t-emerald-500 shadow-sm dark:shadow-none"
+      >
         <div className="space-y-1">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-xs font-semibold">
             <Activity className="w-3.5 h-3.5" />
@@ -227,7 +230,10 @@ export const AuditoriaPage: React.FC<AuditoriaPageProps> = ({ rolActivo }) => {
       )}
 
       {/* Filtros */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div
+        data-tour="aud-filtros"
+        className="p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none grid grid-cols-1 md:grid-cols-4 gap-4"
+      >
         <div className="md:col-span-2 relative flex items-center">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
@@ -264,7 +270,10 @@ export const AuditoriaPage: React.FC<AuditoriaPageProps> = ({ rolActivo }) => {
       </div>
 
       {/* Tabla Cronológica de Eventos */}
-      <div className="rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
+      <div
+        data-tour="aud-tabla"
+        className="rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden"
+      >
         <div className="px-6 py-3.5 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
           <span>
             Mostrando{' '}

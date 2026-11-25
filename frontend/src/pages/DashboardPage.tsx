@@ -155,6 +155,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
     <div className="space-y-6">
       {/* Cabecera Estructural Diferenciada (Tono Sólido en Claro / Oscuro Profundo en Oscuro, Cero Degradados) */}
       <section
+        data-tour="dash-header"
         className={`rounded-2xl border border-t-[4px] ${heroContainerSurface} shadow-sm dark:shadow-none overflow-hidden transition-colors`}
       >
         <div className="grid grid-cols-1 lg:grid-cols-12 lg:divide-x divide-[#CBD7E6] dark:divide-slate-800">
@@ -416,7 +417,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
       )}
 
       {/* Tarjetas de KPIs Ejecutivos — Superficies Sólidas Sin Degradados */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div data-tour="dash-kpis" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none hover:border-slate-300 dark:hover:border-slate-700 transition space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -658,10 +659,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
       </div>
 
       {/* Mapa de Riesgos de Integridad (Probabilidad x Impacto por Etapa Crítica) */}
-      {mapaRiesgos && <MapaRiesgosPanel mapa={mapaRiesgos} />}
+      {mapaRiesgos && (
+        <div data-tour="dash-mapa-riesgos">
+          <MapaRiesgosPanel mapa={mapaRiesgos} />
+        </div>
+      )}
 
       {/* Tabla de Expedientes Prioritarios */}
-      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4">
+      <div
+        data-tour="dash-tabla-prioritaria"
+        className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4"
+      >
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white">

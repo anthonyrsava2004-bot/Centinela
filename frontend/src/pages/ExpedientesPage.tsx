@@ -296,7 +296,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div data-tour="exp-acciones" className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={() => setSoloTrampas(!soloTrampas)}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
@@ -330,7 +330,10 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
       </div>
 
       {/* Barra de Búsqueda y Filtros */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div
+        data-tour="exp-filtros"
+        className="p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none grid grid-cols-1 md:grid-cols-4 gap-4"
+      >
         <div className="md:col-span-2 relative flex items-center">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
@@ -370,7 +373,10 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
       </div>
 
       {/* Tabla de Expedientes */}
-      <div className="rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
+      <div
+        data-tour="exp-tabla"
+        className="rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden"
+      >
         <div className="px-6 py-3.5 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
           <span>
             Resultados encontrados:{' '}

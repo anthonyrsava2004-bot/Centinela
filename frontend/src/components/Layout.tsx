@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Shield,
@@ -25,8 +25,11 @@ import { RolUsuario } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { ROLE_LIST, ROLE_PROFILES } from '../config/roles';
 import { Modal } from './Modal';
-import { OnboardingTour } from './OnboardingTour';
+import { OnboardingTour, TourMode, getPageTourTargets } from './OnboardingTour';
 import { centinelaApi } from '../api/client';
+
+const TOUR_SKIP_ALL_KEY = 'centinela-tour-skip-all';
+const getTourRouteKey = (pathname: string) => `centinela-tour-route:${pathname}`;
 
 interface LayoutProps {
   rolActivo: RolUsuario;
@@ -47,23 +50,110 @@ export const Layout: React.FC<LayoutProps> = ({
   const [modalSesionAbierto, setModalSesionAbierto] = useState<boolean>(false);
   const [alertasPendientes, setAlertasPendientes] = useState<number>(0);
   const [tourAbierto, setTourAbierto] = useState<boolean>(false);
+  const [tourMode, setTourMode] = useState<TourMode>('page');
+  const tourDelayRef = useRef<number | null>(null);
+  const tourPollRef = useRef<number | null>(null);
 
-  // Mostrar guía interactiva automáticamente solo en la primera visita del usuario
+  const detenerEsperaTour = () => {
+    if (tourDelayRef.current !== null) {
+      window.clearTimeout(tourDelayRef.current);
+      tourDelayRef.current = null;
+    }
+    if (tourPollRef.current !== null) {
+      window.clearInterval(tourPollRef.current);
+      tourPollRef.current = null;
+    }
+  };
+
+  // Mostrar guía contextual automáticamente al entrar por primera vez a cada ruta
   useEffect(() => {
+    detenerEsperaTour();
+    setTourAbierto(false);
+
+    const pathname = location.pathname;
+    let silenciadoGlobal = false;
+    let rutaVista = false;
     try {
-      if (localStorage.getItem('centinela-tour-visto') !== '1') {
-        const timer = window.setTimeout(() => setTourAbierto(true), 450);
-        return () => window.clearTimeout(timer);
-      }
+      silenciadoGlobal = localStorage.getItem(TOUR_SKIP_ALL_KEY) === '1';
+      rutaVista = localStorage.getItem(getTourRouteKey(pathname)) === '1';
     } catch {
       // Ignorar errores de almacenamiento
     }
-  }, []);
+
+    if (silenciadoGlobal || rutaVista) {
+      return;
+    }
+
+    const targets = getPageTourTargets(pathname);
+    if (targets.length === 0) {
+      return;
+    }
+
+    const startedAt = Date.now();
+    const POLL_MS = 250;
+    const MAX_WAIT_MS = 3000;
+
+    const tryOpenWhenReady = (): boolean => {
+      const elapsed = Date.now() - startedAt;
+      const hasMountedAnchor = targets.some((target) => {
+        const el = document.querySelector(`[data-tour="${target}"]`) as HTMLElement | null;
+        if (!el) return false;
+        const box = el.getBoundingClientRect();
+        return box.width > 0 && box.height > 0;
+      });
+      const mainHasSpinner = Boolean(document.querySelector('main .animate-spin'));
+
+      if (hasMountedAnchor && (!mainHasSpinner || elapsed >= 1500)) {
+        detenerEsperaTour();
+        setTourMode('page');
+        setTourAbierto(true);
+        return true;
+      }
+
+      if (elapsed >= MAX_WAIT_MS) {
+        detenerEsperaTour();
+        return true;
+      }
+
+      return false;
+    };
+
+    tourDelayRef.current = window.setTimeout(() => {
+      tourDelayRef.current = null;
+      if (!tryOpenWhenReady()) {
+        tourPollRef.current = window.setInterval(() => {
+          tryOpenWhenReady();
+        }, POLL_MS);
+      }
+    }, POLL_MS);
+
+    return () => {
+      detenerEsperaTour();
+    };
+  }, [location.pathname]);
+
+  const abrirTourManual = () => {
+    detenerEsperaTour();
+    setTourMode('page');
+    setTourAbierto(true);
+  };
 
   const cerrarTour = () => {
+    detenerEsperaTour();
     setTourAbierto(false);
     try {
-      localStorage.setItem('centinela-tour-visto', '1');
+      localStorage.setItem(getTourRouteKey(location.pathname), '1');
+    } catch {
+      // Ignorar errores de almacenamiento
+    }
+  };
+
+  const silenciarTodosLosTours = () => {
+    detenerEsperaTour();
+    setTourAbierto(false);
+    try {
+      localStorage.setItem(TOUR_SKIP_ALL_KEY, '1');
+      localStorage.setItem(getTourRouteKey(location.pathname), '1');
     } catch {
       // Ignorar errores de almacenamiento
     }
@@ -327,7 +417,10 @@ export const Layout: React.FC<LayoutProps> = ({
               </div>
               <button
                 type="button"
-                onClick={() => setModalSesionAbierto(true)}
+                onClick={() => {
+                  detenerEsperaTour();
+                  setModalSesionAbierto(true);
+                }}
                 className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/90 hover:bg-white dark:bg-slate-900/80 dark:hover:bg-slate-900 text-slate-800 dark:text-slate-100 border border-black/10 dark:border-white/10 text-[11px] font-bold transition whitespace-nowrap"
                 title="Cambiar perfil de sesión institucional (Demo RBAC)"
               >
@@ -336,12 +429,12 @@ export const Layout: React.FC<LayoutProps> = ({
               </button>
             </div>
 
-            {/* Botón Guía Interactiva (Repetir Tour) */}
+            {/* Botón Guía Interactiva (Abrir guía contextual de la vista actual) */}
             <button
               type="button"
-              onClick={() => setTourAbierto(true)}
+              onClick={abrirTourManual}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition whitespace-nowrap"
-              title="Iniciar recorrido guiado paso a paso"
+              title="Iniciar guía interactiva paso a paso de esta sección"
             >
               <HelpCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Guía</span>
@@ -487,8 +580,13 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       </Modal>
 
-      {/* Recorrido Guiado Interactivo para Usuarios Nuevos */}
-      <OnboardingTour isOpen={tourAbierto} onClose={cerrarTour} />
+      {/* Recorrido Guiado Interactivo Contextual por Sección y Menú General */}
+      <OnboardingTour
+        isOpen={tourAbierto}
+        initialMode={tourMode}
+        onClose={cerrarTour}
+        onSkipAll={silenciarTodosLosTours}
+      />
     </div>
   );
 };

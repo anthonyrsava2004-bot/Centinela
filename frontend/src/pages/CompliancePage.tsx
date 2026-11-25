@@ -308,7 +308,7 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
 
         {/* Filtros (Tab 1) o Acción Declarar (Tab 2) */}
         {tabActivo === 'alertas' ? (
-          <div className="flex flex-wrap items-center gap-3">
+          <div data-tour="comp-filters" className="flex flex-wrap items-center gap-3">
             <select
               value={filtroEstado}
               onChange={(e) => setFiltroEstado(e.target.value)}
@@ -347,6 +347,7 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
           </span>
         ) : (
           <button
+            data-tour="comp-declarar"
             onClick={() => {
               setErrorCiModal(null);
               setModalDeclararAbierto(true);
@@ -360,7 +361,10 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
       </div>
 
       {/* Selector de Pestañas: Señales XAI vs Conflictos de Interés */}
-      <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-fit">
+      <div
+        data-tour="comp-tabs"
+        className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-fit"
+      >
         <button
           onClick={() => setTabActivo('alertas')}
           className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
@@ -413,14 +417,18 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
               </span>
             </div>
           ) : alertas.length === 0 ? (
-            <div className="p-10 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500 dark:text-slate-400">
+            <div
+              data-tour="comp-lista"
+              className="p-10 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500 dark:text-slate-400"
+            >
               No se encontraron señales para los filtros seleccionados.
             </div>
           ) : (
             <div className="space-y-4">
-              {alertas.map((alerta) => (
+              {alertas.map((alerta, idx) => (
                 <div
                   key={alerta.id}
+                  data-tour={idx === 0 ? 'comp-lista' : undefined}
                   className="p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-sm dark:shadow-none transition space-y-4"
                 >
                   {/* Fila superior */}
@@ -690,17 +698,21 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
               </span>
             </div>
           ) : conflictos.length === 0 ? (
-            <div className="p-10 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500 dark:text-slate-400">
+            <div
+              data-tour="comp-conflictos-lista"
+              className="p-10 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500 dark:text-slate-400"
+            >
               No existen conflictos de interés registrados en el periodo actual.
             </div>
           ) : (
             <div className="space-y-4">
-              {conflictosOrdenados.map((ci) => {
+              {conflictosOrdenados.map((ci, idx) => {
                 const esResuelto = ci.estado === 'ABSTENIDO_Y_REASIGNADO';
                 const esDetectado = ci.estado === 'DETECTADO';
                 return (
                   <div
                     key={ci.id}
+                    data-tour={idx === 0 ? 'comp-conflictos-lista' : undefined}
                     className={`p-6 rounded-2xl bg-white dark:bg-slate-900/95 border shadow-sm dark:shadow-none space-y-4 ${
                       esDetectado
                         ? 'border-rose-200 dark:border-rose-500/40'
