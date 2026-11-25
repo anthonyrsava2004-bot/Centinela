@@ -163,7 +163,7 @@ def inicializar_bitacora_si_vacia(db: Session) -> None:
         resultado="PERMITIDO",
         detalle=(
             "Evaluación determinista completada sobre 120 expedientes sintéticos "
-            "(111 limpios + 9 casos con señales preventivas verificables)."
+            "(110 limpios + 10 casos con señales preventivas verificables)."
         ),
         ip_origen="127.0.0.1",
     )

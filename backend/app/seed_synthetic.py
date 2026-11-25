@@ -150,7 +150,7 @@ def crear_actuaciones_secuenciales(
 
 def poblar_base_datos_sintetica(db: Session) -> dict:
     """
-    Generador determinista de 120 expedientes sintéticos (111 limpios + 9 casos forenses de auditoría)
+    Generador determinista de 120 expedientes sintéticos (110 limpios + 10 casos forenses de auditoría)
     cumpliendo estrictamente con la Ley N° 29733 (Privacidad por Diseño - códigos anonimizados)
     y la Ley N° 32069 (Ley General de Contrataciones Públicas).
     """

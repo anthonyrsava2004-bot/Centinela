@@ -160,10 +160,15 @@ export const Layout: React.FC<LayoutProps> = ({
   };
 
   useEffect(() => {
-    centinelaApi
-      .getDashboardKPIs()
-      .then((d) => setAlertasPendientes(d.alertas_pendientes))
-      .catch(() => {});
+    const cargarPendientes = () => {
+      centinelaApi
+        .getDashboardKPIs()
+        .then((d) => setAlertasPendientes(d.alertas_pendientes))
+        .catch(() => {});
+    };
+    cargarPendientes();
+    window.addEventListener('centinela:data-updated', cargarPendientes);
+    return () => window.removeEventListener('centinela:data-updated', cargarPendientes);
   }, [location.pathname, rolActivo]);
 
   const navItems = [

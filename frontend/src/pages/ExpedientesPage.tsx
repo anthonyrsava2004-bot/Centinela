@@ -195,6 +195,8 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
       setPagoSinConformidad(false);
       setModExtemporaneaTdr(false);
       setSinSustentoDoc(false);
+      setEntregableIncompletoObra(false);
+      setConflictoInteresFamiliar(false);
     } else if (tipo === 'FRACCIONAMIENTO') {
       setObjeto('Adquisición de Módulos de Almacenamiento SAN - Lote IV Adicional');
       setRubro('Tecnología y Equipamiento Computacional');
@@ -211,6 +213,8 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
       setPagoSinConformidad(false);
       setModExtemporaneaTdr(false);
       setSinSustentoDoc(false);
+      setEntregableIncompletoObra(false);
+      setConflictoInteresFamiliar(false);
     } else if (tipo === 'VERSION_EXTEMPORANEA') {
       setObjeto('Servicio de Modernización de Subestación Eléctrica - Pabellón Central');
       setRubro('Infraestructura y Mantenimiento Eléctrico');
@@ -227,6 +231,8 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
       setPagoSinConformidad(false);
       setModExtemporaneaTdr(true);
       setSinSustentoDoc(true);
+      setEntregableIncompletoObra(false);
+      setConflictoInteresFamiliar(false);
     } else if (tipo === 'COLUSION_Y_PAGO') {
       setObjeto('Adquisición de Equipos Analizadores de Calidad de Agua para Laboratorio');
       setRubro('Equipamiento Científico y de Laboratorio');
@@ -243,6 +249,8 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
       setPagoSinConformidad(true);
       setModExtemporaneaTdr(false);
       setSinSustentoDoc(false);
+      setEntregableIncompletoObra(false);
+      setConflictoInteresFamiliar(false);
     }
   };
 
@@ -486,7 +494,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
         isOpen={modalAbierto}
         onClose={() => setModalAbierto(false)}
         title="Evaluador y Registro de Expediente Sintético en Vivo"
-        subtitle="Sella los 6 eslabones SHA-256 y ejecuta en tiempo real el Motor XAI (7 reglas), NLP TF-IDF y Grafos NetworkX"
+        subtitle="Sella los 6 eslabones SHA-256 y ejecuta en tiempo real el Motor XAI (8 reglas), NLP TF-IDF y Grafos NetworkX"
       >
         <form onSubmit={handleRegistrarVivo} className="space-y-4 text-xs">
           {/* Plantillas rápidas de 1 clic para demostración ante el jurado */}

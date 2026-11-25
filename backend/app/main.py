@@ -332,7 +332,7 @@ def health_check():
 @app.post("/api/seed/regenerar")
 def regenerar_dataset_sintetico(request: Request, db: Session = Depends(get_db)):
     """
-    Regenera determinísticamente los 120 expedientes sintéticos (111 limpios + 9 casos forenses)
+    Regenera determinísticamente los 120 expedientes sintéticos (110 limpios + 10 casos forenses)
     y restaura el estado base para demostraciones en vivo. Preserva la bitácora global inmutable.
     """
     usuario, rol, ip_origen = extraer_actor_request(request)
@@ -360,7 +360,7 @@ def regenerar_dataset_sintetico(request: Request, db: Session = Depends(get_db))
         accion="REINICIO_DATASET",
         recurso="DATASET-BASE-120",
         resultado="PERMITIDO",
-        detalle="Restauración controlada del dataset sintético base (111 limpios + 9 casos forenses).",
+        detalle="Restauración controlada del dataset sintético base (110 limpios + 10 casos forenses).",
         ip_origen=ip_origen,
     )
     return res

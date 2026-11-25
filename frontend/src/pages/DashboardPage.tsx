@@ -72,6 +72,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
       const res = await centinelaApi.regenerarDataset();
       setFeedbackMsg(res.mensaje);
       await cargarDashboard();
+      window.dispatchEvent(new Event('centinela:data-updated'));
     } catch {
       setErrorMsg('Error al regenerar el dataset sintético.');
     } finally {
