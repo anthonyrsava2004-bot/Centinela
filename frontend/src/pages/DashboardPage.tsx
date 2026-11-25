@@ -110,18 +110,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
 
   if (!kpis) return null;
 
-  // Acento sólido por perfil (sin degradados ni brillos genéricos)
-  const heroTopAccent = profile.canDictaminarOci
-    ? 'border-t-[#0B1F3A] dark:border-t-emerald-500'
+  // Superficie sólida diferenciada por perfil (claro con carácter en Modo Claro / oscuro profundo en Modo Oscuro, cero degradados)
+  const heroContainerSurface = profile.canDictaminarOci
+    ? 'bg-[#EAF0F7] border-[#C6D4E5] border-t-[#0B1F3A] dark:bg-[#07111F] dark:border-slate-700/90 dark:border-t-emerald-500'
     : profile.canSubmitDescargo
-    ? 'border-t-blue-700 dark:border-t-cyan-500'
-    : 'border-t-amber-600 dark:border-t-amber-400';
+    ? 'bg-[#EBF2FF] border-[#C5D8F8] border-t-blue-700 dark:bg-[#081326] dark:border-blue-900/90 dark:border-t-cyan-400'
+    : 'bg-[#F6F1E7] border-[#E4D5BC] border-t-amber-600 dark:bg-[#0C121D] dark:border-slate-700 dark:border-t-amber-400';
+
+  const heroGaugeSurface = profile.canDictaminarOci
+    ? 'bg-[#E1EAF4] dark:bg-[#040A14]'
+    : profile.canSubmitDescargo
+    ? 'bg-[#E0ECFF] dark:bg-[#050C1A]'
+    : 'bg-[#EFE7D8] dark:bg-[#070B12]';
 
   const heroBadgeClass = profile.canDictaminarOci
-    ? 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30'
+    ? 'bg-white text-emerald-800 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30'
     : profile.canSubmitDescargo
-    ? 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/30'
-    : 'bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30';
+    ? 'bg-white text-blue-800 border-blue-200 dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/30'
+    : 'bg-white text-amber-900 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30';
 
   const heroTitle = profile.canDictaminarOci
     ? 'Panel de Control Preventivo y Auditoría (OCI)'
@@ -147,11 +153,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
 
   return (
     <div className="space-y-6">
-      {/* Cabecera Estructural Limpia (Superficies Sólidas + Grilla Divisoria, Cero Degradados) */}
+      {/* Cabecera Estructural Diferenciada (Tono Sólido en Claro / Oscuro Profundo en Oscuro, Cero Degradados) */}
       <section
-        className={`rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 border-t-[3px] ${heroTopAccent} shadow-sm dark:shadow-none overflow-hidden`}
+        className={`rounded-2xl border border-t-[4px] ${heroContainerSurface} shadow-sm dark:shadow-none overflow-hidden transition-colors`}
       >
-        <div className="grid grid-cols-1 lg:grid-cols-12 lg:divide-x divide-slate-200 dark:divide-slate-800">
+        <div className="grid grid-cols-1 lg:grid-cols-12 lg:divide-x divide-[#CBD7E6] dark:divide-slate-800">
           {/* Bloque Izquierdo: Identidad, Título y Acciones */}
           <div className="lg:col-span-8 p-6 space-y-4">
             <div className="space-y-2">
@@ -168,15 +174,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                   )}
                   {profile.workspaceTitle} • {profile.userCode}
                 </span>
-                <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                <span className="px-2 py-0.5 rounded-md bg-white/75 dark:bg-slate-900 border border-[#CBD7E6] dark:border-slate-700 text-[10px] font-mono text-slate-600 dark:text-slate-300">
                   100% Datos Sintéticos • Ley N° 32069
                 </span>
               </div>
 
-              <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-snug">
+              <h1 className="text-2xl font-extrabold tracking-tight text-[#0B1F3A] dark:text-white leading-snug">
                 {heroTitle}
               </h1>
-              <p className="text-xs text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
+              <p className="text-xs text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
                 {heroSubtitle}
               </p>
             </div>
@@ -187,7 +193,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                 <>
                   <button
                     onClick={() => navigate('/compliance')}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0B1F3A] hover:bg-[#15315A] dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-bold text-xs transition"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0B1F3A] hover:bg-[#15315A] dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-bold text-xs shadow-sm transition"
                   >
                     <BellRing className="w-3.5 h-3.5" />
                     Revisar Alertas ({kpis.alertas_pendientes})
@@ -196,16 +202,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                     href={centinelaApi.obtenerUrlReporteInstitucionalPdf()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#C5D3E3] dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
                   >
-                    <FileDown className="w-3.5 h-3.5 text-slate-600 dark:text-cyan-400" />
+                    <FileDown className="w-3.5 h-3.5 text-[#0B1F3A] dark:text-cyan-400" />
                     Reporte PDF
                   </a>
                   <a
                     href={centinelaApi.obtenerUrlIndicadoresCsv()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#C5D3E3] dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     CSV
@@ -213,7 +219,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                   <button
                     onClick={handleRegenerar}
                     disabled={regenerating}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/70 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/75 hover:bg-white dark:bg-slate-900/70 dark:hover:bg-slate-800 border border-[#C5D3E3] dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition"
                     title="Restaurar el dataset sintético base de 120 expedientes"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${regenerating ? 'animate-spin' : ''}`} />
@@ -226,14 +232,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                 <>
                   <button
                     onClick={() => navigate('/expedientes?nuevo=1')}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950 font-bold text-xs transition"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950 font-bold text-xs shadow-sm transition"
                   >
                     <PlusCircle className="w-3.5 h-3.5" />
                     Registrar Nueva Compra
                   </button>
                   <button
                     onClick={() => navigate('/compliance')}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#C5D3E3] dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
                   >
                     <ClipboardCheck className="w-3.5 h-3.5 text-blue-700 dark:text-cyan-400" />
                     Responder Alertas ({kpis.alertas_pendientes})
@@ -242,7 +248,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                     href={centinelaApi.obtenerUrlReporteInstitucionalPdf()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#C5D3E3] dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
                   >
                     <FileDown className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     Reporte PDF
@@ -256,7 +262,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                     href={centinelaApi.obtenerUrlReporteInstitucionalPdf()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 dark:bg-amber-400 dark:hover:bg-amber-300 text-white dark:text-slate-950 font-bold text-xs transition"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 dark:bg-amber-400 dark:hover:bg-amber-300 text-white dark:text-slate-950 font-bold text-xs shadow-sm transition"
                   >
                     <FileDown className="w-3.5 h-3.5" />
                     Descargar Reporte Público (PDF)
@@ -265,7 +271,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                     href={centinelaApi.obtenerUrlIndicadoresCsv()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#E4D5BC] dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     Datos Abiertos (CSV)
@@ -276,7 +282,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
           </div>
 
           {/* Bloque Derecho: Medidor Circular Sólido Integrado en la Grilla */}
-          <div className="lg:col-span-4 p-6 bg-slate-50/70 dark:bg-slate-950/50 border-t lg:border-t-0 border-slate-200 dark:border-slate-800 flex items-center justify-center">
+          <div
+            className={`lg:col-span-4 p-6 ${heroGaugeSurface} border-t lg:border-t-0 border-[#CBD7E6] dark:border-slate-800 flex items-center justify-center`}
+          >
             <div className="flex items-center gap-4">
               <div className="relative w-[92px] h-[92px] shrink-0">
                 <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
@@ -285,7 +293,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                     cy="50"
                     r={gaugeRadius}
                     fill="none"
-                    className="stroke-slate-200 dark:stroke-slate-800"
+                    className="stroke-white dark:stroke-slate-800"
                     strokeWidth="9"
                   />
                   <circle
@@ -301,30 +309,30 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-base font-extrabold font-mono tabular-nums text-slate-900 dark:text-white leading-none">
+                  <span className="text-base font-extrabold font-mono tabular-nums text-[#0B1F3A] dark:text-white leading-none">
                     {pctLimpios.toFixed(1)}%
                   </span>
-                  <span className="text-[9px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold mt-0.5">
+                  <span className="text-[9px] uppercase tracking-wider text-slate-600 dark:text-slate-400 font-bold mt-0.5">
                     Sin alerta
                   </span>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                   Salud Preventiva
                 </div>
-                <div className="text-sm font-extrabold text-slate-900 dark:text-white tabular-nums">
+                <div className="text-sm font-extrabold text-[#0B1F3A] dark:text-white tabular-nums">
                   {kpis.expedientes_limpios} / {kpis.total_expedientes} compras
                 </div>
                 <div className="space-y-0.5 text-[11px]">
-                  <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-medium">
+                  <div className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-400 font-semibold">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />
                     {kpis.expedientes_integridad_rota === 0
                       ? 'SHA-256 100% íntegro'
                       : `${kpis.expedientes_integridad_rota} alteración(es)`}
                   </div>
-                  <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 font-medium">
+                  <div className="flex items-center gap-1.5 text-amber-800 dark:text-amber-400 font-semibold">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-600 dark:bg-amber-400" />
                     {kpis.expedientes_observados} en revisión preventiva
                   </div>
@@ -334,12 +342,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
           </div>
         </div>
 
-        {/* Franja Inferior Plana de Accesos Rápidos (sin tarjetas anidadas) */}
+        {/* Franja Inferior Blanca en Claro / Oscuro Profundo en Oscuro (Contraste Bicolor Limpio) */}
         {profile.canDictaminarOci && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-slate-800 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60">
+          <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-slate-800 border-t border-[#CBD7E6] dark:border-slate-800 bg-white dark:bg-[#050B14]">
             <button
               onClick={() => navigate('/compliance')}
-              className="group text-left px-5 py-3 hover:bg-slate-100/80 dark:hover:bg-slate-900 transition flex items-center justify-between gap-2"
+              className="group text-left px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-900 transition flex items-center justify-between gap-2"
             >
               <div className="min-w-0">
                 <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
@@ -354,7 +362,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
 
             <button
               onClick={() => navigate('/grafo-colusion')}
-              className="group text-left px-5 py-3 hover:bg-slate-100/80 dark:hover:bg-slate-900 transition flex items-center justify-between gap-2"
+              className="group text-left px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-900 transition flex items-center justify-between gap-2"
             >
               <div className="min-w-0">
                 <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
@@ -369,7 +377,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
 
             <button
               onClick={() => navigate('/trazabilidad?id=6')}
-              className="group text-left px-5 py-3 hover:bg-slate-100/80 dark:hover:bg-slate-900 transition flex items-center justify-between gap-2"
+              className="group text-left px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-900 transition flex items-center justify-between gap-2"
             >
               <div className="min-w-0">
                 <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
@@ -385,7 +393,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
         )}
 
         {profile.canSubmitDescargo && (
-          <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-700 dark:text-slate-300">
+          <div className="px-6 py-3 border-t border-[#CBD7E6] dark:border-slate-800 bg-white dark:bg-[#050B14] flex flex-wrap items-center justify-between gap-2 text-xs text-slate-700 dark:text-slate-300">
             <span>
               Tiene <strong className="text-rose-700 dark:text-rose-400">{kpis.alertas_pendientes} alertas pendientes de respuesta</strong>,{' '}
               <strong className="text-blue-800 dark:text-cyan-400">{kpis.alertas_en_descargo} enviadas a OCI</strong> y{' '}
