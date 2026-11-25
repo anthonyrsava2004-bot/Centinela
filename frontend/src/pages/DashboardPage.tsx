@@ -109,12 +109,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
 
   if (!kpis) return null;
 
-  // Estilo visual del Hero Banner diferenciado por perfil
-  const heroGradient = profile.canDictaminarOci
-    ? 'from-white via-emerald-50/40 to-blue-50/70 border-emerald-200/80 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/40 dark:border-emerald-500/30'
+  // Acento sólido por perfil (sin degradados ni brillos genéricos)
+  const heroTopAccent = profile.canDictaminarOci
+    ? 'border-t-[#0B1F3A] dark:border-t-emerald-500'
     : profile.canSubmitDescargo
-    ? 'from-white via-blue-50/50 to-indigo-50/80 border-blue-200 dark:from-slate-900 dark:via-slate-900 dark:to-blue-950/50 dark:border-cyan-500/30'
-    : 'from-white via-amber-50/40 to-orange-50/60 border-amber-200 dark:from-slate-900 dark:via-slate-900 dark:to-amber-950/35 dark:border-amber-500/30';
+    ? 'border-t-blue-700 dark:border-t-cyan-500'
+    : 'border-t-amber-600 dark:border-t-amber-400';
+
+  const heroBadgeClass = profile.canDictaminarOci
+    ? 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30'
+    : profile.canSubmitDescargo
+    ? 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/30'
+    : 'bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30';
 
   const heroTitle = profile.canDictaminarOci
     ? 'Panel de Control Preventivo y Auditoría (OCI)'
@@ -123,211 +129,270 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
     : 'Portal Público de Transparencia en Compras';
 
   const heroSubtitle = profile.canDictaminarOci
-    ? 'Revise alertas tempranas en compras simuladas, compruebe que ningún documento fue alterado (SHA-256), gestione conflictos de interés y derive casos a las áreas responsables.'
+    ? 'Revise alertas tempranas, verifique integridad SHA-256, gestione conflictos de interés y derive casos antes del pago.'
     : profile.canSubmitDescargo
-    ? 'Registre nuevas compras para detectar riesgos antes de adjudicar, verifique entregables antes de pagar y responda a las alertas con sustento técnico.'
-    : 'Consulta ciudadana abierta (Ley N° 27806) con indicadores públicos de compras y datos anonimizados conforme a la Ley N° 29733.';
+    ? 'Registre nuevas compras para detectar riesgos antes de adjudicar, verifique entregables y responda alertas con sustento.'
+    : 'Consulta ciudadana abierta (Ley N° 27806) con indicadores públicos de compras y datos anonimizados (Ley N° 29733).';
+
+  // Cálculos para el Medidor Circular de Cumplimiento (trazo sólido, sin degradado)
+  const gaugeRadius = 40;
+  const gaugeCircumference = 2 * Math.PI * gaugeRadius;
+  const pctLimpios = Math.min(100, Math.max(0, kpis.porcentaje_limpios));
+  const gaugeOffset = gaugeCircumference - (pctLimpios / 100) * gaugeCircumference;
+  const ahorroPct =
+    kpis.monto_en_riesgo_preventivo > 0
+      ? ((kpis.ahorro_preventivo_estimado / kpis.monto_en_riesgo_preventivo) * 100).toFixed(1)
+      : '0.0';
 
   return (
-    <div className="space-y-7">
-      {/* Encabezado Hero Diferenciado por Perfil */}
-      <div
-        className={`flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r ${heroGradient} p-6 rounded-2xl border shadow-sm dark:shadow-none transition-colors`}
+    <div className="space-y-6">
+      {/* Cabecera Estructural Limpia (Superficies Sólidas + Grilla Divisoria, Cero Degradados) */}
+      <section
+        className={`rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 border-t-[3px] ${heroTopAccent} shadow-sm dark:shadow-none overflow-hidden`}
       >
-        <div className="space-y-1.5">
-          <div
-            className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full border text-xs font-semibold ${profile.accentBarClass}`}
-          >
-            {profile.canDictaminarOci ? (
-              <ShieldCheck className="w-3.5 h-3.5" />
-            ) : profile.canSubmitDescargo ? (
-              <Briefcase className="w-3.5 h-3.5" />
-            ) : (
-              <Eye className="w-3.5 h-3.5" />
-            )}
-            {profile.workspaceTitle} • {profile.userCode}
+        <div className="grid grid-cols-1 lg:grid-cols-12 lg:divide-x divide-slate-200 dark:divide-slate-800">
+          {/* Bloque Izquierdo: Identidad, Título y Acciones */}
+          <div className="lg:col-span-8 p-6 space-y-4">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md border text-[11px] font-bold ${heroBadgeClass}`}
+                >
+                  {profile.canDictaminarOci ? (
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                  ) : profile.canSubmitDescargo ? (
+                    <Briefcase className="w-3.5 h-3.5" />
+                  ) : (
+                    <Eye className="w-3.5 h-3.5" />
+                  )}
+                  {profile.workspaceTitle} • {profile.userCode}
+                </span>
+                <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                  100% Datos Sintéticos • Ley N° 32069
+                </span>
+              </div>
+
+              <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-snug">
+                {heroTitle}
+              </h1>
+              <p className="text-xs text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
+                {heroSubtitle}
+              </p>
+            </div>
+
+            {/* Acciones Propias del Rol */}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {profile.canDictaminarOci && (
+                <>
+                  <button
+                    onClick={() => navigate('/compliance')}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0B1F3A] hover:bg-[#15315A] dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-bold text-xs transition"
+                  >
+                    <BellRing className="w-3.5 h-3.5" />
+                    Revisar Alertas ({kpis.alertas_pendientes})
+                  </button>
+                  <a
+                    href={centinelaApi.obtenerUrlReporteInstitucionalPdf()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
+                  >
+                    <FileDown className="w-3.5 h-3.5 text-slate-600 dark:text-cyan-400" />
+                    Reporte PDF
+                  </a>
+                  <a
+                    href={centinelaApi.obtenerUrlIndicadoresCsv()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    CSV
+                  </a>
+                  <button
+                    onClick={handleRegenerar}
+                    disabled={regenerating}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/70 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition"
+                    title="Restaurar el dataset sintético base de 120 expedientes"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${regenerating ? 'animate-spin' : ''}`} />
+                    {regenerating ? 'Restaurando...' : 'Reiniciar Demo'}
+                  </button>
+                </>
+              )}
+
+              {profile.canSubmitDescargo && (
+                <>
+                  <button
+                    onClick={() => navigate('/expedientes?nuevo=1')}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950 font-bold text-xs transition"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    Registrar Nueva Compra
+                  </button>
+                  <button
+                    onClick={() => navigate('/compliance')}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
+                  >
+                    <ClipboardCheck className="w-3.5 h-3.5 text-blue-700 dark:text-cyan-400" />
+                    Responder Alertas ({kpis.alertas_pendientes})
+                  </button>
+                  <a
+                    href={centinelaApi.obtenerUrlReporteInstitucionalPdf()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
+                  >
+                    <FileDown className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    Reporte PDF
+                  </a>
+                </>
+              )}
+
+              {profile.isReadOnly && (
+                <>
+                  <a
+                    href={centinelaApi.obtenerUrlReporteInstitucionalPdf()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 dark:bg-amber-400 dark:hover:bg-amber-300 text-white dark:text-slate-950 font-bold text-xs transition"
+                  >
+                    <FileDown className="w-3.5 h-3.5" />
+                    Descargar Reporte Público (PDF)
+                  </a>
+                  <a
+                    href={centinelaApi.obtenerUrlIndicadoresCsv()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-xs transition"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    Datos Abiertos (CSV)
+                  </a>
+                </>
+              )}
+            </div>
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            {heroTitle}
-          </h1>
-          <p className="text-xs text-slate-600 dark:text-slate-400 max-w-3xl leading-relaxed">
-            {heroSubtitle}
-          </p>
-        </div>
 
-        {/* Acciones Propias del Rol (sin botones inútiles deshabilitados) */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {profile.canDictaminarOci && (
-            <>
-              <button
-                onClick={() => navigate('/compliance')}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold text-xs shadow-sm transition"
-              >
-                <BellRing className="w-4 h-4" />
-                Revisar Alertas ({kpis.alertas_pendientes})
-              </button>
-              <a
-                href={centinelaApi.obtenerUrlReporteInstitucionalPdf()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-blue-800 dark:text-cyan-300 font-bold text-xs shadow-sm dark:shadow-none transition"
-              >
-                <FileDown className="w-4 h-4" />
-                Reporte PDF
-              </a>
-              <a
-                href={centinelaApi.obtenerUrlIndicadoresCsv()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs shadow-sm dark:shadow-none transition"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                CSV
-              </a>
-              <button
-                onClick={handleRegenerar}
-                disabled={regenerating}
-                className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition"
-                title="Restaurar el dataset sintético base de 120 expedientes"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${regenerating ? 'animate-spin' : ''}`} />
-                {regenerating ? 'Restaurando...' : 'Reiniciar Demo'}
-              </button>
-            </>
-          )}
-
-          {profile.canSubmitDescargo && (
-            <>
-              <button
-                onClick={() => navigate('/expedientes?nuevo=1')}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950 font-extrabold text-xs shadow-sm transition"
-              >
-                <PlusCircle className="w-4 h-4" />
-                Registrar Nueva Compra
-              </button>
-              <button
-                onClick={() => navigate('/compliance')}
-                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white hover:bg-blue-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-blue-300 dark:border-slate-700 text-blue-800 dark:text-cyan-300 font-bold text-xs shadow-sm dark:shadow-none transition"
-              >
-                <ClipboardCheck className="w-4 h-4" />
-                Responder Alertas ({kpis.alertas_pendientes})
-              </button>
-              <a
-                href={centinelaApi.obtenerUrlReporteInstitucionalPdf()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs shadow-sm dark:shadow-none transition"
-              >
-                <FileDown className="w-4 h-4" />
-                Reporte PDF
-              </a>
-            </>
-          )}
-
-          {profile.isReadOnly && (
-            <>
-              <a
-                href={centinelaApi.obtenerUrlReporteInstitucionalPdf()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 dark:bg-amber-400 dark:hover:bg-amber-300 text-white dark:text-slate-950 font-extrabold text-xs shadow-sm transition"
-              >
-                <FileDown className="w-4 h-4" />
-                Descargar Reporte Público (PDF)
-              </a>
-              <a
-                href={centinelaApi.obtenerUrlIndicadoresCsv()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-amber-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-amber-300 dark:border-slate-700 text-amber-900 dark:text-amber-200 font-bold text-xs shadow-sm dark:shadow-none transition"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                Datos Abiertos (CSV)
-              </a>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Franja Contextual Exclusiva por Rol */}
-      {profile.canDictaminarOci && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button
-            onClick={() => navigate('/compliance')}
-            className="text-left p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-emerald-200/80 dark:border-emerald-500/30 hover:border-emerald-400 transition shadow-sm dark:shadow-none flex items-center justify-between gap-3"
-          >
-            <div>
-              <div className="text-[11px] font-bold uppercase text-emerald-700 dark:text-emerald-400">
-                Acceso Rápido #1
+          {/* Bloque Derecho: Medidor Circular Sólido Integrado en la Grilla */}
+          <div className="lg:col-span-4 p-6 bg-slate-50/70 dark:bg-slate-950/50 border-t lg:border-t-0 border-slate-200 dark:border-slate-800 flex items-center justify-center">
+            <div className="flex items-center gap-4">
+              <div className="relative w-[92px] h-[92px] shrink-0">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r={gaugeRadius}
+                    fill="none"
+                    className="stroke-slate-200 dark:stroke-slate-800"
+                    strokeWidth="9"
+                  />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r={gaugeRadius}
+                    fill="none"
+                    className="stroke-emerald-600 dark:stroke-emerald-400"
+                    strokeWidth="9"
+                    strokeLinecap="round"
+                    strokeDasharray={gaugeCircumference}
+                    strokeDashoffset={gaugeOffset}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-base font-extrabold font-mono tabular-nums text-slate-900 dark:text-white leading-none">
+                    {pctLimpios.toFixed(1)}%
+                  </span>
+                  <span className="text-[9px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold mt-0.5">
+                    Sin alerta
+                  </span>
+                </div>
               </div>
-              <div className="text-sm font-extrabold text-slate-900 dark:text-white mt-0.5">
-                {kpis.alertas_pendientes} alertas pendientes de revisar
-              </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                Confirmadas OCI: {kpis.alertas_validadas_oci} • Con respuesta Compras: {kpis.alertas_en_descargo}
+
+              <div className="space-y-1.5">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Salud Preventiva
+                </div>
+                <div className="text-sm font-extrabold text-slate-900 dark:text-white tabular-nums">
+                  {kpis.expedientes_limpios} / {kpis.total_expedientes} compras
+                </div>
+                <div className="space-y-0.5 text-[11px]">
+                  <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />
+                    {kpis.expedientes_integridad_rota === 0
+                      ? 'SHA-256 100% íntegro'
+                      : `${kpis.expedientes_integridad_rota} alteración(es)`}
+                  </div>
+                  <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-600 dark:bg-amber-400" />
+                    {kpis.expedientes_observados} en revisión preventiva
+                  </div>
+                </div>
               </div>
             </div>
-            <BellRing className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          </button>
-
-          <button
-            onClick={() => navigate('/grafo-colusion')}
-            className="text-left p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-cyan-500/50 transition shadow-sm dark:shadow-none flex items-center justify-between gap-3"
-          >
-            <div>
-              <div className="text-[11px] font-bold uppercase text-blue-700 dark:text-cyan-400">
-                Acceso Rápido #2
-              </div>
-              <div className="text-sm font-extrabold text-slate-900 dark:text-white mt-0.5">
-                Ver empresas con datos repetidos
-              </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                Proveedores que comparten dueño, dirección o teléfono
-              </div>
-            </div>
-            <Network className="w-5 h-5 text-blue-700 dark:text-cyan-400 shrink-0" />
-          </button>
-
-          <button
-            onClick={() => navigate('/trazabilidad?id=6')}
-            className="text-left p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 hover:border-rose-400 dark:hover:border-rose-500/50 transition shadow-sm dark:shadow-none flex items-center justify-between gap-3"
-          >
-            <div>
-              <div className="text-[11px] font-bold uppercase text-rose-700 dark:text-rose-400">
-                Acceso Rápido #3
-              </div>
-              <div className="text-sm font-extrabold text-slate-900 dark:text-white mt-0.5">
-                Probar detección de cambios ocultos
-              </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                Simula editar un documento antiguo y verifica la alerta SHA-256
-              </div>
-            </div>
-            <Lock className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
-          </button>
-        </div>
-      )}
-
-      {profile.canSubmitDescargo && (
-        <div className="p-5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/25 border border-blue-200 dark:border-blue-800/60 flex flex-wrap items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="text-xs font-extrabold uppercase tracking-wider text-blue-800 dark:text-cyan-300">
-              Pendientes del Área de Compras / Logística (DEC)
-            </div>
-            <p className="text-xs text-slate-700 dark:text-slate-300">
-              Tiene <strong className="text-rose-700 dark:text-rose-300">{kpis.alertas_pendientes} alertas pendientes de respuesta</strong>,{' '}
-              <strong className="text-blue-800 dark:text-cyan-300">{kpis.alertas_en_descargo} enviadas a revisión OCI</strong> y{' '}
-              <strong className="text-emerald-700 dark:text-emerald-300">{kpis.alertas_archivadas} archivadas con sustento</strong>. Recuerde que la decisión final corresponde exclusivamente al OCI.
-            </p>
           </div>
-          <button
-            onClick={() => navigate('/compliance')}
-            className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950 text-xs font-bold inline-flex items-center gap-1.5 transition shrink-0"
-          >
-            Ir a Alertas por Responder <ArrowRight className="w-3.5 h-3.5" />
-          </button>
         </div>
-      )}
+
+        {/* Franja Inferior Plana de Accesos Rápidos (sin tarjetas anidadas) */}
+        {profile.canDictaminarOci && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-slate-800 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60">
+            <button
+              onClick={() => navigate('/compliance')}
+              className="group text-left px-5 py-3 hover:bg-slate-100/80 dark:hover:bg-slate-900 transition flex items-center justify-between gap-2"
+            >
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                  {kpis.alertas_pendientes} alertas por revisar
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                  OCI: {kpis.alertas_validadas_oci} • Compras: {kpis.alertas_en_descargo}
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white group-hover:translate-x-0.5 transition shrink-0" />
+            </button>
+
+            <button
+              onClick={() => navigate('/grafo-colusion')}
+              className="group text-left px-5 py-3 hover:bg-slate-100/80 dark:hover:bg-slate-900 transition flex items-center justify-between gap-2"
+            >
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                  Empresas con datos repetidos
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                  Dueño, dirección o teléfono
+                </div>
+              </div>
+              <Network className="w-4 h-4 text-slate-400 group-hover:text-blue-700 dark:group-hover:text-cyan-400 transition shrink-0" />
+            </button>
+
+            <button
+              onClick={() => navigate('/trazabilidad?id=6')}
+              className="group text-left px-5 py-3 hover:bg-slate-100/80 dark:hover:bg-slate-900 transition flex items-center justify-between gap-2"
+            >
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                  Probar cambios ocultos
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                  Verificación criptográfica SHA-256
+                </div>
+              </div>
+              <Lock className="w-4 h-4 text-slate-400 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition shrink-0" />
+            </button>
+          </div>
+        )}
+
+        {profile.canSubmitDescargo && (
+          <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-700 dark:text-slate-300">
+            <span>
+              Tiene <strong className="text-rose-700 dark:text-rose-400">{kpis.alertas_pendientes} alertas pendientes de respuesta</strong>,{' '}
+              <strong className="text-blue-800 dark:text-cyan-400">{kpis.alertas_en_descargo} enviadas a OCI</strong> y{' '}
+              <strong className="text-emerald-700 dark:text-emerald-400">{kpis.alertas_archivadas} archivadas</strong>. La decisión final corresponde al OCI.
+            </span>
+          </div>
+        )}
+      </section>
 
       {feedbackMsg && (
         <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/40 text-emerald-900 dark:text-emerald-200 text-xs font-medium flex items-center justify-between">
@@ -341,80 +406,96 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
         </div>
       )}
 
-      {/* Tarjetas de KPIs Ejecutivos */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-3">
+      {/* Tarjetas de KPIs Ejecutivos — Superficies Sólidas Sin Degradados */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none hover:border-slate-300 dark:hover:border-slate-700 transition space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Compras Revisadas
             </span>
-            <Layers className="w-5 h-5 text-blue-700 dark:text-cyan-400" />
+            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <Layers className="w-4 h-4 text-slate-700 dark:text-cyan-400" />
+            </div>
           </div>
-          <div className="text-3xl font-extrabold text-slate-900 dark:text-white">
-            {kpis.total_expedientes}{' '}
-            <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-              Procesos
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums tracking-tight">
+              {kpis.total_expedientes}
+            </span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              procesos
             </span>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-2 border-t border-slate-100 dark:border-slate-800/80">
-            <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
-              {kpis.expedientes_limpios} Sin alerta ({kpis.porcentaje_limpios.toFixed(1)}%)
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] pt-2.5 border-t border-slate-100 dark:border-slate-800">
+            <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold">
+              {kpis.expedientes_limpios} sin alerta
             </span>
-            <span className="text-rose-700 dark:text-rose-400 font-semibold">
-              {kpis.expedientes_observados} Con alerta
+            <span className="px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 font-semibold">
+              {kpis.expedientes_observados} con alerta
             </span>
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-3">
+        <div className="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none hover:border-slate-300 dark:hover:border-slate-700 transition space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Monto Total Revisado
             </span>
-            <Scale className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <Scale className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+            </div>
           </div>
-          <div className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
+          <div className="text-[22px] font-extrabold text-slate-900 dark:text-white font-mono tabular-nums tracking-tight">
             S/{' '}
             {kpis.monto_total_auditado.toLocaleString('es-PE', {
               minimumFractionDigits: 2,
             })}
           </div>
-          <div className="text-xs text-slate-600 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800/80">
-            Monto en compras con alerta:{' '}
-            <span className="text-amber-700 dark:text-amber-300 font-mono font-semibold">
+          <div className="text-[11px] text-slate-600 dark:text-slate-400 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+            <span>En compras con alerta:</span>
+            <span className="text-amber-700 dark:text-amber-300 font-mono font-bold tabular-nums">
               S/ {kpis.monto_en_riesgo_preventivo.toLocaleString('es-PE')}
             </span>
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-emerald-50/60 dark:bg-slate-900/90 border border-emerald-200 dark:border-emerald-500/30 shadow-sm dark:shadow-none space-y-3">
+        <div className="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 border-l-[3px] border-l-emerald-600 dark:border-l-emerald-500 shadow-sm dark:shadow-none hover:border-slate-300 dark:hover:border-slate-700 transition space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
               Ahorro Preventivo Estimado
             </span>
-            <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-500/15 flex items-center justify-center">
+              <TrendingUp className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+            </div>
           </div>
-          <div className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 font-mono">
+          <div className="text-[22px] font-extrabold text-emerald-700 dark:text-emerald-400 font-mono tabular-nums tracking-tight">
             S/{' '}
             {kpis.ahorro_preventivo_estimado.toLocaleString('es-PE', {
               minimumFractionDigits: 2,
             })}
           </div>
-          <div className="text-xs text-slate-600 dark:text-slate-400 pt-2 border-t border-emerald-200/70 dark:border-slate-800/80">
-            Detección temprana de sobrecostos, compras partidas y direccionamiento
+          <div className="text-[11px] text-slate-600 dark:text-slate-400 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+            <span className="truncate">Sobrecosto evitado</span>
+            <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 font-mono font-bold whitespace-nowrap shrink-0">
+              ~{ahorroPct}% riesgo
+            </span>
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-3">
+        <div className="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none hover:border-slate-300 dark:hover:border-slate-700 transition space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Documentos Protegidos
             </span>
-            <Lock className="w-5 h-5 text-blue-700 dark:text-cyan-400" />
+            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <Lock className="w-4 h-4 text-slate-700 dark:text-indigo-400" />
+            </div>
           </div>
-          <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
+          <div className="text-[22px] font-extrabold text-slate-900 dark:text-white tracking-tight">
             {kpis.expedientes_integridad_rota === 0 ? (
-              <span className="text-blue-700 dark:text-cyan-300" title="Verificación criptográfica SHA-256 al 100%">
+              <span
+                className="text-blue-700 dark:text-cyan-300"
+                title="Verificación criptográfica SHA-256 al 100%"
+              >
                 100% Sin cambios
               </span>
             ) : (
@@ -423,13 +504,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
               </span>
             )}
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-2 border-t border-slate-100 dark:border-slate-800/80">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] pt-2.5 border-t border-slate-100 dark:border-slate-800">
             <span className="text-slate-600 dark:text-slate-400">
               Alertas activas:{' '}
-              <b className="text-slate-900 dark:text-white">{kpis.total_alertas_xai}</b>
+              <b className="text-slate-900 dark:text-white tabular-nums">{kpis.total_alertas_xai}</b>
             </span>
-            <span className="text-amber-700 dark:text-amber-300 font-semibold">
-              {kpis.alertas_pendientes} Por revisar
+            <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 font-semibold">
+              {kpis.alertas_pendientes} por revisar
             </span>
           </div>
         </div>
@@ -437,53 +518,71 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
 
       {/* Distribución de Señales + Garantías Éticas y Legales */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4">
-          <div className="flex items-center justify-between gap-3">
+        <div className="lg:col-span-2 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none flex flex-col justify-between space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
                 Alertas Detectadas por Tipo de Riesgo
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Cada alerta explica en lenguaje claro qué ocurrió, cuál es la evidencia y la base legal (Ley N° 32069 / D.S. N° 009-2025-EF)
               </p>
             </div>
-            {!profile.isReadOnly && (
+            <div className="flex items-center gap-2 shrink-0">
+              {!profile.isReadOnly && (
+                <button
+                  onClick={() => navigate('/compliance')}
+                  className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 inline-flex items-center gap-1 transition"
+                >
+                  {profile.canSubmitDescargo ? 'Ir a Responder' : 'Ir a Alertas'}{' '}
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              )}
               <button
-                onClick={() => navigate('/compliance')}
-                className="text-xs font-bold text-blue-700 hover:text-blue-800 dark:text-emerald-400 dark:hover:text-emerald-300 inline-flex items-center gap-1 shrink-0"
+                onClick={() => navigate('/denuncias')}
+                className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 transition"
               >
-                {profile.canSubmitDescargo ? 'Ir a Descargos' : 'Ir a Alertas'}{' '}
-                <ArrowRight className="w-3.5 h-3.5" />
+                Canal de Denuncia
               </button>
-            )}
+            </div>
           </div>
 
-          <div className="space-y-3 pt-2">
-            {kpis.alertas_por_categoria.map((cat) => {
+          <div className="space-y-3">
+            {kpis.alertas_por_categoria.map((cat, idx) => {
               const porcentaje = Math.min(
                 100,
                 Math.round((cat.cantidad / Math.max(1, kpis.total_alertas_xai)) * 100),
               );
+              const barColors = [
+                'bg-[#0B1F3A] dark:bg-emerald-500',
+                'bg-blue-700 dark:bg-cyan-500',
+                'bg-amber-600 dark:bg-amber-400',
+                'bg-rose-600 dark:bg-rose-500',
+                'bg-slate-600 dark:bg-slate-400',
+              ];
+              const barColor = barColors[idx % barColors.length];
               return (
-                <div key={cat.categoria} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
+                <div
+                  key={cat.categoria}
+                  className="p-2.5 -mx-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors space-y-1.5"
+                >
+                  <div className="flex items-center justify-between gap-2 text-xs">
                     <span className="font-semibold text-slate-800 dark:text-slate-200">
                       {cat.categoria}
                     </span>
-                    <span className="font-mono text-slate-500 dark:text-slate-400">
-                      {cat.cantidad} señal(es) • {porcentaje}%
+                    <span className="inline-flex items-center gap-2 font-mono text-[11px] tabular-nums">
+                      <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
+                        {cat.cantidad} alerta{cat.cantidad === 1 ? '' : 's'}
+                      </span>
+                      <span className="text-slate-500 dark:text-slate-400 w-9 text-right font-semibold">
+                        {porcentaje}%
+                      </span>
                     </span>
                   </div>
-                  <div className="w-full h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                     <div
-                      className={`h-full rounded-full ${
-                        profile.canDictaminarOci
-                          ? 'bg-gradient-to-r from-[#0B1F3A] to-emerald-600 dark:from-emerald-500 dark:to-cyan-400'
-                          : profile.canSubmitDescargo
-                          ? 'bg-gradient-to-r from-blue-800 to-cyan-500'
-                          : 'bg-gradient-to-r from-amber-600 to-orange-400'
-                      }`}
-                      style={{ width: `${Math.max(12, porcentaje)}%` }}
+                      className={`h-full rounded-full ${barColor}`}
+                      style={{ width: `${Math.max(10, porcentaje)}%` }}
                     />
                   </div>
                 </div>
@@ -492,35 +591,58 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
           </div>
         </div>
 
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            Garantías Éticas y Legales
-          </h2>
-          <ul className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-            <li className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200/80 dark:border-slate-800/80">
-              <strong className="text-emerald-700 dark:text-emerald-300 block mb-0.5">
-                1. Sin Caja Negra (100% Explicable):
-              </strong>
-              Ninguna alerta acusa de delito; expone la evidencia objetiva para revisión humana.
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2 tracking-tight">
+              <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              Garantías Éticas y Legales
+            </h2>
+          </div>
+
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            <li className="py-3 first:pt-0 flex items-start gap-2.5">
+              <span className="w-5 h-5 rounded-md bg-slate-900 dark:bg-emerald-500 text-white dark:text-slate-950 font-mono text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                1
+              </span>
+              <div>
+                <strong className="text-slate-900 dark:text-white block mb-0.5">
+                  Sin Caja Negra (100% Explicable)
+                </strong>
+                Ninguna alerta acusa delito; expone evidencia objetiva y ley para revisión humana.
+              </div>
             </li>
-            <li className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200/80 dark:border-slate-800/80">
-              <strong className="text-blue-700 dark:text-cyan-300 block mb-0.5">
-                2. Privacidad por Diseño (Ley N° 29733):
-              </strong>
-              Seudonimización nativa (<code className="font-mono text-slate-800 dark:text-slate-200">FUNC-*</code>, <code className="font-mono text-slate-800 dark:text-slate-200">PROV-SYN-*</code>) sobre datos 100% sintéticos.
+            <li className="py-3 flex items-start gap-2.5">
+              <span className="w-5 h-5 rounded-md bg-slate-900 dark:bg-emerald-500 text-white dark:text-slate-950 font-mono text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                2
+              </span>
+              <div>
+                <strong className="text-slate-900 dark:text-white block mb-0.5">
+                  Privacidad por Diseño (Ley N° 29733)
+                </strong>
+                Códigos seudonimizados (<code className="font-mono text-slate-800 dark:text-slate-200">FUNC-*</code>, <code className="font-mono text-slate-800 dark:text-slate-200">PROV-SYN-*</code>) y canal anónimo (D.L. 1327).
+              </div>
             </li>
-            <li className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200/80 dark:border-slate-800/80">
-              <strong className="text-amber-700 dark:text-amber-300 block mb-0.5">
-                3. Integridad Documental & Versiones:
-              </strong>
-              Encadenamiento SHA-256 en las 6 etapas para detectar ediciones ex-post y falta de sustentos.
+            <li className="py-3 flex items-start gap-2.5">
+              <span className="w-5 h-5 rounded-md bg-slate-900 dark:bg-emerald-500 text-white dark:text-slate-950 font-mono text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                3
+              </span>
+              <div>
+                <strong className="text-slate-900 dark:text-white block mb-0.5">
+                  Seguridad Documental SHA-256
+                </strong>
+                Encadenamiento en las 6 etapas y bitácora global inmutable ante alteraciones.
+              </div>
             </li>
-            <li className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200/80 dark:border-slate-800/80">
-              <strong className="text-indigo-700 dark:text-indigo-300 block mb-0.5">
-                4. Modelo de Integridad & Capa No Intrusiva:
-              </strong>
-              Alineado al D.S. N° 148-2024-PCM, R.S. N° 002-2026-PCM/SIP y R.R. N° 0490-2026/UNT sin reemplazar SEACE, SIGA ni SIAF.
+            <li className="py-3 last:pb-0 flex items-start gap-2.5">
+              <span className="w-5 h-5 rounded-md bg-slate-900 dark:bg-emerald-500 text-white dark:text-slate-950 font-mono text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                4
+              </span>
+              <div>
+                <strong className="text-slate-900 dark:text-white block mb-0.5">
+                  Modelo de Integridad UNT
+                </strong>
+                Alineado al D.S. N° 148-2024-PCM, Directiva N° 001-2026-PCM/SIP y R.R. N° 0490-2026/UNT.
+              </div>
             </li>
           </ul>
         </div>

@@ -90,7 +90,7 @@ export const Layout: React.FC<LayoutProps> = ({
     {
       to: '/trazabilidad',
       label: 'Detalle y Seguridad',
-      sub: 'Documentos, pagos y sello SHA-256',
+      sub: 'Documentos, pagos y SHA-256',
       icon: Link2,
       visible: true,
       badge: undefined,
