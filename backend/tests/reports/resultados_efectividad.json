@@ -1,0 +1,350 @@
+{
+  "generado": "2026-11-26 02:16:17",
+  "matriz_por_regla": {
+    "R-01-FRACCIONAMIENTO": {
+      "TP": 4,
+      "FP": 0,
+      "FN": 0,
+      "TN": 152,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "fpr": 0.0
+    },
+    "R-02-SEGREGACION": {
+      "TP": 3,
+      "FP": 0,
+      "FN": 0,
+      "TN": 153,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "fpr": 0.0
+    },
+    "R-03-PAGO-SIN-CONF": {
+      "TP": 5,
+      "FP": 0,
+      "FN": 0,
+      "TN": 151,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "fpr": 0.0
+    },
+    "R-04-COLUSION-GRAFO": {
+      "TP": 4,
+      "FP": 0,
+      "FN": 0,
+      "TN": 152,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "fpr": 0.0
+    },
+    "R-05-TDR-NLP": {
+      "TP": 2,
+      "FP": 0,
+      "FN": 0,
+      "TN": 154,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "fpr": 0.0
+    },
+    "R-06-SHA256": {
+      "TP": 6,
+      "FP": 0,
+      "FN": 0,
+      "TN": 150,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "fpr": 0.0
+    },
+    "R-07-CRONO-VERSION": {
+      "TP": 3,
+      "FP": 0,
+      "FN": 0,
+      "TN": 153,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "fpr": 0.0
+    },
+    "R-08-CONFLICTO-INTERES": {
+      "TP": 2,
+      "FP": 0,
+      "FN": 0,
+      "TN": 154,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "fpr": 0.0
+    }
+  },
+  "totales": {
+    "TP": 29,
+    "FP": 0,
+    "FN": 0,
+    "TN": 1219
+  },
+  "latencias_ms": {
+    "Detalle de expediente (6 etapas + NLP + alertas)": {
+      "n": 10,
+      "p50": 7.321049924939871,
+      "p95": 8.570299949496984,
+      "max": 8.570299949496984
+    },
+    "Dashboard de indicadores": {
+      "n": 8,
+      "p50": 3.2754000276327133,
+      "p95": 4.199799848720431,
+      "max": 4.199799848720431
+    },
+    "Grafo de colusión (NetworkX)": {
+      "n": 8,
+      "p50": 5.421999958343804,
+      "p95": 66.49290001951158,
+      "max": 66.49290001951158
+    },
+    "Registrar expediente + sellar 6 etapas + 8 reglas XAI": {
+      "n": 18,
+      "p50": 39.29459990467876,
+      "p95": 40.84450006484985,
+      "max": 40.85890017449856
+    }
+  },
+  "casos_en_vivo": [
+    {
+      "caso": "N1 Compra limpia estándar",
+      "esperado": [],
+      "detectado": []
+    },
+    {
+      "caso": "N2 Contratación menor aislada (40 000, sin hermanas)",
+      "esperado": [],
+      "detectado": []
+    },
+    {
+      "caso": "N3 Frontera 8 UIT: 21 400 + 21 400 = 42 800 (no excede) (orden previa 1)",
+      "esperado": [],
+      "detectado": []
+    },
+    {
+      "caso": "N3 Frontera 8 UIT: 21 400 + 21 400 = 42 800 (no excede)",
+      "esperado": [],
+      "detectado": []
+    },
+    {
+      "caso": "N4 Mismo mes, proveedores distintos (sin fraccionamiento) (orden previa 1)",
+      "esperado": [],
+      "detectado": []
+    },
+    {
+      "caso": "N4 Mismo mes, proveedores distintos (sin fraccionamiento)",
+      "esperado": [],
+      "detectado": []
+    },
+    {
+      "caso": "N5 TDR legítimo de equipamiento TI (sin copia de catálogo)",
+      "esperado": [],
+      "detectado": []
+    },
+    {
+      "caso": "P1 Frontera 8 UIT: 21 400 + 21 401 = 42 801 (excede) (orden previa 1)",
+      "esperado": [],
+      "detectado": []
+    },
+    {
+      "caso": "P1 Frontera 8 UIT: 21 400 + 21 401 = 42 801 (excede)",
+      "esperado": [
+        "R-01-FRACCIONAMIENTO"
+      ],
+      "detectado": [
+        "R-01-FRACCIONAMIENTO"
+      ]
+    },
+    {
+      "caso": "P2 Pago sin conformidad",
+      "esperado": [
+        "R-03-PAGO-SIN-CONF"
+      ],
+      "detectado": [
+        "R-03-PAGO-SIN-CONF"
+      ]
+    },
+    {
+      "caso": "P3 Entregable obligatorio incompleto (pozo a tierra)",
+      "esperado": [
+        "R-03-PAGO-SIN-CONF"
+      ],
+      "detectado": [
+        "R-03-PAGO-SIN-CONF"
+      ]
+    },
+    {
+      "caso": "P4 Segregación de funciones vulnerada",
+      "esperado": [
+        "R-02-SEGREGACION"
+      ],
+      "detectado": [
+        "R-02-SEGREGACION"
+      ]
+    },
+    {
+      "caso": "P5 TDR v2.1 extemporáneo sin sustento",
+      "esperado": [
+        "R-07-CRONO-VERSION"
+      ],
+      "detectado": [
+        "R-07-CRONO-VERSION"
+      ]
+    },
+    {
+      "caso": "P6 Conflicto de interés familiar con adjudicatario",
+      "esperado": [
+        "R-08-CONFLICTO-INTERES"
+      ],
+      "detectado": [
+        "R-08-CONFLICTO-INTERES"
+      ]
+    },
+    {
+      "caso": "P7 Colusión: postores con representante compartido",
+      "esperado": [
+        "R-04-COLUSION-GRAFO"
+      ],
+      "detectado": [
+        "R-04-COLUSION-GRAFO"
+      ]
+    },
+    {
+      "caso": "P8 TDR copiado literal del catálogo de un proveedor",
+      "esperado": [
+        "R-05-TDR-NLP"
+      ],
+      "detectado": [
+        "R-05-TDR-NLP"
+      ]
+    },
+    {
+      "caso": "M1 Combinada: v2.1 extemporáneo + mismo funcionario",
+      "esperado": [
+        "R-02-SEGREGACION",
+        "R-07-CRONO-VERSION"
+      ],
+      "detectado": [
+        "R-02-SEGREGACION",
+        "R-07-CRONO-VERSION"
+      ]
+    },
+    {
+      "caso": "M2 Combinada: colusión + pago sin conformidad",
+      "esperado": [
+        "R-03-PAGO-SIN-CONF",
+        "R-04-COLUSION-GRAFO"
+      ],
+      "detectado": [
+        "R-03-PAGO-SIN-CONF",
+        "R-04-COLUSION-GRAFO"
+      ]
+    }
+  ],
+  "rbac": [
+    {
+      "verificacion": "ESPECIALISTA_DEC → PATCH gestión de denuncia",
+      "esperado": 403,
+      "obtenido": 403
+    },
+    {
+      "verificacion": "CONSULTA_TRANSPARENCIA → PATCH gestión de denuncia",
+      "esperado": 403,
+      "obtenido": 403
+    },
+    {
+      "verificacion": "CONSULTA → PATCH verificar entregable",
+      "esperado": 403,
+      "obtenido": 403
+    },
+    {
+      "verificacion": "ESPECIALISTA_DEC → POST simular-alteracion",
+      "esperado": 403,
+      "obtenido": 403
+    },
+    {
+      "verificacion": "ESPECIALISTA_DEC → POST restaurar-integridad",
+      "esperado": 403,
+      "obtenido": 403
+    },
+    {
+      "verificacion": "CONSULTA_TRANSPARENCIA → POST simular-alteracion",
+      "esperado": 403,
+      "obtenido": 403
+    },
+    {
+      "verificacion": "CONSULTA_TRANSPARENCIA → POST restaurar-integridad",
+      "esperado": 403,
+      "obtenido": 403
+    },
+    {
+      "verificacion": "DEC → PATCH alerta ARCHIVADA_SUSTENTADA",
+      "esperado": 403,
+      "obtenido": 403
+    },
+    {
+      "verificacion": "CONSULTA → PATCH alerta",
+      "esperado": 403,
+      "obtenido": 403
+    },
+    {
+      "verificacion": "DEC → PATCH alerta EN_DESCARGO",
+      "esperado": 200,
+      "obtenido": 200
+    },
+    {
+      "verificacion": "ESPECIALISTA_DEC → POST /api/seed/regenerar",
+      "esperado": 403,
+      "obtenido": 403
+    },
+    {
+      "verificacion": "ESPECIALISTA_DEC → GET /api/auditoria",
+      "esperado": 403,
+      "obtenido": 403
+    },
+    {
+      "verificacion": "ESPECIALISTA_DEC → GET /api/denuncias (bandeja OCI)",
+      "esperado": 403,
+      "obtenido": 403
+    },
+    {
+      "verificacion": "CONSULTA_TRANSPARENCIA → POST /api/seed/regenerar",
+      "esperado": 403,
+      "obtenido": 403
+    },
+    {
+      "verificacion": "CONSULTA_TRANSPARENCIA → GET /api/auditoria",
+      "esperado": 403,
+      "obtenido": 403
+    },
+    {
+      "verificacion": "CONSULTA_TRANSPARENCIA → GET /api/denuncias (bandeja OCI)",
+      "esperado": 403,
+      "obtenido": 403
+    },
+    {
+      "verificacion": "OCI → GET /api/auditoria",
+      "esperado": 200,
+      "obtenido": 200
+    },
+    {
+      "verificacion": "OCI → GET /api/denuncias",
+      "esperado": 200,
+      "obtenido": 200
+    },
+    {
+      "verificacion": "CONSULTA → POST simular-registro",
+      "esperado": 403,
+      "obtenido": 403
+    }
+  ]
+}
