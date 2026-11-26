@@ -88,9 +88,13 @@ export const IntegrityBadge: React.FC<IntegrityBadgeProps> = ({ integra, compact
 
 interface RevisionStatusBadgeProps {
   estado: string;
+  rolUltimoCambio?: string | null;
 }
 
-export const RevisionStatusBadge: React.FC<RevisionStatusBadgeProps> = ({ estado }) => {
+export const RevisionStatusBadge: React.FC<RevisionStatusBadgeProps> = ({
+  estado,
+  rolUltimoCambio,
+}) => {
   switch (estado) {
     case 'VALIDADA_OCI':
       return (
@@ -99,13 +103,23 @@ export const RevisionStatusBadge: React.FC<RevisionStatusBadgeProps> = ({ estado
           Confirmada por Control (OCI)
         </span>
       );
-    case 'EN_DESCARGO':
+    case 'EN_DESCARGO': {
+      const derivadoPorOci = (rolUltimoCambio || '').includes('OCI');
+      if (derivadoPorOci) {
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40">
+            <Clock className="w-3.5 h-3.5" />
+            En Descargo Solicitado por OCI
+          </span>
+        );
+      }
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-800 border border-sky-200 dark:bg-sky-500/20 dark:text-sky-300 dark:border-sky-500/40">
           <FileCheck2 className="w-3.5 h-3.5" />
           Con Respuesta de Compras (DEC)
         </span>
       );
+    }
     case 'ARCHIVADA_SUSTENTADA':
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/40">

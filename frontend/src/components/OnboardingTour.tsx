@@ -334,7 +334,7 @@ export const PAGE_TOUR_STEPS: Record<string, TourStep[]> = {
       target: 'val-seguridad',
       title: 'Latencias, Suite Unittest y Controles RBAC',
       description:
-        'Reúne los percentiles p50 y p95 de respuesta en milisegundos, el listado completo de pruebas automatizadas y las 19 comprobaciones de bloqueo HTTP 403.',
+        'Reúne los percentiles p50 y p95 de respuesta en milisegundos, el listado completo de pruebas automatizadas y las 21 comprobaciones de bloqueo HTTP 403.',
       tip: 'Esta vista es de solo lectura y se encuentra disponible para OCI, DEC y Consulta Pública.',
       placement: 'auto',
     },

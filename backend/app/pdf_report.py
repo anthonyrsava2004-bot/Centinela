@@ -234,17 +234,28 @@ def generar_pdf_expediente(db: Session, expediente: Expediente) -> bytes:
                 [Paragraph(f"<b>(c) Base Normativa Exacta:</b> {al.base_normativa}", body_style)],
                 [
                     Paragraph(
-                        f"<b>Derivación / Área Asignada:</b> {al.area_asignada} | "
-                        f"<b>Plazo SLA:</b> {al.fecha_limite or 'Por definir'}",
+                        (
+                            "<b>Estado de Control:</b> Señal sustentada y archivada por OCI (Sin plazo SLA pendiente)"
+                            if al.estado_revision == "ARCHIVADA_SUSTENTADA"
+                            else f"<b>Derivación / Área Asignada:</b> {al.area_asignada} | "
+                            f"<b>Plazo SLA:</b> {al.fecha_limite or 'Por definir'}"
+                        ),
                         body_style,
                     )
                 ],
             ]
             if al.accion_correctiva:
+                etiqueta_accion = (
+                    "Disposición de Cierre / Archivo Motivado:"
+                    if al.estado_revision == "ARCHIVADA_SUSTENTADA"
+                    else "Medida de Control / Plan de Acción Exigido:"
+                    if al.estado_revision == "VALIDADA_OCI"
+                    else "Acción Correctiva Registrada:"
+                )
                 bloque_alerta.append(
                     [
                         Paragraph(
-                            f"<b>Acción Correctiva Registrada:</b> {al.accion_correctiva}",
+                            f"<b>{etiqueta_accion}</b> {al.accion_correctiva}",
                             body_style,
                         )
                     ]
@@ -253,7 +264,7 @@ def generar_pdf_expediente(db: Session, expediente: Expediente) -> bytes:
                 bloque_alerta.append(
                     [
                         Paragraph(
-                            f"<b>Último Pronunciamiento / Descargo ({al.rol_ultimo_cambio} - {al.fecha_actualizacion}):</b> "
+                            f"<b>Último Pronunciamiento / Descargo — {al.rol_ultimo_cambio} [{al.fecha_actualizacion}]:</b> "
                             f"{al.comentario_descargo}",
                             body_style,
                         )

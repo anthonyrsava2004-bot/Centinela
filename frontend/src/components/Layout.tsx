@@ -75,6 +75,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const [modalSesionAbierto, setModalSesionAbierto] = useState<boolean>(false);
   const [paletteAbierta, setPaletteAbierta] = useState<boolean>(false);
   const [alertasPendientes, setAlertasPendientes] = useState<number>(0);
+  const [totalPruebasVal, setTotalPruebasVal] = useState<number>(25);
   const [tourAbierto, setTourAbierto] = useState<boolean>(false);
   const [tourMode, setTourMode] = useState<TourMode>('page');
   const tourDelayRef = useRef<number | null>(null);
@@ -208,6 +209,17 @@ export const Layout: React.FC<LayoutProps> = ({
   };
 
   useEffect(() => {
+    centinelaApi
+      .obtenerReporteValidacion()
+      .then((v) => {
+        if (v?.resumen_muestras?.total_pruebas) {
+          setTotalPruebasVal(v.resumen_muestras.total_pruebas);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const cargarPendientes = () => {
       centinelaApi
         .getDashboardKPIs()
@@ -293,7 +305,7 @@ export const Layout: React.FC<LayoutProps> = ({
       to: '/validacion',
       tourId: 'nav-validacion',
       label: 'Validación',
-      sub: '24 pruebas y métricas',
+      sub: `${totalPruebasVal} pruebas y métricas`,
       icon: FlaskConical,
       visible: true,
       badge: undefined,

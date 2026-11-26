@@ -748,7 +748,7 @@ class TestRBAC(_Registro):
 
     def test_dec_si_puede_responder_descargo(self):
         alerta = client.get("/api/alertas", headers=hdr(ROL_OCI)).json()[0]
-        self._chequear(
+        r = self._chequear(
             "DEC → PATCH alerta EN_DESCARGO",
             ROL_DEC,
             "PATCH",
@@ -758,6 +758,116 @@ class TestRBAC(_Registro):
                 "estado_revision": "EN_DESCARGO",
                 "comentario_descargo": "Descargo y acción correctiva presentados por el área.",
                 "accion_correctiva": "Subsanar documentación observada.",
+                "rol_usuario": ROL_TXT[ROL_DEC],
+            },
+        )
+        self.assertNotIn("))", r.json().get("rol_ultimo_cambio") or "")
+
+    def test_flujo_completo_derivacion_descargo_y_archivo_bloquea_reapertura_dec(self):
+        creado = registrar(
+            {
+                "mismo_funcionario_etapas": True,
+                "fecha_creacion": "2025-12-15T09:00:00",
+                "area_usuaria": "AREA-RBAC-99",
+            }
+        )
+        eid = creado["id"]
+        aid = creado["alertas"][0]["id"]
+
+        # Paso 1: OCI deriva a DEC para descargo
+        r1 = client.patch(
+            f"/api/alertas/{aid}",
+            headers=hdr(ROL_OCI),
+            json={
+                "estado_revision": "EN_DESCARGO",
+                "area_asignada": "DEC — Dependencia Encargada de Contrataciones",
+                "fecha_limite": "2026-12-05",
+                "accion_correctiva": "Presentar informe técnico-normativo sustentatorio.",
+                "comentario_descargo": "Se deriva preliminarmente al área responsable solicitando descargo.",
+                "rol_usuario": ROL_TXT[ROL_OCI],
+            },
+        )
+        self.assertEqual(r1.status_code, 200, r1.text[:200])
+        j1 = r1.json()
+        self.assertEqual(j1["estado_revision"], "EN_DESCARGO")
+        self.assertEqual(j1["fecha_limite"], "2026-12-05")
+        self.assertNotIn("))", j1["rol_ultimo_cambio"] or "")
+        self.assertEqual(detalle(eid)["estado_expediente"], "En Descargo DEC")
+
+        # Paso 2: DEC presenta descargo técnico
+        r2 = client.patch(
+            f"/api/alertas/{aid}",
+            headers=hdr(ROL_DEC),
+            json={
+                "estado_revision": "EN_DESCARGO",
+                "accion_correctiva": "Adecuar especificaciones y adjuntar evidencia verificable.",
+                "comentario_descargo": "Se remite informe técnico sustentatorio de la DEC.",
+                "rol_usuario": ROL_TXT[ROL_DEC],
+            },
+        )
+        self.assertEqual(r2.status_code, 200, r2.text[:200])
+        self.assertNotIn("))", r2.json()["rol_ultimo_cambio"] or "")
+
+        # Paso 3: OCI da por sustentada la señal y dispone su archivo (limpia SLA)
+        r3 = client.patch(
+            f"/api/alertas/{aid}",
+            headers=hdr(ROL_OCI),
+            json={
+                "estado_revision": "ARCHIVADA_SUSTENTADA",
+                "area_asignada": "",
+                "fecha_limite": "",
+                "accion_correctiva": "Archivo definitivo de la señal preventiva por sustento firme.",
+                "comentario_descargo": "Evaluado el descargo técnico, OCI dispone el archivo motivado.",
+                "rol_usuario": ROL_TXT[ROL_OCI],
+            },
+        )
+        self.assertEqual(r3.status_code, 200, r3.text[:200])
+        j3 = r3.json()
+        self.assertEqual(j3["estado_revision"], "ARCHIVADA_SUSTENTADA")
+        self.assertIsNone(j3["fecha_limite"])
+        self.assertEqual(j3["area_asignada"], "OCI — Archivo de Control Preventivo")
+        self.assertNotIn("))", j3["rol_ultimo_cambio"] or "")
+        self.assertEqual(detalle(eid)["estado_expediente"], "Sustentado y Archivado OCI")
+
+        # Paso 4: DEC intenta reabrir o sobrescribir la alerta archivada → HTTP 403
+        self._chequear(
+            "DEC → PATCH alerta ya archivada por OCI",
+            ROL_DEC,
+            "PATCH",
+            f"/api/alertas/{aid}",
+            403,
+            json={
+                "estado_revision": "EN_DESCARGO",
+                "comentario_descargo": "Intento no autorizado de reabrir archivo OCI.",
+                "rol_usuario": ROL_TXT[ROL_DEC],
+            },
+        )
+
+        # Paso 5: OCI reabre con dictamen VALIDADA_OCI y DEC tampoco puede sobrescribirlo → HTTP 403
+        r5 = client.patch(
+            f"/api/alertas/{aid}",
+            headers=hdr(ROL_OCI),
+            json={
+                "estado_revision": "VALIDADA_OCI",
+                "area_asignada": "DEC — Dependencia Encargada de Contrataciones",
+                "fecha_limite": "2026-12-10",
+                "accion_correctiva": "Emitir Informe de Hito de Control Simultáneo.",
+                "comentario_descargo": "Se confirma la observación preventiva XAI.",
+                "rol_usuario": ROL_TXT[ROL_OCI],
+            },
+        )
+        self.assertEqual(r5.status_code, 200, r5.text[:200])
+        self.assertEqual(detalle(eid)["estado_expediente"], "Observado — Hito de Control OCI")
+
+        self._chequear(
+            "DEC → PATCH alerta con dictamen VALIDADA_OCI",
+            ROL_DEC,
+            "PATCH",
+            f"/api/alertas/{aid}",
+            403,
+            json={
+                "estado_revision": "EN_DESCARGO",
+                "comentario_descargo": "Intento no autorizado de sobrescribir dictamen OCI.",
                 "rol_usuario": ROL_TXT[ROL_DEC],
             },
         )

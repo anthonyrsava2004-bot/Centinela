@@ -58,6 +58,12 @@ export interface HistorialAlertaItem {
   timestamp: string;
 }
 
+export type EstadoRevisionAlerta =
+  | 'PENDIENTE'
+  | 'EN_DESCARGO'
+  | 'VALIDADA_OCI'
+  | 'ARCHIVADA_SUSTENTADA';
+
 export interface AlertaGestion {
   id: number;
   expediente_id: number;
@@ -72,7 +78,7 @@ export interface AlertaGestion {
   regla_activada: string;
   evidencia_exacta: string;
   base_normativa: string;
-  estado_revision: 'PENDIENTE' | 'EN_DESCARGO' | 'VALIDADA_OCI' | 'ARCHIVADA_SUSTENTADA';
+  estado_revision: EstadoRevisionAlerta;
   area_asignada: string;
   accion_correctiva?: string | null;
   fecha_limite?: string | null;

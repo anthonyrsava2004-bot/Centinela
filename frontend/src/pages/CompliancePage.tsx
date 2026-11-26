@@ -23,6 +23,7 @@ import { centinelaApi } from '../api/client';
 import {
   AlertaGestion,
   ConflictoInteresItem,
+  EstadoRevisionAlerta,
   ExpedienteListItem,
   ProveedorItem,
   RolUsuario,
@@ -30,21 +31,20 @@ import {
 import { RevisionStatusBadge } from '../components/AlertBadge';
 import { AnimatedNumber } from '../components/AnimatedNumber';
 import { Modal } from '../components/Modal';
+import {
+  AREAS_DERIVACION,
+  getAlertRevisionDefaults,
+  getCardAccionCorrectivaHeading,
+  getDefaultSlaDate,
+  getHistorialAccionPrefix,
+  getInitialTargetEstado,
+  getModalAccionCorrectivaLabel,
+  isAlertaCerradaPorOci,
+} from '../utils/alertWorkflow';
 
 interface CompliancePageProps {
   rolActivo: RolUsuario;
 }
-
-const AREAS_DERIVACION = [
-  'OCI — Órgano de Control Institucional',
-  'OCI — Control Simultáneo (Hito de Control)',
-  'OCI — Unidad de Análisis de Redes y Compliance',
-  'Oficina de Integridad / OCI — Abstención y Reasignación',
-  'DEC — Dependencia Encargada de Contrataciones',
-  'Área Usuaria / DEC — Subsanación Documental',
-  'Tesorería / Control Previo + OCI',
-  'Oficina de Asesoría Jurídica',
-];
 
 const TIPOS_VINCULO = [
   'Vínculo Familiar Directo con Representante Legal',
@@ -65,7 +65,7 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
 
   // Estado del Modal de Revisión Humana / Descargo / Derivación
   const [alertaSeleccionada, setAlertaSeleccionada] = useState<AlertaGestion | null>(null);
-  const [nuevoEstado, setNuevoEstado] = useState<string>('EN_DESCARGO');
+  const [nuevoEstado, setNuevoEstado] = useState<EstadoRevisionAlerta>('EN_DESCARGO');
   const [areaAsignada, setAreaAsignada] = useState<string>(AREAS_DERIVACION[0]);
   const [fechaLimite, setFechaLimite] = useState<string>('');
   const [accionCorrectiva, setAccionCorrectiva] = useState<string>('');
@@ -113,6 +113,25 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
       setAlertaSeleccionada(null);
       setModalDeclararAbierto(false);
       setConflictoParaAbstener(null);
+    } else if (alertaSeleccionada) {
+      if (!esAuditorOCI && isAlertaCerradaPorOci(alertaSeleccionada.estado_revision)) {
+        setAlertaSeleccionada(null);
+      } else {
+        const targetEstado = getInitialTargetEstado(
+          alertaSeleccionada.estado_revision,
+          esAuditorOCI,
+        );
+        const tpl = getAlertRevisionDefaults(targetEstado, esAuditorOCI);
+        setNuevoEstado(targetEstado);
+        setAreaAsignada(tpl.areaAsignada);
+        setAccionCorrectiva(tpl.accionCorrectiva);
+        setComentario(tpl.comentario);
+        setFechaLimite(
+          targetEstado === 'ARCHIVADA_SUSTENTADA'
+            ? ''
+            : alertaSeleccionada.fecha_limite || getDefaultSlaDate(5),
+        );
+      }
     } else if (!esAuditorOCI) {
       setNuevoEstado('EN_DESCARGO');
     }
@@ -179,25 +198,35 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
   });
 
   const abrirModalRevision = (alerta: AlertaGestion) => {
-    if (esSoloLectura) return;
+    if (esSoloLectura || (!esAuditorOCI && isAlertaCerradaPorOci(alerta.estado_revision))) {
+      return;
+    }
     setErrorModal(null);
     setAlertaSeleccionada(alerta);
-    setNuevoEstado(esAuditorOCI ? 'VALIDADA_OCI' : 'EN_DESCARGO');
-    setAreaAsignada(alerta.area_asignada || AREAS_DERIVACION[0]);
+    const targetEstado = getInitialTargetEstado(alerta.estado_revision, esAuditorOCI);
+    const tpl = getAlertRevisionDefaults(targetEstado, esAuditorOCI);
+    setNuevoEstado(targetEstado);
+    setAreaAsignada(tpl.areaAsignada);
     setFechaLimite(
-      alerta.fecha_limite || new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10),
+      targetEstado === 'ARCHIVADA_SUSTENTADA'
+        ? ''
+        : alerta.fecha_limite || getDefaultSlaDate(5),
     );
-    setAccionCorrectiva(
-      alerta.accion_correctiva ||
-        (esAuditorOCI
-          ? 'Emitir Informe de Hito de Control y requerir plan de acción correctiva en 5 días hábiles.'
-          : 'Reprogramar proceso mediante procedimiento competitivo consolidado y adjuntar sustento técnico en SIGA.'),
-    );
-    setComentario(
-      esAuditorOCI
-        ? 'Se valida la señal preventiva XAI, se deriva al área competente y se dispone seguimiento de acción correctiva conforme a Ley N° 32069 y Ley N° 27785.'
-        : 'Se adjunta informe técnico sustentatorio de la Dependencia Encargada de las Contrataciones (DEC) detallando la subsanación y medidas preventivas adoptadas.',
-    );
+    setAccionCorrectiva(tpl.accionCorrectiva);
+    setComentario(tpl.comentario);
+  };
+
+  const handleCambiarEstadoModal = (nextEstado: EstadoRevisionAlerta) => {
+    setNuevoEstado(nextEstado);
+    const tpl = getAlertRevisionDefaults(nextEstado, esAuditorOCI);
+    setAreaAsignada(tpl.areaAsignada);
+    setAccionCorrectiva(tpl.accionCorrectiva);
+    setComentario(tpl.comentario);
+    if (nextEstado === 'ARCHIVADA_SUSTENTADA') {
+      setFechaLimite('');
+    } else if (!fechaLimite) {
+      setFechaLimite(alertaSeleccionada?.fecha_limite || getDefaultSlaDate(5));
+    }
   };
 
   const handleGuardarRevision = async (e: React.FormEvent) => {
@@ -206,12 +235,13 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
     try {
       setGuardando(true);
       setErrorModal(null);
+      const esCierreArchivo = esAuditorOCI && nuevoEstado === 'ARCHIVADA_SUSTENTADA';
       await centinelaApi.actualizarAlerta(alertaSeleccionada.id, {
-        estado_revision: nuevoEstado,
+        estado_revision: esAuditorOCI ? nuevoEstado : 'EN_DESCARGO',
         comentario_descargo: comentario,
         rol_usuario: rolActivo,
         area_asignada: esAuditorOCI ? areaAsignada : undefined,
-        fecha_limite: esAuditorOCI ? fechaLimite : undefined,
+        fecha_limite: esAuditorOCI ? (esCierreArchivo ? '' : fechaLimite) : undefined,
         accion_correctiva: accionCorrectiva,
       });
       setAlertaSeleccionada(null);
@@ -440,212 +470,275 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
             </div>
           ) : (
             <div className="space-y-4">
-              {alertas.map((alerta, idx) => (
-                <div
-                  key={alerta.id}
-                  data-tour={idx === 0 ? 'comp-lista' : undefined}
-                  className={`animate-card-up stagger-${Math.min(idx + 1, 6)} card-elevate p-6 rounded-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-sm dark:shadow-none space-y-4`}
-                >
-                  {/* Fila superior */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800/80 pb-3.5">
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      <span className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-500/30 font-mono text-xs font-bold">
-                        {alerta.codigo_regla}
-                      </span>
-                      <span className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-slate-800 text-blue-800 dark:text-cyan-300 border border-blue-200 dark:border-slate-700 font-mono text-xs font-bold">
-                        {alerta.expediente_codigo}
-                      </span>
-                      <span className="text-xs text-slate-600 dark:text-slate-400 font-mono">
-                        Área:{' '}
-                        <strong className="text-slate-900 dark:text-slate-200">
-                          {alerta.area_usuaria}
-                        </strong>{' '}
-                        • Monto:{' '}
-                        <strong className="text-emerald-700 dark:text-emerald-300">
-                          S/{' '}
-                          {(alerta.expediente_monto || 0).toLocaleString('es-PE', {
-                            minimumFractionDigits: 2,
-                          })}
-                        </strong>
-                      </span>
-                    </div>
-
-                    <RevisionStatusBadge estado={alerta.estado_revision} />
-                  </div>
-
-                  {/* Barra de Derivación y Plazo SLA */}
-                  <div className="flex flex-wrap items-center gap-3 text-[11px] bg-slate-50 dark:bg-slate-950/75 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800/80">
-                    <span className="inline-flex items-center gap-1.5 text-slate-800 dark:text-slate-300">
-                      <Building2 className="w-3.5 h-3.5 text-blue-700 dark:text-cyan-400" />
-                      <strong className="text-slate-500 dark:text-slate-400">Derivada a:</strong>{' '}
-                      {alerta.area_asignada}
-                    </span>
-                    {alerta.fecha_limite && (
-                      <span className="inline-flex items-center gap-1.5 text-amber-800 dark:text-amber-300 font-mono font-semibold">
-                        <CalendarClock className="w-3.5 h-3.5" />
-                        Plazo SLA: {alerta.fecha_limite}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Título No Punitivo */}
-                  <div>
-                    <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-                      {alerta.titulo}
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      Proceso: {alerta.expediente_objeto}
-                    </p>
-                  </div>
-
-                  {/* Estructura Tripartita Obligatoria XAI: (a) Regla, (b) Evidencia, (c) Base Normativa */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-800/90 space-y-1.5">
-                      <div className="font-bold text-blue-800 dark:text-cyan-400 uppercase tracking-wider text-[11px]">
-                        (a) Regla Algorítmica Activada
-                      </div>
-                      <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-                        {alerta.regla_activada}
-                      </p>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-800/90 space-y-1.5">
-                      <div className="font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider text-[11px]">
-                        (b) Evidencia Forense Exacta
-                      </div>
-                      <p className="text-slate-900 dark:text-slate-200 leading-relaxed font-medium">
-                        {alerta.evidencia_exacta}
-                      </p>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-800/90 space-y-1.5">
-                      <div className="font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider text-[11px]">
-                        (c) Base Normativa Exacta
-                      </div>
-                      <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-                        {alerta.base_normativa}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Acción Correctiva Registrada */}
-                  {alerta.accion_correctiva && (
-                    <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/25 border border-emerald-200 dark:border-emerald-500/35 text-xs space-y-1">
-                      <div className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300 font-bold">
-                        <ClipboardCheck className="w-4 h-4" />
-                        Acción Correctiva / Plan de Subsanación Registrado
-                      </div>
-                      <p className="text-slate-800 dark:text-slate-200 leading-relaxed">
-                        {alerta.accion_correctiva}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Último Pronunciamiento o Descargo */}
-                  {alerta.comentario_descargo && (
-                    <div className="p-4 rounded-xl bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-500/40 text-xs space-y-1">
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-sky-900 dark:text-sky-300 font-bold">
-                        <span>
-                          Último Pronunciamiento / Descargo Registrado por: {alerta.rol_ultimo_cambio}
-                        </span>
-                        <span className="font-mono text-[11px]">{alerta.fecha_actualizacion}</span>
-                      </div>
-                      <p className="text-slate-800 dark:text-slate-200 leading-relaxed">
-                        {alerta.comentario_descargo}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Bitácora Inmutable de Revisiones Humanas */}
-                  {alerta.historial && alerta.historial.length > 0 && (
-                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/85 border border-slate-200 dark:border-slate-800 text-xs space-y-2">
-                      <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                        <History className="w-3.5 h-3.5 text-blue-700 dark:text-cyan-400" />
-                        Bitácora Cronológica de Revisiones y Derivaciones ({alerta.historial.length})
-                      </div>
-                      <div className="space-y-2">
-                        {alerta.historial.map((h) => (
-                          <div
-                            key={h.id}
-                            className="pl-3 border-l-2 border-blue-600/40 dark:border-cyan-500/40 text-[11px] space-y-0.5"
-                          >
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <span className="font-semibold text-blue-800 dark:text-cyan-300">
-                                {h.rol_usuario}{' '}
-                                <span className="text-slate-500 dark:text-slate-400 font-mono">
-                                  ({h.estado_anterior || 'INICIO'} → {h.estado_nuevo})
-                                </span>
-                              </span>
-                              <span className="font-mono text-slate-500">{h.timestamp}</span>
-                            </div>
-                            <p className="text-slate-700 dark:text-slate-300">{h.comentario}</p>
-                            {h.accion_correctiva && (
-                              <p className="text-emerald-700 dark:text-emerald-300/90 font-medium">
-                                Acción correctiva: {h.accion_correctiva}
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Botones de Acción por Rol */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        onClick={() => navigate(`/trazabilidad?id=${alerta.expediente_id}`)}
-                        className="btn-tactile inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold"
-                      >
-                        <FileSearch className="w-3.5 h-3.5 text-blue-700 dark:text-cyan-400" />
-                        Ver Detalle y Seguridad
-                      </button>
-                      <a
-                        href={centinelaApi.obtenerUrlReportePdf(alerta.expediente_id)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-tactile inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold"
-                      >
-                        <FileDown className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                        Reporte PDF Oficial
-                      </a>
-                      {alerta.codigo_regla === 'R-08-CONFLICTO-INTERES' && (
-                        <button
-                          onClick={() => setTabActivo('conflictos')}
-                          className="btn-tactile inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 border border-amber-200 dark:border-amber-500/35 text-amber-800 dark:text-amber-300 text-xs font-bold"
+              {alertas.map((alerta, idx) => {
+                const esArchivada = alerta.estado_revision === 'ARCHIVADA_SUSTENTADA';
+                const esEnDescargo = alerta.estado_revision === 'EN_DESCARGO';
+                const esCerradaOci = isAlertaCerradaPorOci(alerta.estado_revision);
+                return (
+                  <div
+                    key={alerta.id}
+                    data-tour={idx === 0 ? 'comp-lista' : undefined}
+                    className={`animate-card-up stagger-${Math.min(idx + 1, 6)} card-elevate p-6 rounded-2xl bg-white dark:bg-slate-900/95 border shadow-sm dark:shadow-none space-y-4 ${
+                      esArchivada
+                        ? 'border-emerald-200 dark:border-emerald-500/35 hover:border-emerald-300 dark:hover:border-emerald-500/50'
+                        : esEnDescargo
+                        ? 'border-amber-200 dark:border-amber-500/35 hover:border-amber-300 dark:hover:border-amber-500/50'
+                        : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    {/* Fila superior */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800/80 pb-3.5">
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <span
+                          className={`px-2.5 py-1 rounded-lg border font-mono text-xs font-bold ${
+                            esArchivada
+                              ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30'
+                              : esEnDescargo
+                              ? 'bg-amber-50 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-500/30'
+                              : 'bg-rose-50 dark:bg-rose-500/15 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-500/30'
+                          }`}
                         >
-                          <Scale className="w-3.5 h-3.5" />
-                          Gestionar Abstención / Reasignación
-                        </button>
+                          {alerta.codigo_regla}
+                        </span>
+                        <span className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-slate-800 text-blue-800 dark:text-cyan-300 border border-blue-200 dark:border-slate-700 font-mono text-xs font-bold">
+                          {alerta.expediente_codigo}
+                        </span>
+                        <span className="text-xs text-slate-600 dark:text-slate-400 font-mono">
+                          Área:{' '}
+                          <strong className="text-slate-900 dark:text-slate-200">
+                            {alerta.area_usuaria}
+                          </strong>{' '}
+                          • Monto:{' '}
+                          <strong className="text-emerald-700 dark:text-emerald-300">
+                            S/{' '}
+                            {(alerta.expediente_monto || 0).toLocaleString('es-PE', {
+                              minimumFractionDigits: 2,
+                            })}
+                          </strong>
+                        </span>
+                      </div>
+
+                      <RevisionStatusBadge
+                        estado={alerta.estado_revision}
+                        rolUltimoCambio={alerta.rol_ultimo_cambio}
+                      />
+                    </div>
+
+                    {/* Barra de Derivación y Plazo SLA */}
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] bg-slate-50 dark:bg-slate-950/75 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800/80">
+                      {esArchivada ? (
+                        <span className="inline-flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300 font-semibold">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <strong className="text-slate-600 dark:text-slate-400">
+                            Estado de Control:
+                          </strong>{' '}
+                          Señal sustentada y archivada por OCI (Sin plazo SLA pendiente)
+                        </span>
+                      ) : (
+                        <>
+                          <span className="inline-flex items-center gap-1.5 text-slate-800 dark:text-slate-300">
+                            <Building2 className="w-3.5 h-3.5 text-blue-700 dark:text-cyan-400 shrink-0" />
+                            <strong className="text-slate-500 dark:text-slate-400">
+                              Derivada a:
+                            </strong>{' '}
+                            {alerta.area_asignada}
+                          </span>
+                          {alerta.fecha_limite && (
+                            <span className="inline-flex items-center gap-1.5 text-amber-800 dark:text-amber-300 font-mono font-semibold">
+                              <CalendarClock className="w-3.5 h-3.5 shrink-0" />
+                              Plazo SLA: {alerta.fecha_limite}
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
 
-                    {esSoloLectura ? (
-                      <span
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs font-semibold cursor-not-allowed"
-                        title="El perfil Consulta Transparencia tiene permisos de solo lectura (Ley N° 27806)"
-                      >
-                        <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                        Solo Lectura (Sin Edición)
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => abrirModalRevision(alerta)}
-                        className={`btn-tactile inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs shadow-sm ${
-                          esAuditorOCI
-                            ? 'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950'
-                            : 'bg-blue-700 hover:bg-blue-800 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950'
-                        }`}
-                      >
-                        <MessageSquarePlus className="w-4 h-4" />
-                        {esAuditorOCI
-                          ? 'Derivar / Emitir Dictamen OCI'
-                          : 'Registrar Descargo y Acción Correctiva (DEC)'}
-                      </button>
+                    {/* Título No Punitivo */}
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                        {alerta.titulo}
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Proceso: {alerta.expediente_objeto}
+                      </p>
+                    </div>
+
+                    {/* Estructura Tripartita Obligatoria XAI: (a) Regla, (b) Evidencia, (c) Base Normativa */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                      <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-800/90 space-y-1.5">
+                        <div className="font-bold text-blue-800 dark:text-cyan-400 uppercase tracking-wider text-[11px]">
+                          (a) Regla Algorítmica Activada
+                        </div>
+                        <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                          {alerta.regla_activada}
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-800/90 space-y-1.5">
+                        <div className="font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider text-[11px]">
+                          (b) Evidencia Forense Exacta
+                        </div>
+                        <p className="text-slate-900 dark:text-slate-200 leading-relaxed font-medium">
+                          {alerta.evidencia_exacta}
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-800/90 space-y-1.5">
+                        <div className="font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider text-[11px]">
+                          (c) Base Normativa Exacta
+                        </div>
+                        <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                          {alerta.base_normativa}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Acción Correctiva / Disposición Contextual */}
+                    {alerta.accion_correctiva && (
+                      <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/25 border border-emerald-200 dark:border-emerald-500/35 text-xs space-y-1">
+                        <div className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300 font-bold">
+                          <ClipboardCheck className="w-4 h-4 shrink-0" />
+                          {getCardAccionCorrectivaHeading(
+                            alerta.estado_revision,
+                            alerta.rol_ultimo_cambio,
+                          )}
+                        </div>
+                        <p className="text-slate-800 dark:text-slate-200 leading-relaxed">
+                          {alerta.accion_correctiva}
+                        </p>
+                      </div>
                     )}
+
+                    {/* Último Pronunciamiento o Descargo */}
+                    {alerta.comentario_descargo && (
+                      <div className="p-4 rounded-xl bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-500/40 text-xs space-y-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-sky-900 dark:text-sky-300 font-bold">
+                          <span>
+                            Último Pronunciamiento / Descargo Registrado por:{' '}
+                            {alerta.rol_ultimo_cambio}
+                          </span>
+                          <span className="font-mono text-[11px]">
+                            {alerta.fecha_actualizacion}
+                          </span>
+                        </div>
+                        <p className="text-slate-800 dark:text-slate-200 leading-relaxed">
+                          {alerta.comentario_descargo}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Bitácora Inmutable de Revisiones Humanas */}
+                    {alerta.historial && alerta.historial.length > 0 && (
+                      <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/85 border border-slate-200 dark:border-slate-800 text-xs space-y-2">
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                          <History className="w-3.5 h-3.5 text-blue-700 dark:text-cyan-400" />
+                          Bitácora Cronológica de Revisiones y Derivaciones ({alerta.historial.length})
+                        </div>
+                        <div className="space-y-2">
+                          {alerta.historial.map((h) => (
+                            <div
+                              key={h.id}
+                              className="pl-3 border-l-2 border-blue-600/40 dark:border-cyan-500/40 text-[11px] space-y-0.5"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="font-semibold text-blue-800 dark:text-cyan-300">
+                                  {h.rol_usuario}{' '}
+                                  <span className="text-slate-500 dark:text-slate-400 font-mono">
+                                    ({h.estado_anterior || 'INICIO'} → {h.estado_nuevo})
+                                  </span>
+                                </span>
+                                <span className="font-mono text-slate-500">{h.timestamp}</span>
+                              </div>
+                              <p className="text-slate-700 dark:text-slate-300">{h.comentario}</p>
+                              {h.accion_correctiva && (
+                                <p className="text-emerald-700 dark:text-emerald-300/90 font-medium">
+                                  {getHistorialAccionPrefix(h.estado_nuevo, h.rol_usuario)}{' '}
+                                  {h.accion_correctiva}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Botones de Acción por Rol */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => navigate(`/trazabilidad?id=${alerta.expediente_id}`)}
+                          className="btn-tactile inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold"
+                        >
+                          <FileSearch className="w-3.5 h-3.5 text-blue-700 dark:text-cyan-400" />
+                          Ver Detalle y Seguridad
+                        </button>
+                        <a
+                          href={centinelaApi.obtenerUrlReportePdf(alerta.expediente_id)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-tactile inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold"
+                        >
+                          <FileDown className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          Reporte PDF Oficial
+                        </a>
+                        {alerta.codigo_regla === 'R-08-CONFLICTO-INTERES' && (
+                          <button
+                            onClick={() => setTabActivo('conflictos')}
+                            className="btn-tactile inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 border border-amber-200 dark:border-amber-500/35 text-amber-800 dark:text-amber-300 text-xs font-bold"
+                          >
+                            <Scale className="w-3.5 h-3.5" />
+                            Gestionar Abstención / Reasignación
+                          </button>
+                        )}
+                      </div>
+
+                      {esSoloLectura ? (
+                        <span
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs font-semibold cursor-not-allowed"
+                          title="El perfil Consulta Transparencia tiene permisos de solo lectura (Ley N° 27806)"
+                        >
+                          <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                          Solo Lectura (Sin Edición)
+                        </span>
+                      ) : !esAuditorOCI && esCerradaOci ? (
+                        esArchivada ? (
+                          <span
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/35 text-emerald-800 dark:text-emerald-300 text-xs font-bold"
+                            title="La señal fue archivada motivadamente por el Auditor OCI. Solo OCI puede reabrirla."
+                          >
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                            Cerrada y Archivada por OCI
+                          </span>
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-50 dark:bg-rose-500/15 border border-rose-200 dark:border-rose-500/40 text-rose-800 dark:text-rose-300 text-xs font-bold"
+                            title="El Auditor OCI ya emitió dictamen definitivo para Hito de Control. Solo OCI puede modificarlo."
+                          >
+                            <Lock className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                            Dictamen Definitivo OCI Emitido
+                          </span>
+                        )
+                      ) : (
+                        <button
+                          onClick={() => abrirModalRevision(alerta)}
+                          className={`btn-tactile inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs shadow-sm ${
+                            esAuditorOCI
+                              ? 'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950'
+                              : 'bg-blue-700 hover:bg-blue-800 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950'
+                          }`}
+                        >
+                          <MessageSquarePlus className="w-4 h-4" />
+                          {esAuditorOCI
+                            ? esCerradaOci
+                              ? 'Modificar Dictamen / Reabrir'
+                              : 'Derivar / Emitir Dictamen OCI'
+                            : 'Registrar Descargo y Acción Correctiva (DEC)'}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -921,20 +1014,21 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
                 Nuevo Estado de la Señal Preventiva:
               </label>
               <select
-                value={nuevoEstado}
-                onChange={(e) => setNuevoEstado(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 dark:focus:border-emerald-500"
+                value={esAuditorOCI ? nuevoEstado : 'EN_DESCARGO'}
+                onChange={(e) => handleCambiarEstadoModal(e.target.value as EstadoRevisionAlerta)}
+                disabled={!esAuditorOCI}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 dark:focus:border-emerald-500 disabled:opacity-90"
               >
                 {esAuditorOCI ? (
                   <>
+                    <option value="EN_DESCARGO">
+                      EN_DESCARGO — Derivar al Área / DEC para Descargo Técnico
+                    </option>
                     <option value="VALIDADA_OCI">
                       VALIDADA_OCI — Observación Confirmada por Auditor OCI para Hito de Control
                     </option>
                     <option value="ARCHIVADA_SUSTENTADA">
                       ARCHIVADA_SUSTENTADA — Desestimada con Sustento Técnico-Legal Firme
-                    </option>
-                    <option value="EN_DESCARGO">
-                      EN_DESCARGO — Solicitar Ampliación de Descargo al Área / DEC
                     </option>
                     <option value="PENDIENTE">
                       PENDIENTE — Retornar a Estado Pendiente de Revisión
@@ -976,19 +1070,26 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
                   <label className="block font-bold text-slate-700 dark:text-slate-200">
                     Plazo Límite de Atención (SLA):
                   </label>
-                  <input
-                    type="date"
-                    value={fechaLimite}
-                    onChange={(e) => setFechaLimite(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 dark:focus:border-emerald-500"
-                  />
+                  {nuevoEstado === 'ARCHIVADA_SUSTENTADA' ? (
+                    <div className="w-full px-3 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-500/40 text-emerald-800 dark:text-emerald-300 font-semibold flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>Sin SLA pendiente (Cierre de alerta)</span>
+                    </div>
+                  ) : (
+                    <input
+                      type="date"
+                      value={fechaLimite}
+                      onChange={(e) => setFechaLimite(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 dark:focus:border-emerald-500"
+                    />
+                  )}
                 </div>
               </div>
             )}
 
             <div className="space-y-1.5">
               <label className="block font-bold text-slate-700 dark:text-slate-200">
-                Acción Correctiva / Medida de Subsanación:
+                {getModalAccionCorrectivaLabel(nuevoEstado, esAuditorOCI)}
               </label>
               <input
                 type="text"

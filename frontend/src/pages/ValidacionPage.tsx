@@ -900,7 +900,7 @@ export const ValidacionPage: React.FC<ValidacionPageProps> = ({ rolActivo }) => 
           </div>
         </div>
 
-        {/* Columna Derecha: Matriz de Acceso RBAC (19 verificaciones) */}
+        {/* Columna Derecha: Matriz de Acceso RBAC (21 verificaciones) */}
         <div className="animate-card-up rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden min-w-0">
           <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
             <div>

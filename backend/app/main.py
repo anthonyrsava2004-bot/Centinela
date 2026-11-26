@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from .audit_log import (
     extraer_actor_request,
     inicializar_bitacora_si_vacia,
+    normalizar_rol,
     registrar_evento_auditoria,
     resolver_usuario_codigo,
     verificar_y_listar_auditoria,
@@ -1022,8 +1023,8 @@ def actualizar_alerta_xai(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    _, _, ip_origen = extraer_actor_request(request, rol_fallback=payload.rol_usuario)
-    rol_efectivo = payload.rol_usuario
+    _, rol_req, ip_origen = extraer_actor_request(request, rol_fallback=payload.rol_usuario)
+    rol_efectivo = normalizar_rol(payload.rol_usuario or rol_req)
     usuario_codigo = resolver_usuario_codigo(rol_efectivo, request.headers.get("X-Centinela-User"))
 
     alerta = db.query(AlertaGestion).filter(AlertaGestion.id == alerta_id).first()
@@ -1072,7 +1073,7 @@ def actualizar_alerta_xai(
             recurso=recurso_lbl,
             resultado="BLOQUEADO_403",
             detalle=(
-                f"Intento no autorizado de '{usuario_codigo}' ({rol_efectivo}) para cambiar alerta "
+                f"Intento no autorizado de '{usuario_codigo}' — {rol_efectivo} para cambiar alerta "
                 f"a '{payload.estado_revision}' (competencia exclusiva de Auditor OCI)."
             ),
             ip_origen=ip_origen,
@@ -1089,16 +1090,48 @@ def actualizar_alerta_xai(
     if not alerta:
         raise HTTPException(status_code=404, detail="Señal de alerta no encontrada")
 
+    if not es_oci and alerta.estado_revision in {"ARCHIVADA_SUSTENTADA", "VALIDADA_OCI"}:
+        registrar_evento_auditoria(
+            db=db,
+            usuario_codigo=usuario_codigo,
+            rol_usuario=rol_efectivo,
+            accion="ACCESO_DENEGADO_RBAC",
+            recurso=recurso_lbl,
+            resultado="BLOQUEADO_403",
+            detalle=(
+                f"Intento bloqueado de '{usuario_codigo}' — {rol_efectivo} para reabrir o sobrescribir "
+                f"alerta con resolución OCI firme ('{alerta.estado_revision}')."
+            ),
+            ip_origen=ip_origen,
+        )
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "La señal ya cuenta con dictamen o archivo emitido por el Auditor OCI. "
+                "Solo OCI puede reabrirla o modificar su estado."
+            ),
+        )
+
     estado_anterior = alerta.estado_revision
     ahora_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
-    firma_actor = f"{usuario_codigo} ({rol_efectivo})"
+    firma_actor = f"{usuario_codigo} — {rol_efectivo}"
 
     alerta.estado_revision = payload.estado_revision
     alerta.comentario_descargo = payload.comentario_descargo.strip()
-    if payload.area_asignada and es_oci:
-        alerta.area_asignada = payload.area_asignada.strip()
-    if payload.fecha_limite and es_oci:
-        alerta.fecha_limite = payload.fecha_limite.strip()
+
+    if payload.estado_revision == "ARCHIVADA_SUSTENTADA":
+        alerta.fecha_limite = None
+        alerta.area_asignada = (
+            payload.area_asignada.strip()
+            if payload.area_asignada and payload.area_asignada.strip()
+            else "OCI — Archivo de Control Preventivo"
+        )
+    else:
+        if payload.area_asignada and payload.area_asignada.strip() and es_oci:
+            alerta.area_asignada = payload.area_asignada.strip()
+        if payload.fecha_limite is not None and es_oci:
+            alerta.fecha_limite = payload.fecha_limite.strip() or None
+
     if payload.accion_correctiva is not None and payload.accion_correctiva.strip():
         alerta.accion_correctiva = payload.accion_correctiva.strip()
 
@@ -1116,8 +1149,31 @@ def actualizar_alerta_xai(
         timestamp=ahora_iso,
     )
     db.add(registro_historial)
+    db.flush()
+
+    if exp_ref:
+        alertas_exp = (
+            db.query(AlertaGestion)
+            .filter(AlertaGestion.expediente_id == exp_ref.id)
+            .all()
+        )
+        if alertas_exp:
+            if (
+                all(a.estado_revision == "ARCHIVADA_SUSTENTADA" for a in alertas_exp)
+                and exp_ref.integridad_valida
+            ):
+                exp_ref.estado_expediente = "Sustentado y Archivado OCI"
+            elif any(a.estado_revision == "VALIDADA_OCI" for a in alertas_exp):
+                exp_ref.estado_expediente = "Observado — Hito de Control OCI"
+            elif any(a.estado_revision == "EN_DESCARGO" for a in alertas_exp):
+                exp_ref.estado_expediente = "En Descargo DEC"
+            else:
+                exp_ref.estado_expediente = "En Revisión OCI"
+
     db.commit()
     db.refresh(alerta)
+    if exp_ref:
+        db.refresh(exp_ref)
 
     registrar_evento_auditoria(
         db=db,
@@ -1299,7 +1355,7 @@ def verificar_entregable_tdr(
     ahora_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     ent.cumplido = payload.cumplido
     ent.evidencia_tecnica = payload.evidencia_tecnica.strip() if payload.cumplido else None
-    ent.verificado_por = f"{usuario} ({rol})" if payload.cumplido else None
+    ent.verificado_por = f"{usuario} — {rol}" if payload.cumplido else None
     ent.fecha_verificacion = ahora_iso if payload.cumplido else None
 
     db.commit()
@@ -1408,7 +1464,7 @@ def declarar_conflicto_interes(
         funcionario_reasignado=reasignado,
         fecha_registro=ahora_iso,
         fecha_resolucion=ahora_iso if payload.abstenerse_de_inmediato else None,
-        resuelto_por=f"{usuario} ({rol})" if payload.abstenerse_de_inmediato else None,
+        resuelto_por=f"{usuario} — {rol}" if payload.abstenerse_de_inmediato else None,
     )
     db.add(ci)
     db.commit()
@@ -1482,7 +1538,7 @@ def registrar_abstencion_y_reasignacion(
     ci.estado = "ABSTENIDO_Y_REASIGNADO"
     ci.funcionario_reasignado = payload.funcionario_reasignado.strip()
     ci.fecha_resolucion = ahora_iso
-    ci.resuelto_por = f"{usuario} ({rol})"
+    ci.resuelto_por = f"{usuario} — {rol}"
     if payload.comentario and payload.comentario.strip():
         ci.descripcion = f"{ci.descripcion} | Resolución de abstención: {payload.comentario.strip()}"
 
@@ -1782,7 +1838,7 @@ def gestionar_denuncia_reservada(
     den.respuesta_seguimiento = payload.respuesta_seguimiento.strip()
     den.nota_interna_oci = payload.nota_interna_oci.strip()
     den.ultima_actualizacion = ahora_iso
-    den.gestionado_por = f"{usuario} ({rol})"
+    den.gestionado_por = f"{usuario} — {rol}"
 
     db.commit()
     db.refresh(den)

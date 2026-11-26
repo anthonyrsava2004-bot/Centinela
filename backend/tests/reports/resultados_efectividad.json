@@ -1,5 +1,5 @@
 {
-  "generado": "2026-11-26 02:26:57",
+  "generado": "2026-11-26 10:52:18",
   "comando": "cd backend && python -m unittest discover -s tests -v",
   "resumen_muestras": {
     "expedientes_sembrados": 120,
@@ -7,8 +7,8 @@
     "alertas_indebidas_en_limpias": 0,
     "casos_en_vivo": 18,
     "pruebas_sha256": 18,
-    "total_pruebas": 24,
-    "pruebas_aprobadas": 24
+    "total_pruebas": 25,
+    "pruebas_aprobadas": 25
   },
   "totales": {
     "TP": 29,
@@ -237,27 +237,27 @@
   "latencias_ms": {
     "Detalle de expediente (6 etapas + NLP + alertas)": {
       "n": 10,
-      "p50": 6.616549915634096,
-      "p95": 7.964699994772673,
-      "max": 7.964699994772673
+      "p50": 7.062349934130907,
+      "p95": 8.928800001740456,
+      "max": 8.928800001740456
     },
     "Dashboard de indicadores": {
       "n": 8,
-      "p50": 3.0867999885231256,
-      "p95": 52.94599989429116,
-      "max": 52.94599989429116
+      "p50": 3.3640001202002168,
+      "p95": 61.30049983039498,
+      "max": 61.30049983039498
     },
     "Grafo de colusión (NetworkX)": {
       "n": 8,
-      "p50": 5.117400083690882,
-      "p95": 5.910199834033847,
-      "max": 5.910199834033847
+      "p50": 5.55439991876483,
+      "p95": 6.715799914672971,
+      "max": 6.715799914672971
     },
     "Registrar expediente + sellar 6 etapas + 8 reglas XAI": {
       "n": 18,
-      "p50": 37.22410008776933,
-      "p95": 41.859300108626485,
-      "max": 42.08940011449158
+      "p50": 40.08394991979003,
+      "p95": 41.639799950644374,
+      "max": 42.035300051793456
     }
   },
   "rbac": [
@@ -338,6 +338,16 @@
     },
     {
       "verificacion": "CONSULTA_TRANSPARENCIA → GET /api/denuncias (bandeja OCI)",
+      "esperado": 403,
+      "obtenido": 403
+    },
+    {
+      "verificacion": "DEC → PATCH alerta ya archivada por OCI",
+      "esperado": 403,
+      "obtenido": 403
+    },
+    {
+      "verificacion": "DEC → PATCH alerta con dictamen VALIDADA_OCI",
       "esperado": 403,
       "obtenido": 403
     },
@@ -440,6 +450,10 @@
     },
     {
       "nombre": "TestRBAC.test_endpoints_exclusivos_de_oci_devuelven_403_a_dec_y_publico",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestRBAC.test_flujo_completo_derivacion_descargo_y_archivo_bloquea_reapertura_dec",
       "estado": "OK"
     },
     {

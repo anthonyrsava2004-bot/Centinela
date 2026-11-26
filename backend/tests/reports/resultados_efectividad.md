@@ -1,6 +1,6 @@
 # Informe de Pruebas y Efectividad — CENTINELA
 
-_Generado automáticamente el 2026-11-26 02:26:57 por `backend/tests/test_efectividad.py` (datos 100 % sintéticos)._
+_Generado automáticamente el 2026-11-26 10:52:18 por `backend/tests/test_efectividad.py` (datos 100 % sintéticos)._
 
 ## 1. Resumen ejecutivo
 
@@ -49,10 +49,10 @@ _Generado automáticamente el 2026-11-26 02:26:57 por `backend/tests/test_efecti
 
 | Operación | Muestras | p50 | p95 | Máx |
 |---|---:|---:|---:|---:|
-| Detalle de expediente (6 etapas + NLP + alertas) | 10 | 7 | 8 | 8 |
-| Dashboard de indicadores | 8 | 3 | 53 | 53 |
-| Grafo de colusión (NetworkX) | 8 | 5 | 6 | 6 |
-| Registrar expediente + sellar 6 etapas + 8 reglas XAI | 18 | 37 | 42 | 42 |
+| Detalle de expediente (6 etapas + NLP + alertas) | 10 | 7 | 9 | 9 |
+| Dashboard de indicadores | 8 | 3 | 61 | 61 |
+| Grafo de colusión (NetworkX) | 8 | 6 | 7 | 7 |
+| Registrar expediente + sellar 6 etapas + 8 reglas XAI | 18 | 40 | 42 | 42 |
 
 ## 5. Control de accesos (RBAC) verificado
 
@@ -74,6 +74,8 @@ _Generado automáticamente el 2026-11-26 02:26:57 por `backend/tests/test_efecti
 | CONSULTA_TRANSPARENCIA → POST /api/seed/regenerar | 403 | 403 | ✅ |
 | CONSULTA_TRANSPARENCIA → GET /api/auditoria | 403 | 403 | ✅ |
 | CONSULTA_TRANSPARENCIA → GET /api/denuncias (bandeja OCI) | 403 | 403 | ✅ |
+| DEC → PATCH alerta ya archivada por OCI | 403 | 403 | ✅ |
+| DEC → PATCH alerta con dictamen VALIDADA_OCI | 403 | 403 | ✅ |
 | OCI → GET /api/auditoria | 200 | 200 | ✅ |
 | OCI → GET /api/denuncias | 200 | 200 | ✅ |
 | CONSULTA → POST simular-registro | 403 | 403 | ✅ |
@@ -101,6 +103,7 @@ _Generado automáticamente el 2026-11-26 02:26:57 por `backend/tests/test_efecti
 - ✅ `TestRBAC.test_dec_no_puede_cerrar_alertas_ni_publico_modificarlas`
 - ✅ `TestRBAC.test_dec_si_puede_responder_descargo`
 - ✅ `TestRBAC.test_endpoints_exclusivos_de_oci_devuelven_403_a_dec_y_publico`
+- ✅ `TestRBAC.test_flujo_completo_derivacion_descargo_y_archivo_bloquea_reapertura_dec`
 - ✅ `TestRBAC.test_intentos_bloqueados_quedan_registrados_en_bitacora`
 - ✅ `TestRBAC.test_oci_accede_a_endpoints_exclusivos`
 - ✅ `TestRBAC.test_publico_no_puede_registrar_compras`
