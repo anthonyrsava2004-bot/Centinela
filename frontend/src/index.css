@@ -126,11 +126,11 @@
 
 @layer utilities {
   .animate-page-enter {
-    animation: centinelaPageEnter 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: centinelaPageEnter 320ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
   }
 
   .animate-card-up {
-    animation: centinelaCardUp 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: centinelaCardUp 420ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
   }
 
   .animate-modal-pop {

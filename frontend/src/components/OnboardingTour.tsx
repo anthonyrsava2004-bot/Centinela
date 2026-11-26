@@ -376,10 +376,10 @@ export const MENU_TOUR_STEPS: TourStep[] = [
   {
     id: 'sesion',
     target: 'session-switcher',
-    title: 'Cambie de Perfil cuando Quiera',
+    title: 'Cambie de Perfil en 1 Clic (RBAC)',
     description:
-      'Desde aquí puede alternar entre Auditor OCI, Especialista de Compras (DEC) y Transparencia (Solo Lectura) para comprobar la separación de funciones.',
-    tip: 'Puede repetir esta guía en cualquier momento con el botón "Guía" de la barra superior.',
+      'Use los botones OCI, DEC y Público para alternar de perfil al instante y verificar la separación de funciones, o abra el icono de detalle para consultar los permisos completos de cada rol.',
+    tip: 'También puede pulsar Ctrl+K en cualquier pantalla para abrir el buscador rápido de expedientes y atajos.',
     placement: 'bottom',
   },
 ];

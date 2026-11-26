@@ -11,7 +11,6 @@ import {
   Sparkles,
   Sun,
   Moon,
-  LogOut,
   CheckCircle2,
   XCircle,
   Scale,
@@ -20,16 +19,41 @@ import {
   ShieldCheck,
   History,
   HelpCircle,
+  Search,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { RolUsuario } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { ROLE_LIST, ROLE_PROFILES } from '../config/roles';
 import { Modal } from './Modal';
 import { OnboardingTour, TourMode, getPageTourTargets } from './OnboardingTour';
+import { QuickCommandPalette } from './QuickCommandPalette';
 import { centinelaApi } from '../api/client';
 
 const TOUR_SKIP_ALL_KEY = 'centinela-tour-skip-all';
 const getTourRouteKey = (pathname: string) => `centinela-tour-route:${pathname}`;
+
+const QUICK_ROLE_OPTIONS: {
+  id: RolUsuario;
+  label: string;
+  activeClass: string;
+}[] = [
+  {
+    id: 'Auditor OCI (Control Institucional)',
+    label: 'OCI',
+    activeClass: 'bg-emerald-600 text-white shadow-sm',
+  },
+  {
+    id: 'Especialista Logística (DEC)',
+    label: 'DEC',
+    activeClass: 'bg-blue-700 text-white shadow-sm',
+  },
+  {
+    id: 'Consulta Transparencia (Solo Lectura)',
+    label: 'Público',
+    activeClass: 'bg-amber-500 text-slate-950 shadow-sm',
+  },
+];
 
 interface LayoutProps {
   rolActivo: RolUsuario;
@@ -48,11 +72,34 @@ export const Layout: React.FC<LayoutProps> = ({
   const profile = ROLE_PROFILES[rolActivo];
 
   const [modalSesionAbierto, setModalSesionAbierto] = useState<boolean>(false);
+  const [paletteAbierta, setPaletteAbierta] = useState<boolean>(false);
   const [alertasPendientes, setAlertasPendientes] = useState<number>(0);
   const [tourAbierto, setTourAbierto] = useState<boolean>(false);
   const [tourMode, setTourMode] = useState<TourMode>('page');
   const tourDelayRef = useRef<number | null>(null);
   const tourPollRef = useRef<number | null>(null);
+
+  // Atajo global Ctrl+K / Cmd+K para abrir o cerrar la paleta rápida
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        if (tourDelayRef.current !== null) {
+          window.clearTimeout(tourDelayRef.current);
+          tourDelayRef.current = null;
+        }
+        if (tourPollRef.current !== null) {
+          window.clearInterval(tourPollRef.current);
+          tourPollRef.current = null;
+        }
+        setTourAbierto(false);
+        setModalSesionAbierto(false);
+        setPaletteAbierta((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const detenerEsperaTour = () => {
     if (tourDelayRef.current !== null) {
@@ -310,8 +357,11 @@ export const Layout: React.FC<LayoutProps> = ({
             <div className="mt-4 px-3 py-2 rounded-xl bg-black/25 border border-white/10 flex items-center gap-2.5">
               <RoleIcon className="w-4 h-4 text-white shrink-0" />
               <div className="min-w-0 leading-snug">
-                <div className="text-xs font-bold text-white">
-                  {profile.shortLabel}
+                <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <span>{profile.shortLabel}</span>
+                  <span className="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white/15 text-white/90">
+                    {profile.userCode}
+                  </span>
                 </div>
                 <div className="text-[10px] text-white/70 leading-tight">{profile.area}</div>
               </div>
@@ -403,8 +453,8 @@ export const Layout: React.FC<LayoutProps> = ({
 
       {/* Contenedor Principal */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Topbar Institucional con Sesión Autenticada + Toggle Claro/Oscuro */}
-        <header className="px-6 py-2.5 bg-white/95 dark:bg-slate-900/85 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 sticky top-0 z-30 shadow-sm dark:shadow-none">
+        {/* Topbar Institucional con Búsqueda Rápida, Selector 1-Clic RBAC + Toggle Claro/Oscuro */}
+        <header className="px-5 xl:px-6 py-2.5 bg-white/95 dark:bg-slate-900/85 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2.5 sticky top-0 z-30 shadow-sm dark:shadow-none">
           <div className="min-w-0 flex items-center gap-2.5 overflow-hidden">
             <span
               className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-xs font-bold min-w-0 max-w-full ${profile.accentBarClass}`}
@@ -422,31 +472,70 @@ export const Layout: React.FC<LayoutProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
-            {/* Tarjeta de Usuario Autenticado + Botón Cambiar Sesión */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Botón Buscador Rápido y Atajos (Ctrl+K) */}
+            <button
+              type="button"
+              onClick={() => {
+                detenerEsperaTour();
+                setTourAbierto(false);
+                setPaletteAbierta(true);
+              }}
+              className="btn-tactile inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold whitespace-nowrap"
+              title="Buscador rápido y atajos (Ctrl+K)"
+              aria-label="Abrir buscador rápido y atajos"
+            >
+              <Search className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
+              <span>Buscar</span>
+              <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 font-mono text-[10px] font-bold text-slate-500 dark:text-slate-300">
+                Ctrl K
+              </kbd>
+            </button>
+
+            {/* Selector Segmentado de Perfil RBAC en 1 Clic + Detalle de Permisos */}
             <div
               data-tour="session-switcher"
-              className={`flex items-center gap-2.5 pl-3 pr-1.5 py-1 rounded-xl border ${profile.chipClass}`}
+              role="group"
+              aria-label="Selector rápido de rol RBAC"
+              className="inline-flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800"
             >
-              <div className="leading-tight">
-                <div className="text-xs font-extrabold flex items-center gap-1.5">
-                  <span className="font-mono">{profile.userCode}</span>
-                  <span className="opacity-50">•</span>
-                  <span>{profile.shortLabel}</span>
-                </div>
-                <div className="text-[10px] opacity-75">{profile.badgeText}</div>
-              </div>
+              {QUICK_ROLE_OPTIONS.map((item) => {
+                const roleMeta = ROLE_PROFILES[item.id];
+                const activo = rolActivo === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    aria-pressed={activo}
+                    onClick={() => handleSeleccionarRol(item.id)}
+                    title={`${roleMeta.userCode} • ${roleMeta.shortLabel} (${roleMeta.badgeText})`}
+                    className={`btn-tactile px-2.5 py-1 rounded-lg text-[11px] font-extrabold whitespace-nowrap ${
+                      activo
+                        ? item.activeClass
+                        : 'text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+
+              <span
+                className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-0.5"
+                aria-hidden="true"
+              />
+
               <button
                 type="button"
                 onClick={() => {
                   detenerEsperaTour();
                   setModalSesionAbierto(true);
                 }}
-                className="btn-tactile inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/90 hover:bg-white dark:bg-slate-900/80 dark:hover:bg-slate-900 text-slate-800 dark:text-slate-100 border border-black/10 dark:border-white/10 text-[11px] font-bold whitespace-nowrap"
-                title="Cambiar perfil de sesión institucional (Demo RBAC)"
+                className="btn-tactile p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800"
+                title="Ver detalle de permisos por perfil (RBAC)"
+                aria-label="Detalle de roles RBAC"
               >
-                <LogOut className="w-3.5 h-3.5" />
-                Cambiar sesión
+                <SlidersHorizontal className="w-3.5 h-3.5" />
               </button>
             </div>
 
@@ -454,7 +543,7 @@ export const Layout: React.FC<LayoutProps> = ({
             <button
               type="button"
               onClick={abrirTourManual}
-              className="btn-tactile inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold whitespace-nowrap"
+              className="btn-tactile inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold whitespace-nowrap"
               title="Iniciar guía interactiva paso a paso de esta sección"
             >
               <HelpCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -465,7 +554,7 @@ export const Layout: React.FC<LayoutProps> = ({
             <button
               type="button"
               onClick={toggleTheme}
-              className="btn-tactile inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold whitespace-nowrap"
+              className="btn-tactile inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold whitespace-nowrap"
               title={
                 theme === 'light'
                   ? 'Cambiar a Modo Oscuro Forense'
@@ -604,6 +693,13 @@ export const Layout: React.FC<LayoutProps> = ({
           })}
         </div>
       </Modal>
+
+      {/* Paleta Global de Búsqueda Rápida y Atajos (Ctrl+K) */}
+      <QuickCommandPalette
+        isOpen={paletteAbierta}
+        onClose={() => setPaletteAbierta(false)}
+        rolActivo={rolActivo}
+      />
 
       {/* Recorrido Guiado Interactivo Contextual por Sección y Menú General */}
       <OnboardingTour

@@ -107,6 +107,17 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
   const esAuditorOCI = rolActivo.startsWith('Auditor OCI');
   const esSoloLectura = rolActivo.startsWith('Consulta Transparencia');
 
+  // Sincronizar modales abiertos si se cambia el rol activo desde el selector 1-clic
+  useEffect(() => {
+    if (esSoloLectura) {
+      setAlertaSeleccionada(null);
+      setModalDeclararAbierto(false);
+      setConflictoParaAbstener(null);
+    } else if (!esAuditorOCI) {
+      setNuevoEstado('EN_DESCARGO');
+    }
+  }, [rolActivo, esSoloLectura, esAuditorOCI]);
+
   const cargarAlertas = async () => {
     try {
       setLoading(true);
@@ -205,6 +216,7 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
       });
       setAlertaSeleccionada(null);
       await cargarAlertas();
+      window.dispatchEvent(new Event('centinela:data-updated'));
     } catch (err: any) {
       setErrorModal(
         err?.response?.data?.detail ||
@@ -232,6 +244,7 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
       });
       setModalDeclararAbierto(false);
       await Promise.all([cargarConflictos(), cargarAlertas()]);
+      window.dispatchEvent(new Event('centinela:data-updated'));
     } catch (err: any) {
       setErrorCiModal(
         err?.response?.data?.detail ||
@@ -254,6 +267,7 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
       });
       setConflictoParaAbstener(null);
       await Promise.all([cargarConflictos(), cargarAlertas()]);
+      window.dispatchEvent(new Event('centinela:data-updated'));
     } catch (err: any) {
       setErrorAbstencion(
         err?.response?.data?.detail ||

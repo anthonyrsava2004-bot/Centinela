@@ -8,7 +8,7 @@ from typing import List, Optional
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from sqlalchemy import inspect
+from sqlalchemy import case, inspect
 from sqlalchemy.orm import Session
 
 from .audit_log import (
@@ -990,7 +990,14 @@ def listar_alertas_xai(
     if categoria and categoria != "TODAS":
         query = query.filter(AlertaGestion.categoria == categoria)
 
-    alertas = query.order_by(AlertaGestion.id.asc()).all()
+    prioridad_estado = case(
+        (AlertaGestion.estado_revision == "PENDIENTE", 0),
+        (AlertaGestion.estado_revision == "EN_DESCARGO", 1),
+        (AlertaGestion.estado_revision == "VALIDADA_OCI", 2),
+        (AlertaGestion.estado_revision == "ARCHIVADA_SUSTENTADA", 3),
+        else_=4,
+    )
+    alertas = query.order_by(prioridad_estado.asc(), AlertaGestion.id.desc()).all()
     exp_map = {e.id: e for e in db.query(Expediente).all()}
 
     hist_map: dict[int, List[HistorialAlerta]] = defaultdict(list)

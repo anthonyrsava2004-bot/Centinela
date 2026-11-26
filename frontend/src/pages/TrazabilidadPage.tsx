@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ShieldCheck,
   ShieldX,
@@ -16,10 +16,23 @@ import {
   ClipboardCheck,
   Ban,
   Camera,
+  Building2,
+  CalendarClock,
+  MessageSquarePlus,
+  Network,
+  ArrowRightLeft,
+  UserX,
 } from 'lucide-react';
 import { centinelaApi } from '../api/client';
-import { EntregableTdrItem, ExpedienteDetalle, ExpedienteListItem, RolUsuario } from '../types';
-import { IntegrityBadge, RiskBadge } from '../components/AlertBadge';
+import {
+  AlertaGestion,
+  ConflictoInteresItem,
+  EntregableTdrItem,
+  ExpedienteDetalle,
+  ExpedienteListItem,
+  RolUsuario,
+} from '../types';
+import { IntegrityBadge, RevisionStatusBadge, RiskBadge } from '../components/AlertBadge';
 import { Modal } from '../components/Modal';
 import { formatTipologia } from '../utils/formatters';
 
@@ -27,7 +40,19 @@ interface TrazabilidadPageProps {
   rolActivo: RolUsuario;
 }
 
+const AREAS_DERIVACION = [
+  'OCI — Órgano de Control Institucional',
+  'OCI — Control Simultáneo (Hito de Control)',
+  'OCI — Unidad de Análisis de Redes y Compliance',
+  'Oficina de Integridad / OCI — Abstención y Reasignación',
+  'DEC — Dependencia Encargada de Contrataciones',
+  'Área Usuaria / DEC — Subsanación Documental',
+  'Tesorería / Control Previo + OCI',
+  'Oficina de Asesoría Jurídica',
+];
+
 export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo }) => {
+  const navigate = useNavigate();
   const esAuditorOCI = rolActivo.startsWith('Auditor OCI');
   const esSoloLectura = rolActivo.startsWith('Consulta Transparencia');
   const [searchParams, setSearchParams] = useSearchParams();
@@ -42,6 +67,34 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
   const [procesandoAccion, setProcesandoAccion] = useState<boolean>(false);
   const [entregableEdit, setEntregableEdit] = useState<EntregableTdrItem | null>(null);
   const [evidenciaInput, setEvidenciaInput] = useState<string>('');
+
+  // Modal inline: Derivar / Dictaminar (OCI) o Responder Descargo (DEC)
+  const [alertaEdit, setAlertaEdit] = useState<AlertaGestion | null>(null);
+  const [nuevoEstado, setNuevoEstado] = useState<string>('VALIDADA_OCI');
+  const [areaAsignada, setAreaAsignada] = useState<string>(AREAS_DERIVACION[0]);
+  const [fechaLimite, setFechaLimite] = useState<string>('');
+  const [accionCorrectiva, setAccionCorrectiva] = useState<string>('');
+  const [comentarioAlerta, setComentarioAlerta] = useState<string>('');
+  const [errorAlertaModal, setErrorAlertaModal] = useState<string | null>(null);
+
+  // Modal inline: Abstención y Reasignación de Conflicto de Interés (Ley N° 27815 / R-08)
+  const [conflictoEdit, setConflictoEdit] = useState<ConflictoInteresItem | null>(null);
+  const [alternoReasignado, setAlternoReasignado] = useState<string>('FUNC-LOG-09');
+  const [comentarioAbstencion, setComentarioAbstencion] = useState<string>(
+    'Conforme al Art. 99 de la Ley N° 27444, Ley N° 27815 y la R.R. N° 0490-2026/UNT, se formaliza la abstención preventiva y se reasigna el expediente al interviniente alterno sin vínculo con los postores.',
+  );
+  const [errorConflictoModal, setErrorConflictoModal] = useState<string | null>(null);
+
+  // Proteger estado de modales ante cambios de rol en 1 clic
+  useEffect(() => {
+    if (esSoloLectura) {
+      setEntregableEdit(null);
+      setAlertaEdit(null);
+      setConflictoEdit(null);
+    } else if (!esAuditorOCI) {
+      setNuevoEstado('EN_DESCARGO');
+    }
+  }, [rolActivo, esSoloLectura, esAuditorOCI]);
 
   const cargarDetalle = async (idToLoad: number, listaFallback?: ExpedienteListItem[]) => {
     try {
@@ -85,6 +138,9 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
   }, []);
 
   useEffect(() => {
+    setEntregableEdit(null);
+    setAlertaEdit(null);
+    setConflictoEdit(null);
     const paramId = Number(searchParams.get('id'));
     if (paramId && paramId !== expedienteId) {
       setExpedienteId(paramId);
@@ -106,6 +162,7 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
       setProcesandoAccion(true);
       await centinelaApi.simularAlteracionExPost(detalle.id, etapaSimulacion);
       await cargarDetalle(detalle.id);
+      window.dispatchEvent(new Event('centinela:data-updated'));
     } finally {
       setProcesandoAccion(false);
     }
@@ -117,6 +174,7 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
       setProcesandoAccion(true);
       await centinelaApi.restaurarIntegridad(detalle.id);
       await cargarDetalle(detalle.id);
+      window.dispatchEvent(new Event('centinela:data-updated'));
     } finally {
       setProcesandoAccion(false);
     }
@@ -142,6 +200,7 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
       });
       setEntregableEdit(null);
       await cargarDetalle(detalle.id);
+      window.dispatchEvent(new Event('centinela:data-updated'));
     } finally {
       setProcesandoAccion(false);
     }
@@ -157,6 +216,89 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
         rol_usuario: rolActivo,
       });
       await cargarDetalle(detalle.id);
+      window.dispatchEvent(new Event('centinela:data-updated'));
+    } finally {
+      setProcesandoAccion(false);
+    }
+  };
+
+  const abrirModalAlerta = (alerta: AlertaGestion) => {
+    if (esSoloLectura) return;
+    setErrorAlertaModal(null);
+    setAlertaEdit(alerta);
+    setNuevoEstado(esAuditorOCI ? 'VALIDADA_OCI' : 'EN_DESCARGO');
+    setAreaAsignada(alerta.area_asignada || AREAS_DERIVACION[0]);
+    setFechaLimite(
+      alerta.fecha_limite || new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10),
+    );
+    setAccionCorrectiva(
+      alerta.accion_correctiva ||
+        (esAuditorOCI
+          ? 'Emitir Informe de Hito de Control y requerir plan de acción correctiva en 5 días hábiles.'
+          : 'Reprogramar proceso mediante procedimiento competitivo consolidado y adjuntar sustento técnico en SIGA.'),
+    );
+    setComentarioAlerta(
+      esAuditorOCI
+        ? 'Se valida la señal preventiva XAI desde la estación de auditoría, se deriva al área competente y se dispone seguimiento de acción correctiva conforme a Ley N° 32069 y Ley N° 27785.'
+        : 'Se adjunta informe técnico sustentatorio de la Dependencia Encargada de las Contrataciones (DEC) detallando la subsanación y medidas preventivas adoptadas.',
+    );
+  };
+
+  const handleGuardarAlerta = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!alertaEdit || !detalle || esSoloLectura) return;
+    try {
+      setProcesandoAccion(true);
+      setErrorAlertaModal(null);
+      await centinelaApi.actualizarAlerta(alertaEdit.id, {
+        estado_revision: esAuditorOCI ? nuevoEstado : 'EN_DESCARGO',
+        comentario_descargo: comentarioAlerta,
+        rol_usuario: rolActivo,
+        area_asignada: esAuditorOCI ? areaAsignada : undefined,
+        fecha_limite: esAuditorOCI ? fechaLimite : undefined,
+        accion_correctiva: accionCorrectiva,
+      });
+      setAlertaEdit(null);
+      await cargarDetalle(detalle.id);
+      window.dispatchEvent(new Event('centinela:data-updated'));
+    } catch (err: any) {
+      setErrorAlertaModal(
+        err?.response?.data?.detail ||
+          'No se pudo guardar la revisión. Verifique los permisos del rol activo.',
+      );
+    } finally {
+      setProcesandoAccion(false);
+    }
+  };
+
+  const abrirModalConflicto = (ci: ConflictoInteresItem) => {
+    if (esSoloLectura) return;
+    setErrorConflictoModal(null);
+    setConflictoEdit(ci);
+    setAlternoReasignado('FUNC-LOG-09');
+    setComentarioAbstencion(
+      'Conforme al Art. 99 de la Ley N° 27444, Ley N° 27815 y la R.R. N° 0490-2026/UNT, se formaliza la abstención preventiva y se reasigna el expediente al interviniente alterno sin vínculo con los postores.',
+    );
+  };
+
+  const handleConfirmarAbstencion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!conflictoEdit || !detalle || esSoloLectura) return;
+    try {
+      setProcesandoAccion(true);
+      setErrorConflictoModal(null);
+      await centinelaApi.abstenerYReasignarConflicto(conflictoEdit.id, {
+        funcionario_reasignado: alternoReasignado.trim(),
+        comentario: comentarioAbstencion.trim(),
+      });
+      setConflictoEdit(null);
+      await cargarDetalle(detalle.id);
+      window.dispatchEvent(new Event('centinela:data-updated'));
+    } catch (err: any) {
+      setErrorConflictoModal(
+        err?.response?.data?.detail ||
+          'No se pudo formalizar la abstención y reasignación. Verifique los permisos del rol activo.',
+      );
     } finally {
       setProcesandoAccion(false);
     }
@@ -575,6 +717,131 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
         </div>
       )}
 
+      {/* SECCIÓN 1.6: CONFLICTOS DE INTERÉS DETECTADOS EN ESTE PROCESO (LEY N° 27815 / R-08) */}
+      {detalle.conflictos_interes && detalle.conflictos_interes.length > 0 && (
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Scale className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                Conflictos de Interés Detectados en este Proceso (Ley N° 27815 / R-08)
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Control preventivo de imparcialidad con códigos seudonimizados (Art. 99 Ley N° 27444, Ley N° 27815 y R.R. N° 0490-2026/UNT)
+              </p>
+            </div>
+
+            {detalle.conflictos_interes.some((c) => c.estado !== 'ABSTENIDO_Y_REASIGNADO') ? (
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-500/20 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-500/50 text-xs font-extrabold">
+                <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
+                  <span className="animate-radar-ring absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600 dark:bg-rose-400" />
+                </span>
+                REQUIERE ABSTENCIÓN Y REASIGNACIÓN
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/40 text-xs font-bold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                CONFLICTO MITIGADO PREVENTIVAMENTE
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            {detalle.conflictos_interes.map((ci) => {
+              const esResuelto = ci.estado === 'ABSTENIDO_Y_REASIGNADO';
+              const esDetectado = ci.estado === 'DETECTADO';
+              return (
+                <div
+                  key={ci.id}
+                  className={`p-4 rounded-xl border space-y-3 text-xs ${
+                    esDetectado
+                      ? 'bg-rose-50/50 dark:bg-rose-950/25 border-rose-200 dark:border-rose-500/40'
+                      : esResuelto
+                      ? 'bg-emerald-50/50 dark:bg-emerald-950/15 border-emerald-200 dark:border-emerald-500/35'
+                      : 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-500/40'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2 font-mono">
+                      <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-bold">
+                        CI-#{ci.id}
+                      </span>
+                      <span className="font-extrabold text-slate-900 dark:text-white">
+                        {ci.funcionario_codigo}
+                      </span>
+                      <span className="text-slate-400">↔</span>
+                      <span className="font-extrabold text-rose-700 dark:text-rose-300">
+                        {ci.proveedor_vinculado_codigo}
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-sans font-semibold">
+                        {ci.tipo_vinculo}
+                      </span>
+                    </div>
+
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                        esDetectado
+                          ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-500/40'
+                          : esResuelto
+                          ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40'
+                          : 'bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-500/40'
+                      }`}
+                    >
+                      {esDetectado ? (
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                      ) : esResuelto ? (
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      ) : (
+                        <Scale className="w-3.5 h-3.5" />
+                      )}
+                      {ci.estado}
+                    </span>
+                  </div>
+
+                  <p className="text-slate-700 dark:text-slate-300 leading-relaxed bg-white/80 dark:bg-slate-950/70 p-3 rounded-lg border border-slate-200/80 dark:border-slate-800">
+                    {ci.descripcion}
+                  </p>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                      <span>Registrado: {ci.fecha_registro}</span>
+                      {ci.funcionario_reasignado && (
+                        <span className="text-emerald-700 dark:text-emerald-300 font-bold">
+                          Reasignado a: {ci.funcionario_reasignado}
+                        </span>
+                      )}
+                      {ci.resuelto_por && (
+                        <span className="text-blue-700 dark:text-cyan-300">
+                          Autorizado por: {ci.resuelto_por}
+                        </span>
+                      )}
+                    </div>
+
+                    {esResuelto ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/35 font-bold text-[11px]">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Abstención Formalizada ({ci.funcionario_reasignado})
+                      </span>
+                    ) : !esSoloLectura ? (
+                      <button
+                        type="button"
+                        onClick={() => abrirModalConflicto(ci)}
+                        disabled={procesandoAccion}
+                        className="btn-tactile inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 disabled:opacity-40 text-white dark:text-slate-950 font-bold text-xs shadow-sm"
+                      >
+                        <ArrowRightLeft className="w-3.5 h-3.5" />
+                        Abstener y Reasignar
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* SECCIÓN 2: DETECTOR SEMÁNTICO DE DIRECCIONAMIENTO EN TDR (TF-IDF + COSENO) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none space-y-4">
@@ -706,18 +973,37 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
               {detalle.alertas.map((al) => (
                 <div
                   key={al.id}
-                  className="p-4 rounded-xl bg-rose-50/40 dark:bg-slate-950 border border-rose-200 dark:border-rose-500/40 space-y-2.5 text-xs"
+                  className="p-4 rounded-xl bg-rose-50/40 dark:bg-slate-950 border border-rose-200 dark:border-rose-500/40 space-y-3 text-xs"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-mono font-bold text-rose-700 dark:text-rose-300">
                       [{al.codigo_regla}] {al.categoria}
                     </span>
-                    <span className="px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 font-semibold text-[11px]">
-                      Estado: {al.estado_revision}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <RevisionStatusBadge estado={al.estado_revision} />
+                      <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                        {al.estado_revision}
+                      </span>
+                    </div>
                   </div>
+
+                  {/* Derivación y Plazo SLA */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] bg-white/85 dark:bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800">
+                    <span className="inline-flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
+                      <Building2 className="w-3.5 h-3.5 text-blue-700 dark:text-cyan-400 shrink-0" />
+                      <strong className="text-slate-500 dark:text-slate-400">Derivada a:</strong>{' '}
+                      {al.area_asignada}
+                    </span>
+                    {al.fecha_limite && (
+                      <span className="inline-flex items-center gap-1.5 text-amber-800 dark:text-amber-300 font-mono font-semibold">
+                        <CalendarClock className="w-3.5 h-3.5 shrink-0" />
+                        Plazo SLA: {al.fecha_limite}
+                      </span>
+                    )}
+                  </div>
+
                   <h4 className="font-bold text-slate-900 dark:text-white text-sm">{al.titulo}</h4>
-                  <div className="space-y-1.5 text-slate-700 dark:text-slate-300 pt-1">
+                  <div className="space-y-1.5 text-slate-700 dark:text-slate-300 pt-0.5">
                     <p>
                       <strong className="text-blue-800 dark:text-cyan-300">
                         (a) Regla Activada:
@@ -737,6 +1023,69 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
                       {al.base_normativa}
                     </p>
                   </div>
+
+                  {/* Acción Correctiva Registrada */}
+                  {al.accion_correctiva && (
+                    <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/25 border border-emerald-200 dark:border-emerald-500/35 space-y-0.5">
+                      <div className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300 font-bold text-[11px]">
+                        <ClipboardCheck className="w-3.5 h-3.5" />
+                        Acción Correctiva / Plan de Subsanación
+                      </div>
+                      <p className="text-slate-800 dark:text-slate-200 leading-relaxed">
+                        {al.accion_correctiva}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Último Descargo / Pronunciamiento */}
+                  {al.comentario_descargo && (
+                    <div className="p-3 rounded-lg bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-500/40 space-y-0.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-sky-900 dark:text-sky-300 font-bold text-[11px]">
+                        <span>
+                          Último Pronunciamiento / Descargo
+                          {al.rol_ultimo_cambio ? ` — ${al.rol_ultimo_cambio}` : ''}
+                        </span>
+                        {al.fecha_actualizacion && (
+                          <span className="font-mono text-[10px]">{al.fecha_actualizacion}</span>
+                        )}
+                      </div>
+                      <p className="text-slate-800 dark:text-slate-200 leading-relaxed">
+                        {al.comentario_descargo}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Acciones Directas Inline por Rol (Transparencia estrictamente solo lectura) */}
+                  {!esSoloLectura && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-rose-200/70 dark:border-slate-800">
+                      <div>
+                        {al.codigo_regla === 'R-04-COLUSION-GRAFO' && (
+                          <button
+                            type="button"
+                            onClick={() => navigate('/grafo-colusion')}
+                            className="btn-tactile inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-cyan-500/15 dark:hover:bg-cyan-500/25 border border-blue-200 dark:border-cyan-500/35 text-blue-800 dark:text-cyan-300 font-bold text-[11px]"
+                          >
+                            <Network className="w-3.5 h-3.5" />
+                            Ver Red de Empresas
+                          </button>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => abrirModalAlerta(al)}
+                        disabled={procesandoAccion}
+                        className={`btn-tactile inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold text-xs shadow-sm disabled:opacity-40 ${
+                          esAuditorOCI
+                            ? 'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950'
+                            : 'bg-blue-700 hover:bg-blue-800 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950'
+                        }`}
+                      >
+                        <MessageSquarePlus className="w-3.5 h-3.5" />
+                        {esAuditorOCI ? 'Derivar / Dictaminar' : 'Responder Descargo (DEC)'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -833,6 +1182,228 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
                 className="btn-tactile px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
               >
                 Confirmar Verificación y Registrar en Bitácora
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Modal: Derivar / Dictaminar Alerta XAI (OCI) o Responder Descargo (DEC) */}
+      <Modal
+        isOpen={Boolean(alertaEdit)}
+        onClose={() => setAlertaEdit(null)}
+        title={
+          esAuditorOCI
+            ? `Dictamen y Derivación OCI — ${detalle.codigo}`
+            : `Responder Descargo Técnico (DEC) — ${detalle.codigo}`
+        }
+        subtitle={`Actuando bajo el rol: ${rolActivo} • Control de Acceso Diferenciado (RBAC)`}
+      >
+        {alertaEdit && (
+          <form onSubmit={handleGuardarAlerta} className="space-y-4 text-xs">
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
+              <div className="font-mono text-rose-700 dark:text-rose-300 font-bold">
+                [{alertaEdit.codigo_regla}] {alertaEdit.titulo}
+              </div>
+              <p className="text-slate-600 dark:text-slate-400">{alertaEdit.evidencia_exacta}</p>
+            </div>
+
+            {errorAlertaModal && (
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-500/50 text-rose-800 dark:text-rose-200 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                <span>{errorAlertaModal}</span>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label className="block font-bold text-slate-700 dark:text-slate-200">
+                Nuevo Estado de la Señal Preventiva:
+              </label>
+              <select
+                value={esAuditorOCI ? nuevoEstado : 'EN_DESCARGO'}
+                onChange={(e) => setNuevoEstado(e.target.value)}
+                disabled={!esAuditorOCI}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 dark:focus:border-emerald-500 disabled:opacity-90"
+              >
+                {esAuditorOCI ? (
+                  <>
+                    <option value="VALIDADA_OCI">
+                      VALIDADA_OCI — Observación Confirmada por Auditor OCI para Hito de Control
+                    </option>
+                    <option value="ARCHIVADA_SUSTENTADA">
+                      ARCHIVADA_SUSTENTADA — Desestimada con Sustento Técnico-Legal Firme
+                    </option>
+                    <option value="EN_DESCARGO">
+                      EN_DESCARGO — Solicitar Ampliación de Descargo al Área / DEC
+                    </option>
+                    <option value="PENDIENTE">
+                      PENDIENTE — Retornar a Estado Pendiente de Revisión
+                    </option>
+                  </>
+                ) : (
+                  <option value="EN_DESCARGO">
+                    EN_DESCARGO — Descargo Técnico Presentado por Especialista Logística (DEC)
+                  </option>
+                )}
+              </select>
+              {!esAuditorOCI && (
+                <p className="text-[11px] text-amber-800 dark:text-amber-300/90">
+                  Separación de competencias (Ley N° 32069 / Ley N° 27785): El rol DEC solo registra descargos y acciones correctivas; únicamente el Auditor OCI puede validar o archivar alertas.
+                </p>
+              )}
+            </div>
+
+            {esAuditorOCI && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-slate-700 dark:text-slate-200">
+                    Derivar / Asignar a Área Responsable:
+                  </label>
+                  <select
+                    value={areaAsignada}
+                    onChange={(e) => setAreaAsignada(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 dark:focus:border-emerald-500"
+                  >
+                    {AREAS_DERIVACION.map((area) => (
+                      <option key={area} value={area}>
+                        {area}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-slate-700 dark:text-slate-200">
+                    Plazo Límite de Atención (SLA):
+                  </label>
+                  <input
+                    type="date"
+                    value={fechaLimite}
+                    onChange={(e) => setFechaLimite(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 dark:focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label className="block font-bold text-slate-700 dark:text-slate-200">
+                Acción Correctiva / Medida de Subsanación:
+              </label>
+              <input
+                type="text"
+                required
+                value={accionCorrectiva}
+                onChange={(e) => setAccionCorrectiva(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 dark:focus:border-emerald-500"
+                placeholder="Ej. Consolidar requerimiento, subsanar acta o emitir informe de control..."
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block font-bold text-slate-700 dark:text-slate-200">
+                Sustento Técnico-Normativo / Descargo Oficial:
+              </label>
+              <textarea
+                rows={4}
+                required
+                value={comentarioAlerta}
+                onChange={(e) => setComentarioAlerta(e.target.value)}
+                className="w-full p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 dark:focus:border-emerald-500"
+                placeholder="Ingrese el fundamento técnico o normativo de la revisión humana..."
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setAlertaEdit(null)}
+                className="btn-tactile px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={procesandoAccion}
+                className="btn-tactile inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold shadow-sm"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                {procesandoAccion ? 'Guardando...' : 'Firmar y Registrar en Bitácora'}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Modal: Formalizar Abstención y Reasignación de Conflicto de Interés */}
+      <Modal
+        isOpen={Boolean(conflictoEdit)}
+        onClose={() => setConflictoEdit(null)}
+        title={`Formalizar Abstención y Reasignación — ${detalle.codigo}`}
+        subtitle={`CI-#${conflictoEdit?.id} • Registro inmutable en Bitácora Global SHA-256`}
+      >
+        {conflictoEdit && (
+          <form onSubmit={handleConfirmarAbstencion} className="space-y-4 text-xs">
+            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-500/35 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-rose-800 dark:text-rose-300">
+                <UserX className="w-4 h-4" />
+                Interviniente con Vínculo: {conflictoEdit.funcionario_codigo} ↔{' '}
+                {conflictoEdit.proveedor_vinculado_codigo}
+              </div>
+              <p className="text-slate-700 dark:text-slate-300">
+                {conflictoEdit.tipo_vinculo} — {conflictoEdit.descripcion}
+              </p>
+            </div>
+
+            {errorConflictoModal && (
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-500/50 text-rose-800 dark:text-rose-200 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                <span>{errorConflictoModal}</span>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label className="block font-bold text-slate-700 dark:text-slate-200">
+                Código del Funcionario Alterno sin Conflicto (Seudonimizado):
+              </label>
+              <input
+                type="text"
+                required
+                value={alternoReasignado}
+                onChange={(e) => setAlternoReasignado(e.target.value)}
+                placeholder="Ej. FUNC-LOG-09"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block font-bold text-slate-700 dark:text-slate-200">
+                Resolución / Sustento de Abstención y Reasignación:
+              </label>
+              <textarea
+                rows={3}
+                required
+                value={comentarioAbstencion}
+                onChange={(e) => setComentarioAbstencion(e.target.value)}
+                className="w-full p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setConflictoEdit(null)}
+                className="btn-tactile px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={procesandoAccion}
+                className="btn-tactile inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold shadow-sm"
+              >
+                <ArrowRightLeft className="w-4 h-4" />
+                {procesandoAccion ? 'Formalizando...' : 'Formalizar Abstención y Reasignar'}
               </button>
             </div>
           </form>
