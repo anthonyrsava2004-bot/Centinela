@@ -1,6 +1,6 @@
 # Informe de Pruebas y Efectividad — CENTINELA
 
-_Generado automáticamente el 2026-11-26 02:16:17 por `backend/tests/test_efectividad.py` (datos 100 % sintéticos)._
+_Generado automáticamente el 2026-11-26 02:26:57 por `backend/tests/test_efectividad.py` (datos 100 % sintéticos)._
 
 ## 1. Resumen ejecutivo
 
@@ -49,10 +49,10 @@ _Generado automáticamente el 2026-11-26 02:16:17 por `backend/tests/test_efecti
 
 | Operación | Muestras | p50 | p95 | Máx |
 |---|---:|---:|---:|---:|
-| Detalle de expediente (6 etapas + NLP + alertas) | 10 | 7 | 9 | 9 |
-| Dashboard de indicadores | 8 | 3 | 4 | 4 |
-| Grafo de colusión (NetworkX) | 8 | 5 | 66 | 66 |
-| Registrar expediente + sellar 6 etapas + 8 reglas XAI | 18 | 39 | 41 | 41 |
+| Detalle de expediente (6 etapas + NLP + alertas) | 10 | 7 | 8 | 8 |
+| Dashboard de indicadores | 8 | 3 | 53 | 53 |
+| Grafo de colusión (NetworkX) | 8 | 5 | 6 | 6 |
+| Registrar expediente + sellar 6 etapas + 8 reglas XAI | 18 | 37 | 42 | 42 |
 
 ## 5. Control de accesos (RBAC) verificado
 
@@ -80,6 +80,7 @@ _Generado automáticamente el 2026-11-26 02:16:17 por `backend/tests/test_efecti
 
 ## 6. Pruebas automatizadas ejecutadas
 
+- ✅ `TestBitacoraReinicioYReportes.test_endpoint_validacion_expone_metricas`
 - ✅ `TestBitacoraReinicioYReportes.test_reinicio_es_determinista_y_preserva_bitacora`
 - ✅ `TestBitacoraReinicioYReportes.test_rendimiento_de_consultas`
 - ✅ `TestBitacoraReinicioYReportes.test_reportes_pdf_y_csv`

@@ -1,5 +1,21 @@
 {
-  "generado": "2026-11-26 02:16:17",
+  "generado": "2026-11-26 02:26:57",
+  "comando": "cd backend && python -m unittest discover -s tests -v",
+  "resumen_muestras": {
+    "expedientes_sembrados": 120,
+    "compras_limpias": 110,
+    "alertas_indebidas_en_limpias": 0,
+    "casos_en_vivo": 18,
+    "pruebas_sha256": 18,
+    "total_pruebas": 24,
+    "pruebas_aprobadas": 24
+  },
+  "totales": {
+    "TP": 29,
+    "FP": 0,
+    "FN": 0,
+    "TN": 1219
+  },
   "matriz_por_regla": {
     "R-01-FRACCIONAMIENTO": {
       "TP": 4,
@@ -80,38 +96,6 @@
       "recall": 1.0,
       "f1": 1.0,
       "fpr": 0.0
-    }
-  },
-  "totales": {
-    "TP": 29,
-    "FP": 0,
-    "FN": 0,
-    "TN": 1219
-  },
-  "latencias_ms": {
-    "Detalle de expediente (6 etapas + NLP + alertas)": {
-      "n": 10,
-      "p50": 7.321049924939871,
-      "p95": 8.570299949496984,
-      "max": 8.570299949496984
-    },
-    "Dashboard de indicadores": {
-      "n": 8,
-      "p50": 3.2754000276327133,
-      "p95": 4.199799848720431,
-      "max": 4.199799848720431
-    },
-    "Grafo de colusión (NetworkX)": {
-      "n": 8,
-      "p50": 5.421999958343804,
-      "p95": 66.49290001951158,
-      "max": 66.49290001951158
-    },
-    "Registrar expediente + sellar 6 etapas + 8 reglas XAI": {
-      "n": 18,
-      "p50": 39.29459990467876,
-      "p95": 40.84450006484985,
-      "max": 40.85890017449856
     }
   },
   "casos_en_vivo": [
@@ -250,6 +234,32 @@
       ]
     }
   ],
+  "latencias_ms": {
+    "Detalle de expediente (6 etapas + NLP + alertas)": {
+      "n": 10,
+      "p50": 6.616549915634096,
+      "p95": 7.964699994772673,
+      "max": 7.964699994772673
+    },
+    "Dashboard de indicadores": {
+      "n": 8,
+      "p50": 3.0867999885231256,
+      "p95": 52.94599989429116,
+      "max": 52.94599989429116
+    },
+    "Grafo de colusión (NetworkX)": {
+      "n": 8,
+      "p50": 5.117400083690882,
+      "p95": 5.910199834033847,
+      "max": 5.910199834033847
+    },
+    "Registrar expediente + sellar 6 etapas + 8 reglas XAI": {
+      "n": 18,
+      "p50": 37.22410008776933,
+      "p95": 41.859300108626485,
+      "max": 42.08940011449158
+    }
+  },
   "rbac": [
     {
       "verificacion": "ESPECIALISTA_DEC → PATCH gestión de denuncia",
@@ -345,6 +355,104 @@
       "verificacion": "CONSULTA → POST simular-registro",
       "esperado": 403,
       "obtenido": 403
+    }
+  ],
+  "pruebas_ejecutadas": [
+    {
+      "nombre": "TestBitacoraReinicioYReportes.test_endpoint_validacion_expone_metricas",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestBitacoraReinicioYReportes.test_reinicio_es_determinista_y_preserva_bitacora",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestBitacoraReinicioYReportes.test_rendimiento_de_consultas",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestBitacoraReinicioYReportes.test_reportes_pdf_y_csv",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestCanalDenuncia.test_codigo_inexistente_devuelve_404",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestCanalDenuncia.test_consulta_publica_no_expone_datos_internos",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestCanalDenuncia.test_descripcion_muy_corta_es_rechazada",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestCanalDenuncia.test_publico_y_dec_no_pueden_gestionar_denuncias",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestCandadoDePago.test_verificar_y_reobservar_entregable",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestDeteccionDatasetBase.test_cero_falsos_positivos_en_compras_limpias",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestDeteccionDatasetBase.test_dataset_tiene_120_expedientes",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestDeteccionDatasetBase.test_forenses_detectan_exactamente_las_reglas_esperadas",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestDeteccionDatasetBase.test_kpi_salud_preventiva_coherente",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestDeteccionEnVivo.test_caso_aulas_activa_candado_de_pago",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestDeteccionEnVivo.test_casos_etiquetados",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestDeteccionEnVivo.test_registro_en_vivo_nace_con_cadena_integra",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestIntegridadSHA256.test_adulteracion_de_cada_etapa_rompe_la_cadena_en_cascada",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestIntegridadSHA256.test_dec_y_publico_no_pueden_adulterar_ni_restaurar",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestRBAC.test_dec_no_puede_cerrar_alertas_ni_publico_modificarlas",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestRBAC.test_dec_si_puede_responder_descargo",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestRBAC.test_endpoints_exclusivos_de_oci_devuelven_403_a_dec_y_publico",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestRBAC.test_intentos_bloqueados_quedan_registrados_en_bitacora",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestRBAC.test_oci_accede_a_endpoints_exclusivos",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestRBAC.test_publico_no_puede_registrar_compras",
+      "estado": "OK"
     }
   ]
 }

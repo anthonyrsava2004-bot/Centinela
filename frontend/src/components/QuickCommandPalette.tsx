@@ -15,6 +15,7 @@ import {
   CornerDownLeft,
   RefreshCw,
   ClipboardCheck,
+  FlaskConical,
 } from 'lucide-react';
 import { centinelaApi } from '../api/client';
 import { ExpedienteListItem, RolUsuario } from '../types';
@@ -166,16 +167,29 @@ export const QuickCommandPalette: React.FC<QuickCommandPaletteProps> = ({
       );
     }
 
-    items.push({
-      id: 'shortcut-denuncias',
-      label: 'Canal de Denuncia Anónimo (D.L. 1327)',
-      subtitle: 'Registro con reserva de identidad, código cifrado y protección al denunciante',
-      to: '/denuncias',
-      keywords: 'canal denuncia anonimo dl 1327 proteccion codigo reservado',
-      icon: ShieldCheck,
-      accentClass: 'text-emerald-600 dark:text-emerald-400',
-      tag: 'D.L. 1327',
-    });
+    items.push(
+      {
+        id: 'shortcut-denuncias',
+        label: 'Canal de Denuncia Anónimo (D.L. 1327)',
+        subtitle: 'Registro con reserva de identidad, código cifrado y protección al denunciante',
+        to: '/denuncias',
+        keywords: 'canal denuncia anonimo dl 1327 proteccion codigo reservado',
+        icon: ShieldCheck,
+        accentClass: 'text-emerald-600 dark:text-emerald-400',
+        tag: 'D.L. 1327',
+      },
+      {
+        id: 'shortcut-validacion',
+        label: 'Validación Técnica y Efectividad (24 Pruebas)',
+        subtitle: 'Matriz de confusión por regla, frontera 8 UIT, latencias y 19 controles RBAC',
+        to: '/validacion',
+        keywords:
+          'validacion tecnica efectividad pruebas matriz confusion f1 precision recall rbac latencia unittest',
+        icon: FlaskConical,
+        accentClass: 'text-emerald-600 dark:text-emerald-400',
+        tag: 'Métricas',
+      },
+    );
 
     if (profile.canDictaminarOci) {
       items.push({

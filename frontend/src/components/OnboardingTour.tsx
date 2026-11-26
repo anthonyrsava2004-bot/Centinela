@@ -31,6 +31,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/grafo-colusion': 'Empresas Vinculadas',
   '/denuncias': 'Canal de Denuncia',
   '/auditoria': 'Registro de Actividad',
+  '/validacion': 'Validación',
 };
 
 export const PAGE_TOUR_STEPS: Record<string, TourStep[]> = {
@@ -300,6 +301,44 @@ export const PAGE_TOUR_STEPS: Record<string, TourStep[]> = {
       placement: 'auto',
     },
   ],
+  '/validacion': [
+    {
+      id: 'val-resumen',
+      target: 'val-resumen',
+      title: 'Evidencia Técnica Reproducible',
+      description:
+        'Presenta el resumen de la suite automatizada sobre datos 100 % sintéticos y el comando exacto para reproducir todas las pruebas localmente en una base aislada.',
+      tip: 'Use "Copiar comando" para ejecutar la verificación independiente desde terminal sin afectar los datos de demostración.',
+      placement: 'auto',
+    },
+    {
+      id: 'val-matriz',
+      target: 'val-matriz',
+      title: 'Matriz de Confusión por Regla (R-01 a R-08)',
+      description:
+        'Detalla aciertos (VP), falsos positivos (FP), falsos negativos (FN), verdaderos negativos (VN), precisión, recall y puntaje F1 de cada regla normativa.',
+      tip: 'Verifique que las 110 compras limpias registran cero alertas indebidas (tasa FP de 0.0 %).',
+      placement: 'auto',
+    },
+    {
+      id: 'val-casos',
+      target: 'val-casos',
+      title: 'Casos Etiquetados y Frontera de 8 UIT',
+      description:
+        'Compara las reglas esperadas frente a las detectadas en escenarios limpios, el límite exacto de S/ 42,800 vs. S/ 42,801 e irregularidades combinadas.',
+      tip: 'Use las píldoras superiores para filtrar controles limpios o casos con irregularidades.',
+      placement: 'auto',
+    },
+    {
+      id: 'val-seguridad',
+      target: 'val-seguridad',
+      title: 'Latencias, Suite Unittest y Controles RBAC',
+      description:
+        'Reúne los percentiles p50 y p95 de respuesta en milisegundos, el listado completo de pruebas automatizadas y las 19 comprobaciones de bloqueo HTTP 403.',
+      tip: 'Esta vista es de solo lectura y se encuentra disponible para OCI, DEC y Consulta Pública.',
+      placement: 'auto',
+    },
+  ],
 };
 
 export const MENU_TOUR_STEPS: TourStep[] = [
@@ -372,6 +411,16 @@ export const MENU_TOUR_STEPS: TourStep[] = [
     tip: 'Exclusiva para el Auditor OCI; aquí puede simular un bloqueo por permisos.',
     placement: 'right',
     route: '/auditoria',
+  },
+  {
+    id: 'validacion',
+    target: 'nav-validacion',
+    title: 'Validación Técnica y Efectividad',
+    description:
+      'Expone los resultados de las pruebas automatizadas, la matriz de confusión por regla, los casos de frontera de 8 UIT, latencias y controles RBAC.',
+    tip: 'Accesible en modo lectura desde los tres perfiles para transparencia metodológica.',
+    placement: 'right',
+    route: '/validacion',
   },
   {
     id: 'sesion',

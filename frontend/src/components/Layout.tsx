@@ -21,6 +21,7 @@ import {
   HelpCircle,
   Search,
   SlidersHorizontal,
+  FlaskConical,
 } from 'lucide-react';
 import { RolUsuario } from '../types';
 import { useTheme } from '../context/ThemeContext';
@@ -286,6 +287,15 @@ export const Layout: React.FC<LayoutProps> = ({
       sub: 'Quién hizo qué y cuándo',
       icon: History,
       visible: profile.canDictaminarOci,
+      badge: undefined,
+    },
+    {
+      to: '/validacion',
+      tourId: 'nav-validacion',
+      label: 'Validación',
+      sub: '24 pruebas y métricas',
+      icon: FlaskConical,
+      visible: true,
       badge: undefined,
     },
   ].filter((item) => item.visible);

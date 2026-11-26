@@ -4,6 +4,8 @@ import csv
 from datetime import datetime, timedelta
 import hashlib
 import io
+import json
+from pathlib import Path
 from typing import List, Optional
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -61,6 +63,7 @@ from .schemas import (
     MapaRiesgosOut,
     PostulacionDetalleOut,
     ProveedorOut,
+    ReporteValidacionOut,
     TamperSimulationRequest,
     VerificacionCadenaOut,
 )
@@ -69,6 +72,7 @@ from .seed_synthetic import (
     poblar_base_datos_sintetica,
     sembrar_denuncias_base,
 )
+from .validation_snapshot import VALIDATION_SNAPSHOT
 
 
 def _asegurar_esquema_actualizado():
@@ -1797,3 +1801,26 @@ def gestionar_denuncia_reservada(
         ip_origen=ip_origen,
     )
     return DenunciaOut.model_validate(den)
+
+
+@app.get("/api/validacion", response_model=ReporteValidacionOut)
+def obtener_reporte_validacion():
+    """
+    Expone en modo de solo lectura las métricas reproducibles de validación técnica,
+    matriz de confusión por regla, casos de frontera, latencias y controles RBAC
+    para todos los perfiles (OCI, DEC y Consulta Transparencia).
+    """
+    report_path = Path(__file__).resolve().parent.parent / "tests" / "reports" / "resultados_efectividad.json"
+    if report_path.exists():
+        try:
+            data = json.loads(report_path.read_text(encoding="utf-8"))
+            if (
+                isinstance(data, dict)
+                and "resumen_muestras" in data
+                and "pruebas_ejecutadas" in data
+                and "comando" in data
+            ):
+                return data
+        except Exception:
+            pass
+    return VALIDATION_SNAPSHOT

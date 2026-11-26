@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 from pydantic import BaseModel, ConfigDict
 
 
@@ -383,3 +383,67 @@ class DenunciaResumenPublicoOut(BaseModel):
     atendidas_o_archivadas: int
     con_medida_proteccion: int
     por_categoria: List[dict]
+
+
+class ResumenMuestrasValidacionOut(BaseModel):
+    expedientes_sembrados: int
+    compras_limpias: int
+    alertas_indebidas_en_limpias: int
+    casos_en_vivo: int
+    pruebas_sha256: int
+    total_pruebas: int
+    pruebas_aprobadas: int
+
+
+class TotalesMatrizValidacionOut(BaseModel):
+    TP: int
+    FP: int
+    FN: int
+    TN: int
+
+
+class MetricasReglaValidacionOut(BaseModel):
+    TP: int
+    FP: int
+    FN: int
+    TN: int
+    precision: Optional[float] = None
+    recall: Optional[float] = None
+    f1: Optional[float] = None
+    fpr: Optional[float] = None
+
+
+class CasoVivoValidacionOut(BaseModel):
+    caso: str
+    esperado: List[str]
+    detectado: List[str]
+
+
+class LatenciaValidacionOut(BaseModel):
+    n: int
+    p50: float
+    p95: float
+    max: float
+
+
+class VerificacionRbacItemOut(BaseModel):
+    verificacion: str
+    esperado: int
+    obtenido: int
+
+
+class PruebaEjecutadaItemOut(BaseModel):
+    nombre: str
+    estado: str
+
+
+class ReporteValidacionOut(BaseModel):
+    generado: str
+    comando: str
+    resumen_muestras: ResumenMuestrasValidacionOut
+    totales: TotalesMatrizValidacionOut
+    matriz_por_regla: Dict[str, MetricasReglaValidacionOut]
+    casos_en_vivo: List[CasoVivoValidacionOut]
+    latencias_ms: Dict[str, LatenciaValidacionOut]
+    rbac: List[VerificacionRbacItemOut]
+    pruebas_ejecutadas: List[PruebaEjecutadaItemOut]

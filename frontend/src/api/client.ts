@@ -14,6 +14,7 @@ import {
   GrafoColusionData,
   MapaRiesgosData,
   ProveedorItem,
+  ReporteValidacion,
   RolUsuario,
   VerificacionCadena,
 } from '../types';
@@ -309,6 +310,11 @@ export const centinelaApi = {
       `/api/denuncias/${denunciaId}`,
       payload,
     );
+    return data;
+  },
+
+  obtenerReporteValidacion: async (): Promise<ReporteValidacion> => {
+    const { data } = await apiClient.get<ReporteValidacion>('/api/validacion');
     return data;
   },
 };

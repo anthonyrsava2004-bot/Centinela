@@ -8,6 +8,7 @@ import { GrafoColusionPage } from './pages/GrafoColusionPage';
 import { CompliancePage } from './pages/CompliancePage';
 import { AuditoriaPage } from './pages/AuditoriaPage';
 import { DenunciasPage } from './pages/DenunciasPage';
+import { ValidacionPage } from './pages/ValidacionPage';
 import { ThemeProvider } from './context/ThemeContext';
 import { RolUsuario } from './types';
 import { ROLE_PROFILES } from './config/roles';
@@ -64,6 +65,10 @@ export const App: React.FC = () => {
           <Route
             path="/auditoria"
             element={<AuditoriaPage rolActivo={rolActivo} />}
+          />
+          <Route
+            path="/validacion"
+            element={<ValidacionPage rolActivo={rolActivo} />}
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

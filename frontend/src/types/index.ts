@@ -333,3 +333,65 @@ export interface DenunciaResumenPublico {
   con_medida_proteccion: number;
   por_categoria: { categoria: string; cantidad: number }[];
 }
+
+export interface ResumenMuestrasValidacion {
+  expedientes_sembrados: number;
+  compras_limpias: number;
+  alertas_indebidas_en_limpias: number;
+  casos_en_vivo: number;
+  pruebas_sha256: number;
+  total_pruebas: number;
+  pruebas_aprobadas: number;
+}
+
+export interface MetricasReglaValidacion {
+  TP: number;
+  FP: number;
+  FN: number;
+  TN: number;
+  precision: number | null;
+  recall: number | null;
+  f1: number | null;
+  fpr: number | null;
+}
+
+export interface CasoVivoValidacion {
+  caso: string;
+  esperado: string[];
+  detectado: string[];
+}
+
+export interface LatenciaValidacion {
+  n: number;
+  p50: number;
+  p95: number;
+  max: number;
+}
+
+export interface VerificacionRbacItem {
+  verificacion: string;
+  esperado: number;
+  obtenido: number;
+}
+
+export interface PruebaEjecutadaItem {
+  nombre: string;
+  estado: string;
+}
+
+export interface ReporteValidacion {
+  generado: string;
+  comando: string;
+  resumen_muestras: ResumenMuestrasValidacion;
+  totales: {
+    TP: number;
+    FP: number;
+    FN: number;
+    TN: number;
+  };
+  matriz_por_regla: Record<string, MetricasReglaValidacion>;
+  casos_en_vivo: CasoVivoValidacion[];
+  latencias_ms: Record<string, LatenciaValidacion>;
+  rbac: VerificacionRbacItem[];
+  pruebas_ejecutadas: PruebaEjecutadaItem[];
+}

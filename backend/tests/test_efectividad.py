@@ -12,6 +12,7 @@ Características:
 """
 import json
 import os
+import pprint
 import statistics
 import sys
 import tempfile
@@ -23,6 +24,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 BACKEND_DIR = HERE.parent
 REPORT_DIR = HERE / "reports"
+SNAPSHOT_FILE = BACKEND_DIR / "app" / "validation_snapshot.py"
 
 _TMP_DB = Path(tempfile.gettempdir()) / "centinela_test_suite.db"
 if _TMP_DB.exists():
@@ -271,24 +273,45 @@ def _escribir_informe():
     L.append("- Las alertas son señales preventivas para revisión humana (Presunción de Licitud, Art. 248 Ley N° 27444), no acusaciones.")
     L.append("")
 
+    payload_informe = {
+        "generado": ahora,
+        "comando": "cd backend && python -m unittest discover -s tests -v",
+        "resumen_muestras": {
+            "expedientes_sembrados": len(OBS["seed"]),
+            "compras_limpias": len(limpios),
+            "alertas_indebidas_en_limpias": fp_limpios,
+            "casos_en_vivo": len(OBS["live"]),
+            "pruebas_sha256": len(OBS["sha"]),
+            "total_pruebas": len(OBS["tests"]),
+            "pruebas_aprobadas": sum(1 for v in OBS["tests"].values() if v == "OK"),
+        },
+        "totales": {"TP": total_tp, "FP": total_fp, "FN": total_fn, "TN": total_tn},
+        "matriz_por_regla": matriz,
+        "casos_en_vivo": [
+            {"caso": n, "esperado": sorted(e), "detectado": sorted(d)} for n, e, d in OBS["live"]
+        ],
+        "latencias_ms": lat,
+        "rbac": [{"verificacion": d, "esperado": e, "obtenido": o} for d, e, o in OBS["rbac"]],
+        "pruebas_ejecutadas": [
+            {"nombre": k, "estado": v} for k, v in sorted(OBS["tests"].items())
+        ],
+    }
+
     (REPORT_DIR / "resultados_efectividad.md").write_text("\n".join(L), encoding="utf-8")
     (REPORT_DIR / "resultados_efectividad.json").write_text(
-        json.dumps(
-            {
-                "generado": ahora,
-                "matriz_por_regla": matriz,
-                "totales": {"TP": total_tp, "FP": total_fp, "FN": total_fn, "TN": total_tn},
-                "latencias_ms": lat,
-                "casos_en_vivo": [
-                    {"caso": n, "esperado": sorted(e), "detectado": sorted(d)} for n, e, d in OBS["live"]
-                ],
-                "rbac": [{"verificacion": d, "esperado": e, "obtenido": o} for d, e, o in OBS["rbac"]],
-            },
-            ensure_ascii=False,
-            indent=2,
-        ),
+        json.dumps(payload_informe, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+    snapshot_source = (
+        '"""\n'
+        "Snapshot reproducible de validación y efectividad de CENTINELA.\n\n"
+        "Generado automáticamente por `backend/tests/test_efectividad.py` para garantizar\n"
+        "disponibilidad 100 % determinista en despliegues serverless (Vercel `app.main:app`)\n"
+        "incluso cuando el directorio `tests/` no se incluye en el paquete de ejecución.\n"
+        '"""\n\n'
+        f"VALIDATION_SNAPSHOT = {pprint.pformat(payload_informe, width=100, sort_dicts=False)}\n"
+    )
+    SNAPSHOT_FILE.write_text(snapshot_source, encoding="utf-8")
 
 
 def _stats(valores):
@@ -878,6 +901,26 @@ class TestBitacoraReinicioYReportes(_Registro):
         OBS["latency"]["Grafo de colusión (NetworkX)"] = _stats(t_grafo)
         for nombre, v in OBS["latency"].items():
             self.assertLess(v["p95"], 3000, f"{nombre} supera 3 s en p95")
+
+    def test_endpoint_validacion_expone_metricas(self):
+        for rol in (ROL_OCI, ROL_DEC, ROL_PUB):
+            r = client.get("/api/validacion", headers=hdr(rol))
+            self.assertEqual(r.status_code, 200, f"{rol}: {r.text[:200]}")
+            data = r.json()
+            for clave in (
+                "generado",
+                "comando",
+                "resumen_muestras",
+                "totales",
+                "matriz_por_regla",
+                "casos_en_vivo",
+                "latencias_ms",
+                "rbac",
+                "pruebas_ejecutadas",
+            ):
+                self.assertIn(clave, data)
+            self.assertEqual(data["totales"]["FP"], 0)
+            self.assertEqual(data["resumen_muestras"]["alertas_indebidas_en_limpias"], 0)
 
 
 if __name__ == "__main__":
