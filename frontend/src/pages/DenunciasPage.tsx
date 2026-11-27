@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ShieldCheck,
   Lock,
@@ -13,12 +14,17 @@ import {
   RefreshCw,
   FileCheck2,
   KeyRound,
+  Copy,
+  Check,
+  FileSearch,
 } from 'lucide-react';
 import { centinelaApi } from '../api/client';
 import {
   DenunciaConsultaPublica,
   DenunciaItem,
   DenunciaResumenPublico,
+  EstadoDenuncia,
+  ExpedienteListItem,
   RolUsuario,
 } from '../types';
 import { Modal } from '../components/Modal';
@@ -60,6 +66,98 @@ const MEDIDAS_PROTECCION = [
   'Separación Temporal del Denunciado + Reserva (Concedida)',
   'Cambio Temporal de Unidad del Denunciante (Concedida)',
 ];
+
+const CODIGOS_DEMO_BASE = ['DEN-2026-0001', 'DEN-2026-0002', 'DEN-2026-0003'];
+
+function esDenunciaCerrada(estado: string): boolean {
+  return estado === 'ATENDIDA' || estado === 'ARCHIVADA_MOTIVADA';
+}
+
+function getDefaultDenunciaSlaDate(days: number = 7): string {
+  return new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
+}
+
+function getInitialDenunciaTargetEstado(estadoActual: string): EstadoDenuncia {
+  if (estadoActual === 'RECIBIDA') return 'EN_EVALUACION';
+  if (estadoActual === 'EN_EVALUACION') return 'DERIVADA';
+  if (estadoActual === 'DERIVADA') return 'ATENDIDA';
+  if (estadoActual === 'ARCHIVADA_MOTIVADA') return 'ARCHIVADA_MOTIVADA';
+  return 'ATENDIDA';
+}
+
+function getDenunciaGestionDefaults(
+  estado: EstadoDenuncia,
+  codigo: string,
+  solicitaProteccion: boolean,
+) {
+  const medidaProteccion = !solicitaProteccion
+    ? 'Reserva de Identidad (D.L. N° 1327)'
+    : estado === 'DERIVADA' || estado === 'ATENDIDA'
+    ? 'Protección Laboral Anti-Represalias + Reserva de Identidad (Concedida)'
+    : 'Reserva de Identidad (D.L. N° 1327)';
+
+  switch (estado) {
+    case 'EN_EVALUACION':
+      return {
+        organoDerivado: 'Oficina de Integridad — Evaluación de Admisibilidad',
+        medidaProteccion,
+        respuestaSeguimiento: `Su reporte ${codigo} se encuentra en evaluación de admisibilidad y verificación preliminar bajo reserva estricta de identidad (Directiva N° 001-2026-PCM/SIP).`,
+        notaInternaOci:
+          'Se inicia evaluación formal de admisibilidad, verosimilitud de los hechos e identificación de evidencias cruzadas con los expedientes relacionados (Tarea 7.1).',
+      };
+    case 'DERIVADA':
+      return {
+        organoDerivado: 'OCI — Órgano de Control Institucional',
+        medidaProteccion,
+        respuestaSeguimiento: `Reporte ${codigo} admitido y derivado al órgano competente para investigación de control, manteniendo reserva de identidad${
+          solicitaProteccion ? ' y medida de protección activa' : ''
+        } (D.L. N° 1327).`,
+        notaInternaOci:
+          'Se verifica verosimilitud y sustento indiciario suficiente (Tareas 7.1 y 7.2 Directiva N° 001-2026-PCM/SIP). Se formaliza medida de protección y se deriva el caso al órgano competente.',
+      };
+    case 'ATENDIDA':
+      return {
+        organoDerivado: 'OCI — Órgano de Control Institucional',
+        medidaProteccion,
+        respuestaSeguimiento: `La atención de su reporte ${codigo} concluyó con la adopción de medidas correctivas y de control institucional. Su identidad permanece protegida de forma permanente.`,
+        notaInternaOci:
+          'Concluida la verificación y ejecutadas las acciones de control y deslinde de responsabilidades correspondientes, se registra cierre de atención manteniendo reserva perpetua del denunciante.',
+      };
+    case 'ARCHIVADA_MOTIVADA':
+    default:
+      return {
+        organoDerivado: 'Oficina de Integridad — Evaluación de Admisibilidad',
+        medidaProteccion,
+        respuestaSeguimiento: `Evaluados los antecedentes del reporte ${codigo}, se dispuso su archivo motivado por no advertirse indicios suficientes de infracción. La reserva de su identidad se mantiene intacta.`,
+        notaInternaOci:
+          'Tras la evaluación de admisibilidad y contraste documental, no se corroboran elementos objetivos de irregularidad administrativa; se dispone archivo motivado conforme a la Directiva N° 001-2026-PCM/SIP.',
+      };
+  }
+}
+
+function getStepIndexDenuncia(estado: string): number {
+  if (estado === 'RECIBIDA') return 0;
+  if (estado === 'EN_EVALUACION') return 1;
+  if (estado === 'DERIVADA') return 2;
+  return 3;
+}
+
+function getNextStepGuidance(estado: string): string {
+  switch (estado) {
+    case 'RECIBIDA':
+      return 'Siguiente etapa: Evaluación de admisibilidad en un plazo máximo de 7 días calendario manteniendo su identidad cifrada.';
+    case 'EN_EVALUACION':
+      return 'Siguiente etapa: Verificación cruzada con expedientes, otorgamiento de medidas de protección (D.L. N° 1327) y derivación a órgano competente.';
+    case 'DERIVADA':
+      return 'Siguiente etapa: Investigación reservada en el órgano competente hasta emitir medidas correctivas o resolución final.';
+    case 'ATENDIDA':
+      return 'Ciclo concluido: El reporte fue atendido con medidas correctivas/control institucional. Su identidad permanece protegida de forma permanente.';
+    case 'ARCHIVADA_MOTIVADA':
+      return 'Ciclo concluido: Se emitió archivo motivado tras la evaluación técnica. La reserva de identidad se mantiene intacta.';
+    default:
+      return 'Seguimiento activo bajo reserva estricta de identidad (Directiva N° 001-2026-PCM/SIP).';
+  }
+}
 
 function renderEstadoBadge(estado: string) {
   if (estado === 'DERIVADA') {
@@ -103,12 +201,14 @@ function renderEstadoBadge(estado: string) {
 }
 
 export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
+  const navigate = useNavigate();
   const esAuditorOCI = rolActivo.startsWith('Auditor OCI');
 
   // Resumen agregado público (Numeral 7.2.7.3)
   const [resumen, setResumen] = useState<DenunciaResumenPublico | null>(null);
   // Bandeja confidencial exclusiva OCI
   const [denunciasOci, setDenunciasOci] = useState<DenunciaItem[]>([]);
+  const [expedientesCatalogo, setExpedientesCatalogo] = useState<ExpedienteListItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Formulario de nueva denuncia reservada (todos los roles)
@@ -120,8 +220,10 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
   const [enviando, setEnviando] = useState<boolean>(false);
   const [errorForm, setErrorForm] = useState<string | null>(null);
   const [reciboCreado, setReciboCreado] = useState<DenunciaConsultaPublica | null>(null);
+  const [codigoCopiado, setCodigoCopiado] = useState<boolean>(false);
 
   // Consulta por código cifrado (todos los roles)
+  const [codigosRapidos, setCodigosRapidos] = useState<string[]>(CODIGOS_DEMO_BASE);
   const [codigoConsulta, setCodigoConsulta] = useState<string>('DEN-2026-0001');
   const [resultadoConsulta, setResultadoConsulta] = useState<DenunciaConsultaPublica | null>(null);
   const [buscandoCodigo, setBuscandoCodigo] = useState<boolean>(false);
@@ -129,14 +231,20 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
 
   // Modal de gestión confidencial (exclusivo OCI)
   const [denunciaEdit, setDenunciaEdit] = useState<DenunciaItem | null>(null);
-  const [nuevoEstado, setNuevoEstado] = useState<string>('DERIVADA');
+  const [nuevoEstado, setNuevoEstado] = useState<EstadoDenuncia>('EN_EVALUACION');
   const [organoDerivado, setOrganoDerivado] = useState<string>(ORGANOS_COMPETENTES[0]);
-  const [medidaProteccion, setMedidaProteccion] = useState<string>(MEDIDAS_PROTECCION[1]);
+  const [medidaProteccion, setMedidaProteccion] = useState<string>(MEDIDAS_PROTECCION[0]);
   const [fechaLimiteSla, setFechaLimiteSla] = useState<string>('');
   const [respuestaSeguimiento, setRespuestaSeguimiento] = useState<string>('');
   const [notaInternaOci, setNotaInternaOci] = useState<string>('');
   const [guardandoGestion, setGuardandoGestion] = useState<boolean>(false);
   const [errorGestion, setErrorGestion] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!esAuditorOCI) {
+      setDenunciaEdit(null);
+    }
+  }, [esAuditorOCI]);
 
   const cargarDatos = async () => {
     try {
@@ -158,6 +266,23 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
     cargarDatos();
   }, [rolActivo]);
 
+  useEffect(() => {
+    centinelaApi
+      .listarExpedientes()
+      .then((exps) => setExpedientesCatalogo(exps))
+      .catch(() => {});
+  }, []);
+
+  const handleCopiarCodigoRecibo = async (codigo: string) => {
+    try {
+      await navigator.clipboard.writeText(codigo);
+      setCodigoCopiado(true);
+      window.setTimeout(() => setCodigoCopiado(false), 2000);
+    } catch {
+      setCodigoCopiado(false);
+    }
+  };
+
   const handleEnviarDenuncia = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -171,11 +296,16 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
         solicita_proteccion: solicitaProteccion,
       });
       setReciboCreado(creada);
+      setCodigoCopiado(false);
       setCodigoConsulta(creada.codigo_seguimiento);
       setResultadoConsulta(creada);
+      setCodigosRapidos((prev) =>
+        prev.includes(creada.codigo_seguimiento) ? prev : [...prev, creada.codigo_seguimiento],
+      );
       setDescripcionHechos('');
       setExpedienteCodigo('');
       await cargarDatos();
+      window.dispatchEvent(new Event('centinela:data-updated'));
     } catch (err: any) {
       setErrorForm(
         err?.response?.data?.detail || 'No se pudo registrar la denuncia. Revise los campos.',
@@ -205,44 +335,73 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
   };
 
   const abrirModalGestion = (den: DenunciaItem) => {
+    if (!esAuditorOCI) return;
     setErrorGestion(null);
     setDenunciaEdit(den);
-    setNuevoEstado(den.estado === 'RECIBIDA' ? 'DERIVADA' : den.estado);
-    setOrganoDerivado(
-      ORGANOS_COMPETENTES.includes(den.organo_derivado)
-        ? den.organo_derivado
-        : ORGANOS_COMPETENTES[0],
+    const targetEstado = getInitialDenunciaTargetEstado(den.estado);
+    const tpl = getDenunciaGestionDefaults(
+      targetEstado,
+      den.codigo_seguimiento,
+      den.solicita_proteccion,
     );
-    setMedidaProteccion(MEDIDAS_PROTECCION[1]);
-    setFechaLimiteSla(den.fecha_limite_sla);
-    setRespuestaSeguimiento(
-      `Reporte ${den.codigo_seguimiento} evaluado por la Oficina de Integridad y derivado al órgano competente con medida de protección vigente bajo D.L. N° 1327.`,
+    setNuevoEstado(targetEstado);
+    setOrganoDerivado(tpl.organoDerivado);
+    setMedidaProteccion(tpl.medidaProteccion);
+    setFechaLimiteSla(
+      esDenunciaCerrada(targetEstado)
+        ? 'Concluido'
+        : den.fecha_limite_sla && den.fecha_limite_sla !== 'Concluido'
+        ? den.fecha_limite_sla
+        : getDefaultDenunciaSlaDate(7),
     );
-    setNotaInternaOci(
-      den.nota_interna_oci ||
-        'Se verifica verosimilitud y trascendencia de los hechos (Tarea 7.2 Directiva N° 001-2026-PCM/SIP). Se otorga protección al denunciante y se deriva para investigación.',
+    setRespuestaSeguimiento(tpl.respuestaSeguimiento);
+    setNotaInternaOci(tpl.notaInternaOci);
+  };
+
+  const handleCambiarEstadoDenuncia = (nextEstado: EstadoDenuncia) => {
+    setNuevoEstado(nextEstado);
+    if (!denunciaEdit) return;
+    const tpl = getDenunciaGestionDefaults(
+      nextEstado,
+      denunciaEdit.codigo_seguimiento,
+      denunciaEdit.solicita_proteccion,
     );
+    setOrganoDerivado(tpl.organoDerivado);
+    setMedidaProteccion(tpl.medidaProteccion);
+    setRespuestaSeguimiento(tpl.respuestaSeguimiento);
+    setNotaInternaOci(tpl.notaInternaOci);
+    if (esDenunciaCerrada(nextEstado)) {
+      setFechaLimiteSla('Concluido');
+    } else if (!fechaLimiteSla || fechaLimiteSla === 'Concluido') {
+      setFechaLimiteSla(
+        denunciaEdit.fecha_limite_sla && denunciaEdit.fecha_limite_sla !== 'Concluido'
+          ? denunciaEdit.fecha_limite_sla
+          : getDefaultDenunciaSlaDate(7),
+      );
+    }
   };
 
   const handleGuardarGestion = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!denunciaEdit) return;
+    if (!denunciaEdit || !esAuditorOCI) return;
     try {
       setGuardandoGestion(true);
       setErrorGestion(null);
+      const codActualizado = denunciaEdit.codigo_seguimiento;
       await centinelaApi.gestionarDenunciaReservada(denunciaEdit.id, {
         estado: nuevoEstado,
         organo_derivado: organoDerivado,
         medida_proteccion: medidaProteccion,
-        fecha_limite_sla: fechaLimiteSla,
+        fecha_limite_sla: esDenunciaCerrada(nuevoEstado) ? 'Concluido' : fechaLimiteSla,
         respuesta_seguimiento: respuestaSeguimiento,
         nota_interna_oci: notaInternaOci,
       });
       setDenunciaEdit(null);
       await cargarDatos();
-      if (resultadoConsulta?.codigo_seguimiento === denunciaEdit.codigo_seguimiento) {
-        await handleConsultarCodigo(denunciaEdit.codigo_seguimiento);
+      if (resultadoConsulta?.codigo_seguimiento === codActualizado) {
+        await handleConsultarCodigo(codActualizado);
       }
+      window.dispatchEvent(new Event('centinela:data-updated'));
     } catch (err: any) {
       setErrorGestion(
         err?.response?.data?.detail || 'No se pudo actualizar la gestión de la denuncia.',
@@ -272,7 +431,10 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
 
       {/* Estadísticas Generales Agregadas (Numeral 7.2.7.3 — sin exponer identidades) */}
       {resumen && (
-        <div data-tour="den-resumen" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div
+          data-tour="den-resumen"
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4"
+        >
           <div className="animate-card-up stagger-1 card-elevate p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none">
             <div className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400">
               Reportes Recibidos
@@ -305,11 +467,23 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
               <AnimatedNumber value={resumen.derivadas} />
             </div>
             <div className="text-[11px] text-blue-800/80 dark:text-cyan-300/80 mt-0.5">
-              OCI, Secretaría Técnica PAD o Procuraduría
+              OCI, Secretaría PAD o Procuraduría
             </div>
           </div>
 
-          <div className="animate-card-up stagger-4 card-elevate p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-500/30">
+          <div className="animate-card-up stagger-4 card-elevate p-4 rounded-2xl bg-slate-100/90 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700">
+            <div className="text-[11px] font-bold uppercase text-slate-700 dark:text-slate-300">
+              Atendidas / Archivadas
+            </div>
+            <div className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono mt-1">
+              <AnimatedNumber value={resumen.atendidas_o_archivadas} />
+            </div>
+            <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
+              Con resolución o cierre motivado
+            </div>
+          </div>
+
+          <div className="animate-card-up stagger-5 card-elevate col-span-2 md:col-span-1 p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-500/30">
             <div className="text-[11px] font-bold uppercase text-emerald-800 dark:text-emerald-300">
               Con Protección al Denunciante
             </div>
@@ -343,14 +517,33 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
           {reciboCreado && (
             <div
               key={reciboCreado.codigo_seguimiento}
-              className="animate-modal-pop p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/35 border border-emerald-300 dark:border-emerald-500/50 space-y-1.5 text-xs"
+              className="animate-modal-pop p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/35 border border-emerald-300 dark:border-emerald-500/50 space-y-2 text-xs"
             >
-              <div className="flex items-center gap-1.5 font-extrabold text-emerald-900 dark:text-emerald-200">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                Denuncia registrada con código reservado:{' '}
-                <span className="font-mono px-2 py-0.5 rounded bg-emerald-600 text-white">
-                  {reciboCreado.codigo_seguimiento}
-                </span>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 font-extrabold text-emerald-900 dark:text-emerald-200">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>Código reservado:</span>
+                  <span className="font-mono px-2 py-0.5 rounded bg-emerald-600 text-white">
+                    {reciboCreado.codigo_seguimiento}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopiarCodigoRecibo(reciboCreado.codigo_seguimiento)}
+                  className="btn-tactile inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-100 dark:bg-slate-900 dark:hover:bg-slate-800 border border-emerald-300 dark:border-emerald-500/40 text-emerald-800 dark:text-emerald-300 font-bold text-[11px]"
+                >
+                  {codigoCopiado ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      ¡Copiado!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      Copiar código
+                    </>
+                  )}
+                </button>
               </div>
               <p className="text-emerald-800 dark:text-emerald-300">
                 Guarde este código para hacer seguimiento sin revelar su identidad. Plazo SLA:{' '}
@@ -408,15 +601,23 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
 
             <div className="space-y-1">
               <label className="block font-bold text-slate-700 dark:text-slate-200">
-                Código de Expediente Relacionado (Opcional):
+                Código de Expediente Relacionado (Opcional — autocompletado disponible):
               </label>
               <input
                 type="text"
+                list="expedientes-codigos-list"
                 value={expedienteCodigo}
                 onChange={(e) => setExpedienteCodigo(e.target.value)}
                 placeholder="Ej. EXP-2025-UNT-0006 (opcional)"
                 className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono"
               />
+              <datalist id="expedientes-codigos-list">
+                {expedientesCatalogo.map((exp) => (
+                  <option key={exp.id} value={exp.codigo}>
+                    {`${exp.area_usuaria} — ${exp.objeto.slice(0, 65)}`}
+                  </option>
+                ))}
+              </datalist>
             </div>
 
             <div className="space-y-1">
@@ -492,19 +693,29 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
             </button>
           </div>
 
-          {/* Ejemplos rápidos para demo */}
+          {/* Ejemplos rápidos para demo + códigos generados en sesión */}
           <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-            <span className="text-slate-500 dark:text-slate-400">Códigos de prueba:</span>
-            {['DEN-2026-0001', 'DEN-2026-0002', 'DEN-2026-0003'].map((codDemo) => (
-              <button
-                key={codDemo}
-                type="button"
-                onClick={() => handleConsultarCodigo(codDemo)}
-                className="btn-tactile px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-blue-800 dark:text-cyan-300 font-mono font-semibold"
-              >
-                {codDemo}
-              </button>
-            ))}
+            <span className="text-slate-500 dark:text-slate-400">Códigos rápidos:</span>
+            {codigosRapidos.map((codDemo) => {
+              const esNuevoSesion = !CODIGOS_DEMO_BASE.includes(codDemo);
+              const esActivo = resultadoConsulta?.codigo_seguimiento === codDemo;
+              return (
+                <button
+                  key={codDemo}
+                  type="button"
+                  onClick={() => handleConsultarCodigo(codDemo)}
+                  className={`btn-tactile px-2 py-0.5 rounded-md font-mono font-semibold border ${
+                    esActivo
+                      ? 'bg-[#0B1F3A] text-white border-[#0B1F3A] dark:bg-emerald-500 dark:text-slate-950 dark:border-emerald-400'
+                      : esNuevoSesion
+                      ? 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/35'
+                      : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-blue-800 dark:text-cyan-300 border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  {codDemo}
+                </button>
+              );
+            })}
           </div>
 
           {errorConsulta && (
@@ -516,13 +727,63 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
           {resultadoConsulta ? (
             <div
               key={resultadoConsulta.codigo_seguimiento}
-              className="animate-page-enter p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3 text-xs"
+              className="animate-page-enter p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3.5 text-xs"
             >
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2.5">
-                <span className="font-mono font-extrabold text-blue-800 dark:text-cyan-300">
-                  {resultadoConsulta.codigo_seguimiento}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-extrabold text-blue-800 dark:text-cyan-300">
+                    {resultadoConsulta.codigo_seguimiento}
+                  </span>
+                  {resultadoConsulta.expediente_codigo && (
+                    <span className="px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 font-mono text-[10px] font-bold">
+                      Ref: {resultadoConsulta.expediente_codigo}
+                    </span>
+                  )}
+                </div>
                 {renderEstadoBadge(resultadoConsulta.estado)}
+              </div>
+
+              {/* Stepper de 4 etapas del ciclo legal (Directiva N° 001-2026-PCM/SIP y D.L. N° 1327) */}
+              <div className="space-y-2">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Ruta de Atención del Reporte (Directiva N° 001-2026-PCM/SIP)
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { num: 1, titulo: '1. Recibida', sub: 'Reserva SHA-256' },
+                    { num: 2, titulo: '2. Admisibilidad', sub: 'Máx. 7d' },
+                    { num: 3, titulo: '3. Protección y Derivación', sub: 'D.L. 1327' },
+                    { num: 4, titulo: '4. Resolución / Cierre', sub: 'Atendida o Archivada' },
+                  ].map((paso, idx) => {
+                    const stepActual = getStepIndexDenuncia(resultadoConsulta.estado);
+                    const cerrada = esDenunciaCerrada(resultadoConsulta.estado);
+                    const completado = idx < stepActual || (idx === 3 && cerrada);
+                    const activo = idx === stepActual && !cerrada;
+                    return (
+                      <div
+                        key={paso.num}
+                        className={`p-2 rounded-lg border text-[10px] leading-tight space-y-0.5 ${
+                          completado
+                            ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-500/40 text-emerald-900 dark:text-emerald-200'
+                            : activo
+                            ? 'bg-blue-50 dark:bg-cyan-950/35 border-blue-400 dark:border-cyan-500/50 text-blue-900 dark:text-cyan-200 ring-1 ring-blue-400/30 dark:ring-cyan-400/30'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500'
+                        }`}
+                      >
+                        <div className="font-extrabold flex items-center justify-between gap-1">
+                          <span>{paso.titulo}</span>
+                          {completado && (
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          )}
+                        </div>
+                        <div className="opacity-85">{paso.sub}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300">
+                  {getNextStepGuidance(resultadoConsulta.estado)}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[11px]">
@@ -533,10 +794,18 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
                   </strong>
                 </div>
                 <div>
-                  <span className="text-slate-500 dark:text-slate-400 block">Plazo SLA:</span>
-                  <strong className="font-mono text-amber-800 dark:text-amber-300">
-                    {resultadoConsulta.fecha_limite_sla}
-                  </strong>
+                  <span className="text-slate-500 dark:text-slate-400 block">Estado SLA:</span>
+                  {esDenunciaCerrada(resultadoConsulta.estado) ||
+                  resultadoConsulta.fecha_limite_sla === 'Concluido' ? (
+                    <strong className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      Atención Concluida (Sin SLA pendiente)
+                    </strong>
+                  ) : (
+                    <strong className="font-mono text-amber-800 dark:text-amber-300">
+                      Plazo SLA: {resultadoConsulta.fecha_limite_sla}
+                    </strong>
+                  )}
                 </div>
                 <div>
                   <span className="text-slate-500 dark:text-slate-400 block">Órgano a cargo:</span>
@@ -600,70 +869,104 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
             </div>
           ) : (
             <div className="space-y-3">
-              {denunciasOci.map((den, idx) => (
-                <div
-                  key={den.id}
-                  className={`animate-card-up stagger-${Math.min(idx + 1, 6)} card-elevate p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 space-y-3 text-xs`}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="px-2.5 py-0.5 rounded-lg bg-blue-50 dark:bg-cyan-500/15 text-blue-800 dark:text-cyan-300 border border-blue-200 dark:border-cyan-500/30 font-mono font-extrabold">
-                        {den.codigo_seguimiento}
+              {denunciasOci.map((den, idx) => {
+                const cerrada =
+                  esDenunciaCerrada(den.estado) || den.fecha_limite_sla === 'Concluido';
+                const numAlertasExp = den.alertas_xai_expediente ?? 0;
+                return (
+                  <div
+                    key={den.id}
+                    className={`animate-card-up stagger-${Math.min(idx + 1, 6)} card-elevate p-4 rounded-xl border space-y-3 text-xs ${
+                      cerrada
+                        ? 'bg-emerald-50/30 dark:bg-emerald-950/15 border-emerald-200 dark:border-emerald-500/30'
+                        : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="px-2.5 py-0.5 rounded-lg bg-blue-50 dark:bg-cyan-500/15 text-blue-800 dark:text-cyan-300 border border-blue-200 dark:border-cyan-500/30 font-mono font-extrabold">
+                          {den.codigo_seguimiento}
+                        </span>
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          {den.categoria}
+                        </span>
+                        <span className="px-2 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono text-[11px]">
+                          {den.area_involucrada}
+                        </span>
+                        {den.expediente_codigo &&
+                          (den.expediente_id ? (
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/trazabilidad?id=${den.expediente_id}`)}
+                              title="Abrir trazabilidad forense del expediente referenciado"
+                              className="btn-tactile inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-500/40 font-mono text-[11px] font-bold"
+                            >
+                              <FileSearch className="w-3 h-3 shrink-0" />
+                              <span>Ref: {den.expediente_codigo}</span>
+                              <span className="font-sans font-semibold">
+                                {numAlertasExp > 0
+                                  ? `(${numAlertasExp} alerta(s) XAI)`
+                                  : '(Sin alerta XAI — reporte humano)'}
+                              </span>
+                            </button>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 font-mono text-[11px] font-semibold">
+                              Ref: {den.expediente_codigo}
+                            </span>
+                          ))}
+                      </div>
+                      {renderEstadoBadge(den.estado)}
+                    </div>
+
+                    <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                      {den.descripcion_hechos}
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-600 dark:text-slate-400">
+                      <span className="inline-flex items-center gap-1">
+                        <Building2 className="w-3.5 h-3.5 text-blue-700 dark:text-cyan-400" />
+                        <strong>Órgano:</strong> {den.organo_derivado}
                       </span>
-                      <span className="font-bold text-slate-900 dark:text-white">
-                        {den.categoria}
+                      <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300 font-medium">
+                        <Lock className="w-3.5 h-3.5" />
+                        {den.medida_proteccion}
                       </span>
-                      <span className="px-2 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono text-[11px]">
-                        {den.area_involucrada}
-                      </span>
-                      {den.expediente_codigo && (
-                        <span className="px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 font-mono text-[11px] font-semibold">
-                          Ref: {den.expediente_codigo}
+                      {cerrada ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300 font-semibold">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Atención Concluida (Sin SLA pendiente)
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 font-mono text-amber-800 dark:text-amber-300 font-semibold">
+                          <CalendarClock className="w-3.5 h-3.5" />
+                          SLA: {den.fecha_limite_sla}
                         </span>
                       )}
                     </div>
-                    {renderEstadoBadge(den.estado)}
-                  </div>
 
-                  <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-                    {den.descripcion_hechos}
-                  </p>
+                    {den.nota_interna_oci && (
+                      <div className="p-2.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/25 border border-emerald-200 dark:border-emerald-500/30 text-[11px] text-slate-700 dark:text-slate-300">
+                        <strong className="text-emerald-800 dark:text-emerald-300">
+                          Nota motivada OCI ({den.gestionado_por}):
+                        </strong>{' '}
+                        {den.nota_interna_oci}
+                      </div>
+                    )}
 
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-600 dark:text-slate-400">
-                    <span className="inline-flex items-center gap-1">
-                      <Building2 className="w-3.5 h-3.5 text-blue-700 dark:text-cyan-400" />
-                      <strong>Órgano:</strong> {den.organo_derivado}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300 font-medium">
-                      <Lock className="w-3.5 h-3.5" />
-                      {den.medida_proteccion}
-                    </span>
-                    <span className="inline-flex items-center gap-1 font-mono text-amber-800 dark:text-amber-300">
-                      <CalendarClock className="w-3.5 h-3.5" />
-                      SLA: {den.fecha_limite_sla}
-                    </span>
-                  </div>
-
-                  {den.nota_interna_oci && (
-                    <div className="p-2.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/25 border border-emerald-200 dark:border-emerald-500/30 text-[11px] text-slate-700 dark:text-slate-300">
-                      <strong className="text-emerald-800 dark:text-emerald-300">
-                        Nota motivada OCI ({den.gestionado_por}):
-                      </strong>{' '}
-                      {den.nota_interna_oci}
+                    <div className="flex justify-end pt-1">
+                      <button
+                        onClick={() => abrirModalGestion(den)}
+                        className="btn-tactile inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-bold text-xs shadow-sm"
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                        {cerrada
+                          ? 'Modificar Resolución / Reabrir'
+                          : 'Gestionar / Evaluar Protección y Derivar'}
+                      </button>
                     </div>
-                  )}
-
-                  <div className="flex justify-end pt-1">
-                    <button
-                      onClick={() => abrirModalGestion(den)}
-                      className="btn-tactile inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-bold text-xs shadow-sm"
-                    >
-                      <ShieldCheck className="w-4 h-4" />
-                      Gestionar / Otorgar Protección y Derivar
-                    </button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -691,6 +994,28 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
       >
         {denunciaEdit && (
           <form onSubmit={handleGuardarGestion} className="space-y-4 text-xs">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-bold text-slate-900 dark:text-white">
+                  {denunciaEdit.categoria} ({denunciaEdit.area_involucrada})
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                    denunciaEdit.solicita_proteccion
+                      ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/35'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+                  }`}
+                >
+                  {denunciaEdit.solicita_proteccion
+                    ? 'Solicitó Protección D.L. N° 1327'
+                    : 'Solo Reserva de Identidad'}
+                </span>
+              </div>
+              <p className="text-slate-600 dark:text-slate-400">
+                {denunciaEdit.descripcion_hechos}
+              </p>
+            </div>
+
             {errorGestion && (
               <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-500/40 text-rose-800 dark:text-rose-200">
                 {errorGestion}
@@ -704,7 +1029,7 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
                 </label>
                 <select
                   value={nuevoEstado}
-                  onChange={(e) => setNuevoEstado(e.target.value)}
+                  onChange={(e) => handleCambiarEstadoDenuncia(e.target.value as EstadoDenuncia)}
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100"
                 >
                   <option value="EN_EVALUACION">En Evaluación de Admisibilidad</option>
@@ -718,12 +1043,19 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
                 <label className="block font-bold text-slate-700 dark:text-slate-200">
                   Plazo SLA de Seguimiento:
                 </label>
-                <input
-                  type="date"
-                  value={fechaLimiteSla}
-                  onChange={(e) => setFechaLimiteSla(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100"
-                />
+                {esDenunciaCerrada(nuevoEstado) ? (
+                  <div className="w-full px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-500/40 text-emerald-800 dark:text-emerald-300 font-semibold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>Atención concluida (Sin SLA pendiente)</span>
+                  </div>
+                ) : (
+                  <input
+                    type="date"
+                    value={fechaLimiteSla}
+                    onChange={(e) => setFechaLimiteSla(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100"
+                  />
+                )}
               </div>
             </div>
 

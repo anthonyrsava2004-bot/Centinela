@@ -296,6 +296,13 @@ export interface AuditLogResumen {
   eventos: AuditLogItem[];
 }
 
+export type EstadoDenuncia =
+  | 'RECIBIDA'
+  | 'EN_EVALUACION'
+  | 'DERIVADA'
+  | 'ATENDIDA'
+  | 'ARCHIVADA_MOTIVADA';
+
 export interface DenunciaItem {
   id: number;
   codigo_seguimiento: string;
@@ -303,10 +310,12 @@ export interface DenunciaItem {
   categoria: string;
   area_involucrada: string;
   expediente_codigo?: string | null;
+  expediente_id?: number | null;
+  alertas_xai_expediente?: number;
   descripcion_hechos: string;
   solicita_proteccion: boolean;
   medida_proteccion: string;
-  estado: 'RECIBIDA' | 'EN_EVALUACION' | 'DERIVADA' | 'ATENDIDA' | 'ARCHIVADA_MOTIVADA' | string;
+  estado: EstadoDenuncia | string;
   organo_derivado: string;
   fecha_registro: string;
   fecha_limite_sla: string;

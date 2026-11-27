@@ -348,6 +348,8 @@ class DenunciaOut(BaseModel):
     categoria: str
     area_involucrada: str
     expediente_codigo: Optional[str] = None
+    expediente_id: Optional[int] = None
+    alertas_xai_expediente: int = 0
     descripcion_hechos: str
     solicita_proteccion: bool
     medida_proteccion: str

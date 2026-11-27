@@ -1752,6 +1752,36 @@ def registrar_denuncia_reservada(
     )
 
 
+def _serializar_denuncia_oci(
+    den: DenunciaReservada,
+    exp_por_codigo: dict[str, Expediente],
+    conteo_alertas: Counter,
+) -> DenunciaOut:
+    cod_exp = (den.expediente_codigo or "").strip().upper()
+    exp_match = exp_por_codigo.get(cod_exp) if cod_exp else None
+    return DenunciaOut(
+        id=den.id,
+        codigo_seguimiento=den.codigo_seguimiento,
+        hash_reserva=den.hash_reserva,
+        categoria=den.categoria,
+        area_involucrada=den.area_involucrada,
+        expediente_codigo=den.expediente_codigo,
+        expediente_id=exp_match.id if exp_match else None,
+        alertas_xai_expediente=conteo_alertas.get(exp_match.id, 0) if exp_match else 0,
+        descripcion_hechos=den.descripcion_hechos,
+        solicita_proteccion=den.solicita_proteccion,
+        medida_proteccion=den.medida_proteccion,
+        estado=den.estado,
+        organo_derivado=den.organo_derivado,
+        fecha_registro=den.fecha_registro,
+        fecha_limite_sla=den.fecha_limite_sla,
+        ultima_actualizacion=den.ultima_actualizacion,
+        respuesta_seguimiento=den.respuesta_seguimiento,
+        nota_interna_oci=den.nota_interna_oci,
+        gestionado_por=den.gestionado_por,
+    )
+
+
 @app.get("/api/denuncias", response_model=List[DenunciaOut])
 def listar_denuncias_confidenciales(
     request: Request,
@@ -1786,7 +1816,9 @@ def listar_denuncias_confidenciales(
         )
 
     denuncias = db.query(DenunciaReservada).order_by(DenunciaReservada.id.desc()).all()
-    return [DenunciaOut.model_validate(d) for d in denuncias]
+    exp_por_codigo = {e.codigo.upper(): e for e in db.query(Expediente).all()}
+    conteo_alertas = Counter(a.expediente_id for a in db.query(AlertaGestion).all())
+    return [_serializar_denuncia_oci(d, exp_por_codigo, conteo_alertas) for d in denuncias]
 
 
 @app.patch("/api/denuncias/{denuncia_id}", response_model=DenunciaOut)
@@ -1822,26 +1854,50 @@ def gestionar_denuncia_reservada(
             detail="Acceso denegado (RBAC): Solo el Auditor OCI / Oficina de Integridad puede gestionar y derivar denuncias.",
         )
 
+    estados_validos = {"RECIBIDA", "EN_EVALUACION", "DERIVADA", "ATENDIDA", "ARCHIVADA_MOTIVADA"}
+    nuevo_estado = payload.estado.strip()
+    if nuevo_estado not in estados_validos:
+        raise HTTPException(status_code=400, detail="Estado de denuncia no válido.")
+
     if len(payload.nota_interna_oci.strip()) < 10:
         raise HTTPException(
             status_code=400,
             detail="Debe registrar un sustento motivado (mínimo 10 caracteres) para actualizar o derivar la denuncia.",
         )
 
-    ahora_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    ahora = datetime.utcnow()
+    ahora_iso = ahora.strftime("%Y-%m-%dT%H:%M:%S")
     estado_previo = den.estado
-    den.estado = payload.estado.strip()
+    den.estado = nuevo_estado
     den.organo_derivado = payload.organo_derivado.strip()
     den.medida_proteccion = payload.medida_proteccion.strip()
-    if payload.fecha_limite_sla and payload.fecha_limite_sla.strip():
+
+    if nuevo_estado in ("ATENDIDA", "ARCHIVADA_MOTIVADA"):
+        den.fecha_limite_sla = "Concluido"
+    elif payload.fecha_limite_sla and payload.fecha_limite_sla.strip() != "Concluido":
         den.fecha_limite_sla = payload.fecha_limite_sla.strip()
+    elif den.fecha_limite_sla == "Concluido":
+        den.fecha_limite_sla = (ahora + timedelta(days=7)).strftime("%Y-%m-%d")
+
     den.respuesta_seguimiento = payload.respuesta_seguimiento.strip()
     den.nota_interna_oci = payload.nota_interna_oci.strip()
     den.ultima_actualizacion = ahora_iso
     den.gestionado_por = f"{usuario} — {rol}"
 
+    exp_vinculado: Optional[Expediente] = None
+    if den.expediente_codigo and den.expediente_codigo.strip():
+        exp_vinculado = (
+            db.query(Expediente)
+            .filter(Expediente.codigo == den.expediente_codigo.strip().upper())
+            .first()
+        )
+        if exp_vinculado and nuevo_estado == "DERIVADA" and exp_vinculado.estado_expediente == "Pagado":
+            exp_vinculado.estado_expediente = "En Investigación — Canal Denuncia"
+
     db.commit()
     db.refresh(den)
+    if exp_vinculado:
+        db.refresh(exp_vinculado)
 
     registrar_evento_auditoria(
         db=db,
@@ -1856,7 +1912,19 @@ def gestionar_denuncia_reservada(
         ),
         ip_origen=ip_origen,
     )
-    return DenunciaOut.model_validate(den)
+
+    exp_por_codigo = {exp_vinculado.codigo.upper(): exp_vinculado} if exp_vinculado else {}
+    conteo_alertas = (
+        Counter(
+            a.expediente_id
+            for a in db.query(AlertaGestion)
+            .filter(AlertaGestion.expediente_id == exp_vinculado.id)
+            .all()
+        )
+        if exp_vinculado
+        else Counter()
+    )
+    return _serializar_denuncia_oci(den, exp_por_codigo, conteo_alertas)
 
 
 @app.get("/api/validacion", response_model=ReporteValidacionOut)

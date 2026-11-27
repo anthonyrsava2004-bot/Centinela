@@ -954,6 +954,94 @@ class TestCanalDenuncia(_Registro):
             OBS["rbac"].append((f"{rol} → PATCH gestión de denuncia", 403, r.status_code))
             self.assertEqual(r.status_code, 403)
 
+    def test_ciclo_vida_completo_denuncia_y_cruce_expediente(self):
+        exps = client.get("/api/expedientes", headers=hdr(ROL_OCI)).json()
+        exp_15 = next(e for e in exps if e["codigo"] == "EXP-2025-UNT-0015")
+        exp_id = exp_15["id"]
+
+        r_post = client.post(
+            "/api/denuncias",
+            json={
+                "categoria": "Cobro o Favoritismo a Proveedor",
+                "area_involucrada": exp_15["area_usuaria"],
+                "expediente_codigo": "EXP-2025-UNT-0015",
+                "descripcion_hechos": "Reporte ciudadano sintético sobre posible trato preferencial no visible en documentos.",
+                "solicita_proteccion": False,
+            },
+            headers=hdr(ROL_PUB),
+        )
+        self.assertEqual(r_post.status_code, 200, r_post.text[:200])
+        creada = r_post.json()
+        codigo = creada["codigo_seguimiento"]
+        self.assertEqual(creada["estado"], "RECIBIDA")
+
+        bandeja = client.get("/api/denuncias", headers=hdr(ROL_OCI)).json()
+        item_oci = next(d for d in bandeja if d["codigo_seguimiento"] == codigo)
+        den_id = item_oci["id"]
+        self.assertEqual(item_oci["expediente_id"], exp_id)
+        self.assertEqual(item_oci["alertas_xai_expediente"], 0)
+        self.assertFalse(item_oci["solicita_proteccion"])
+
+        r_eval = client.patch(
+            f"/api/denuncias/{den_id}",
+            json={
+                "estado": "EN_EVALUACION",
+                "organo_derivado": "Oficina de Integridad — Evaluación de Admisibilidad",
+                "medida_proteccion": "Reserva de Identidad (D.L. N° 1327)",
+                "respuesta_seguimiento": f"Su reporte {codigo} se encuentra en evaluación de admisibilidad.",
+                "nota_interna_oci": "Evaluación preliminar de admisibilidad y cruce con EXP-2025-UNT-0015.",
+            },
+            headers=hdr(ROL_OCI),
+        )
+        self.assertEqual(r_eval.status_code, 200, r_eval.text[:200])
+        self.assertEqual(r_eval.json()["estado"], "EN_EVALUACION")
+
+        r_der = client.patch(
+            f"/api/denuncias/{den_id}",
+            json={
+                "estado": "DERIVADA",
+                "organo_derivado": "OCI — Órgano de Control Institucional",
+                "medida_proteccion": "Reserva de Identidad (D.L. N° 1327)",
+                "respuesta_seguimiento": f"Reporte {codigo} admitido y derivado al OCI.",
+                "nota_interna_oci": "Se deriva a control institucional para verificación reservada.",
+            },
+            headers=hdr(ROL_OCI),
+        )
+        self.assertEqual(r_der.status_code, 200, r_der.text[:200])
+        self.assertNotIn("))", r_der.json().get("gestionado_por") or "")
+        self.assertEqual(detalle(exp_id)["estado_expediente"], "En Investigación — Canal Denuncia")
+
+        r_fin = client.patch(
+            f"/api/denuncias/{den_id}",
+            json={
+                "estado": "ATENDIDA",
+                "organo_derivado": "OCI — Órgano de Control Institucional",
+                "medida_proteccion": "Reserva de Identidad (D.L. N° 1327)",
+                "fecha_limite_sla": "Concluido",
+                "respuesta_seguimiento": f"La atención de su reporte {codigo} concluyó satisfactoriamente.",
+                "nota_interna_oci": self.SECRETO,
+            },
+            headers=hdr(ROL_OCI),
+        )
+        self.assertEqual(r_fin.status_code, 200, r_fin.text[:200])
+        self.assertEqual(r_fin.json()["fecha_limite_sla"], "Concluido")
+
+        pub = client.get(f"/api/denuncias/consultar/{codigo}", headers=hdr(ROL_PUB))
+        self.assertEqual(pub.status_code, 200)
+        cuerpo_pub = pub.json()
+        self.assertEqual(cuerpo_pub["estado"], "ATENDIDA")
+        self.assertEqual(cuerpo_pub["fecha_limite_sla"], "Concluido")
+        for campo_interno in (
+            "id",
+            "nota_interna_oci",
+            "descripcion_hechos",
+            "gestionado_por",
+            "expediente_id",
+            "alertas_xai_expediente",
+        ):
+            self.assertNotIn(campo_interno, cuerpo_pub)
+        self.assertNotIn(self.SECRETO, pub.text)
+
 
 # --------------------------------------------------------------------------- #
 # 7. Bitácora global, reinicio determinista, reportes y rendimiento

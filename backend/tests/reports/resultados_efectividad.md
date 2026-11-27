@@ -1,6 +1,6 @@
 # Informe de Pruebas y Efectividad — CENTINELA
 
-_Generado automáticamente el 2026-11-26 10:52:18 por `backend/tests/test_efectividad.py` (datos 100 % sintéticos)._
+_Generado automáticamente el 2026-11-26 11:24:30 por `backend/tests/test_efectividad.py` (datos 100 % sintéticos)._
 
 ## 1. Resumen ejecutivo
 
@@ -49,10 +49,10 @@ _Generado automáticamente el 2026-11-26 10:52:18 por `backend/tests/test_efecti
 
 | Operación | Muestras | p50 | p95 | Máx |
 |---|---:|---:|---:|---:|
-| Detalle de expediente (6 etapas + NLP + alertas) | 10 | 7 | 9 | 9 |
-| Dashboard de indicadores | 8 | 3 | 61 | 61 |
-| Grafo de colusión (NetworkX) | 8 | 6 | 7 | 7 |
-| Registrar expediente + sellar 6 etapas + 8 reglas XAI | 18 | 40 | 42 | 42 |
+| Detalle de expediente (6 etapas + NLP + alertas) | 10 | 7 | 8 | 8 |
+| Dashboard de indicadores | 8 | 3 | 58 | 58 |
+| Grafo de colusión (NetworkX) | 8 | 5 | 6 | 6 |
+| Registrar expediente + sellar 6 etapas + 8 reglas XAI | 18 | 41 | 44 | 45 |
 
 ## 5. Control de accesos (RBAC) verificado
 
@@ -86,6 +86,7 @@ _Generado automáticamente el 2026-11-26 10:52:18 por `backend/tests/test_efecti
 - ✅ `TestBitacoraReinicioYReportes.test_reinicio_es_determinista_y_preserva_bitacora`
 - ✅ `TestBitacoraReinicioYReportes.test_rendimiento_de_consultas`
 - ✅ `TestBitacoraReinicioYReportes.test_reportes_pdf_y_csv`
+- ✅ `TestCanalDenuncia.test_ciclo_vida_completo_denuncia_y_cruce_expediente`
 - ✅ `TestCanalDenuncia.test_codigo_inexistente_devuelve_404`
 - ✅ `TestCanalDenuncia.test_consulta_publica_no_expone_datos_internos`
 - ✅ `TestCanalDenuncia.test_descripcion_muy_corta_es_rechazada`

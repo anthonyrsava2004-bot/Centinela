@@ -34,7 +34,7 @@ def sembrar_denuncias_base(db: Session) -> int:
             "2026-11-23T09:00:00",
             "Su reporte con código DEN-2026-0001 fue admitido con reserva estricta de identidad y se encuentra en verificación cruzada con el expediente EXP-2025-UNT-0001.",
             "Cruce preliminar positivo con alertas R-01 y R-08. Pendiente derivación formal a OCI / Secretaría Técnica PAD y emisión de medida de protección laboral.",
-            "FUNC-OCI-01 (Auditor OCI)",
+            "FUNC-OCI-01 — Auditor OCI (Control Institucional)",
         ),
         (
             "DEN-2026-0002",
@@ -51,7 +51,7 @@ def sembrar_denuncias_base(db: Session) -> int:
             "2026-11-23T14:20:00",
             "Reporte verificado y derivado al Órgano de Control Institucional (OCI). Se concedió medida de protección laboral y el desembolso fue bloqueado preventivamente.",
             "Derivado con Informe de Admisibilidad N° 018-2026-OI. Bloqueo de pago activo en Tesorería hasta acreditar pruebas de pozo a tierra.",
-            "FUNC-OCI-01 (Auditor OCI)",
+            "FUNC-OCI-01 — Auditor OCI (Control Institucional)",
         ),
         (
             "DEN-2026-0003",
@@ -832,7 +832,7 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
                     funcionario_reasignado="FUNC-COM-ALT-03",
                     fecha_registro=f"{fecha_dia}T11:20:00",
                     fecha_resolucion=f"{fecha_dia}T12:00:00",
-                    resuelto_por="FUNC-OCI-01 (Auditor OCI — Oficina de Integridad)",
+                    resuelto_por="FUNC-OCI-01 — Auditor OCI (Control Institucional)",
                 )
             )
 
