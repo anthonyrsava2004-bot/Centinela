@@ -1,27 +1,27 @@
 {
-  "generado": "2026-11-26 11:24:30",
+  "generado": "2026-11-27 00:01:46",
   "comando": "cd backend && python -m unittest discover -s tests -v",
   "resumen_muestras": {
     "expedientes_sembrados": 120,
     "compras_limpias": 110,
     "alertas_indebidas_en_limpias": 0,
-    "casos_en_vivo": 18,
+    "casos_en_vivo": 19,
     "pruebas_sha256": 18,
-    "total_pruebas": 26,
-    "pruebas_aprobadas": 26
+    "total_pruebas": 27,
+    "pruebas_aprobadas": 27
   },
   "totales": {
-    "TP": 29,
+    "TP": 30,
     "FP": 0,
     "FN": 0,
-    "TN": 1219
+    "TN": 1226
   },
   "matriz_por_regla": {
     "R-01-FRACCIONAMIENTO": {
       "TP": 4,
       "FP": 0,
       "FN": 0,
-      "TN": 152,
+      "TN": 153,
       "precision": 1.0,
       "recall": 1.0,
       "f1": 1.0,
@@ -31,7 +31,7 @@
       "TP": 3,
       "FP": 0,
       "FN": 0,
-      "TN": 153,
+      "TN": 154,
       "precision": 1.0,
       "recall": 1.0,
       "f1": 1.0,
@@ -41,14 +41,14 @@
       "TP": 5,
       "FP": 0,
       "FN": 0,
-      "TN": 151,
+      "TN": 152,
       "precision": 1.0,
       "recall": 1.0,
       "f1": 1.0,
       "fpr": 0.0
     },
     "R-04-COLUSION-GRAFO": {
-      "TP": 4,
+      "TP": 5,
       "FP": 0,
       "FN": 0,
       "TN": 152,
@@ -61,7 +61,7 @@
       "TP": 2,
       "FP": 0,
       "FN": 0,
-      "TN": 154,
+      "TN": 155,
       "precision": 1.0,
       "recall": 1.0,
       "f1": 1.0,
@@ -71,7 +71,7 @@
       "TP": 6,
       "FP": 0,
       "FN": 0,
-      "TN": 150,
+      "TN": 151,
       "precision": 1.0,
       "recall": 1.0,
       "f1": 1.0,
@@ -81,7 +81,7 @@
       "TP": 3,
       "FP": 0,
       "FN": 0,
-      "TN": 153,
+      "TN": 154,
       "precision": 1.0,
       "recall": 1.0,
       "f1": 1.0,
@@ -91,7 +91,7 @@
       "TP": 2,
       "FP": 0,
       "FN": 0,
-      "TN": 154,
+      "TN": 155,
       "precision": 1.0,
       "recall": 1.0,
       "f1": 1.0,
@@ -232,32 +232,41 @@
         "R-03-PAGO-SIN-CONF",
         "R-04-COLUSION-GRAFO"
       ]
+    },
+    {
+      "caso": "P9 Colusión societaria: mismo socio/inversor con distinto gerente y oficina",
+      "esperado": [
+        "R-04-COLUSION-GRAFO"
+      ],
+      "detectado": [
+        "R-04-COLUSION-GRAFO"
+      ]
     }
   ],
   "latencias_ms": {
     "Detalle de expediente (6 etapas + NLP + alertas)": {
       "n": 10,
-      "p50": 6.930700037628412,
-      "p95": 8.327800082042813,
-      "max": 8.327800082042813
+      "p50": 7.833100040443242,
+      "p95": 63.43670003116131,
+      "max": 63.43670003116131
     },
     "Dashboard de indicadores": {
       "n": 8,
-      "p50": 3.204749897122383,
-      "p95": 57.51439998857677,
-      "max": 57.51439998857677
+      "p50": 3.417000058107078,
+      "p95": 3.7872998509556055,
+      "max": 3.7872998509556055
     },
     "Grafo de colusión (NetworkX)": {
       "n": 8,
-      "p50": 5.432049976661801,
-      "p95": 6.083999993279576,
-      "max": 6.083999993279576
+      "p50": 5.8458499843254685,
+      "p95": 6.450499873608351,
+      "max": 6.450499873608351
     },
     "Registrar expediente + sellar 6 etapas + 8 reglas XAI": {
-      "n": 18,
-      "p50": 40.944149950519204,
-      "p95": 43.64180006086826,
-      "max": 45.13949993997812
+      "n": 19,
+      "p50": 39.77650008164346,
+      "p95": 41.82110005058348,
+      "max": 41.864699916914105
     }
   },
   "rbac": [
@@ -394,6 +403,10 @@
     },
     {
       "nombre": "TestCanalDenuncia.test_consulta_publica_no_expone_datos_internos",
+      "estado": "OK"
+    },
+    {
+      "nombre": "TestCanalDenuncia.test_denuncia_comentario_sin_sustento_verificable_es_rechazada",
       "estado": "OK"
     },
     {

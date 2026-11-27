@@ -189,7 +189,7 @@ export const GrafoColusionPage: React.FC = () => {
             Empresas con Datos Compartidos (Posible Colusión)
           </h1>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-            Identifica proveedores que compiten en un mismo proceso pero comparten representante legal, dirección o teléfono (Art. 30 Ley N° 32069 • Grafo NetworkX)
+            Identifica proveedores que compiten en un mismo proceso pero comparten representante legal, socio/accionista inversor, dirección o teléfono (Art. 30 Ley N° 32069 • Grafo NetworkX)
           </p>
         </div>
 
@@ -273,7 +273,7 @@ export const GrafoColusionPage: React.FC = () => {
               </span>
               <span className="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-medium">
                 <span className="w-3 h-3 rotate-45 bg-amber-500 inline-block border border-amber-300" />
-                Atributo Compartido (Rep/Dir/Tel)
+                Atributo Compartido (Rep/Socio/Dir/Tel)
               </span>
               <span className="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-medium">
                 <span className="w-3.5 h-3 rounded bg-blue-700 dark:bg-sky-500 inline-block border border-blue-300 dark:border-sky-200" />
@@ -390,6 +390,14 @@ export const GrafoColusionPage: React.FC = () => {
                       </span>
                     </div>
                   )}
+                  {nodoSeleccionado.accionista_id && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 dark:text-slate-400">Socio / Inversor:</span>
+                      <span className="font-mono text-amber-700 dark:text-amber-300 font-semibold">
+                        {nodoSeleccionado.accionista_id}
+                      </span>
+                    </div>
+                  )}
                   {nodoSeleccionado.direccion_hash && (
                     <div className="flex justify-between">
                       <span className="text-slate-500 dark:text-slate-400">
@@ -444,7 +452,7 @@ export const GrafoColusionPage: React.FC = () => {
                       className="btn-tactile w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold text-xs flex items-center justify-center gap-2"
                     >
                       <FileSearch className="w-4 h-4" />
-                      Auditar Cadena SHA-256 de este Expediente
+                      Inspeccionar Cadena SHA-256 de este Expediente
                     </button>
                   )}
               </div>
@@ -518,30 +526,36 @@ export const GrafoColusionPage: React.FC = () => {
                   <span className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400">
                     Expedientes donde co-participaron simulando competencia:
                   </span>
-                  {cluster.expedientes_afectados.map((exp) => (
-                    <div
-                      key={exp.id}
-                      className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-800 text-xs"
-                    >
-                      <div>
-                        <span className="font-mono font-bold text-blue-700 dark:text-cyan-300">
-                          {exp.codigo}
-                        </span>
-                        <span className="text-slate-500 dark:text-slate-400 ml-2">
-                          ({exp.area_usuaria})
-                        </span>
-                        <div className="text-[11px] text-slate-600 dark:text-slate-300 truncate max-w-sm">
-                          {exp.objeto}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => navigate(`/trazabilidad?id=${exp.id}`)}
-                        className="btn-tactile px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 font-semibold whitespace-nowrap ml-3"
-                      >
-                        Ver Expediente
-                      </button>
+                  {cluster.expedientes_afectados.length === 0 ? (
+                    <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/30 text-xs text-amber-900 dark:text-amber-200">
+                      Vínculo societario preventivo detectado en padrón (activará señal R-04 en tiempo real si ambos postores co-participan en un mismo proceso).
                     </div>
-                  ))}
+                  ) : (
+                    cluster.expedientes_afectados.map((exp) => (
+                      <div
+                        key={exp.id}
+                        className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-800 text-xs"
+                      >
+                        <div>
+                          <span className="font-mono font-bold text-blue-700 dark:text-cyan-300">
+                            {exp.codigo}
+                          </span>
+                          <span className="text-slate-500 dark:text-slate-400 ml-2">
+                            ({exp.area_usuaria})
+                          </span>
+                          <div className="text-[11px] text-slate-600 dark:text-slate-300 truncate max-w-sm">
+                            {exp.objeto}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => navigate(`/trazabilidad?id=${exp.id}`)}
+                          className="btn-tactile px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 font-semibold whitespace-nowrap ml-3"
+                        >
+                          Ver Expediente
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             ))}

@@ -19,11 +19,14 @@ def construir_grafo_colusion(db: Session, solo_riesgo: bool = True) -> dict:
 
     # Mapear atributos -> lista de proveedores que los poseen
     rep_map = defaultdict(list)
+    acc_map = defaultdict(list)
     dir_map = defaultdict(list)
     tel_map = defaultdict(list)
 
     for p in proveedores:
         rep_map[p.representante_id].append(p)
+        if p.accionista_id:
+            acc_map[p.accionista_id].append(p)
         dir_map[p.direccion_hash].append(p)
         tel_map[p.telefono_hash].append(p)
 
@@ -37,6 +40,17 @@ def construir_grafo_colusion(db: Session, solo_riesgo: bool = True) -> dict:
                 "subtipo": "REPRESENTANTE_LEGAL",
                 "etiqueta": f"Rep. Legal\n{rep_id}",
                 "valor": rep_id,
+                "proveedores": [x.codigo for x in lista_p],
+            }
+            for x in lista_p:
+                proveedores_en_red_ids.add(x.id)
+
+    for acc_id, lista_p in acc_map.items():
+        if len(lista_p) > 1:
+            atributos_compartidos[acc_id] = {
+                "subtipo": "SOCIO_ACCIONISTA",
+                "etiqueta": f"Socio/Inversor\n{acc_id}",
+                "valor": acc_id,
                 "proveedores": [x.codigo for x in lista_p],
             }
             for x in lista_p:
@@ -86,16 +100,18 @@ def construir_grafo_colusion(db: Session, solo_riesgo: bool = True) -> dict:
             riesgo="ALTO" if es_sospechoso else "LIMPIO",
             rubro=p.rubro,
             representante_id=p.representante_id,
+            accionista_id=p.accionista_id,
             direccion_hash=p.direccion_hash,
             telefono_hash=p.telefono_hash,
             detalle=(
                 f"Proveedor anonimizado {p.codigo} ({p.alias_comercial} — {p.rubro}). "
-                f"Rep: {p.representante_id} | Dir: {p.direccion_hash} | Tel: {p.telefono_hash}"
+                f"Rep: {p.representante_id} | Socio/Inv: {p.accionista_id} | Dir: {p.direccion_hash} | Tel: {p.telefono_hash}"
             ),
         )
 
     etiqueta_enlace_corta = {
         "REPRESENTANTE_LEGAL": "Rep. Legal",
+        "SOCIO_ACCIONISTA": "Socio/Inversor",
         "DIRECCION_FISCAL": "Dirección",
         "TELEFONO_CONTACTO": "Teléfono",
     }
@@ -176,6 +192,7 @@ def construir_grafo_colusion(db: Session, solo_riesgo: bool = True) -> dict:
                         riesgo="ALTO" if (prov.id in proveedores_en_red_ids) else "LIMPIO",
                         rubro=prov.rubro,
                         representante_id=prov.representante_id,
+                        accionista_id=prov.accionista_id,
                         direccion_hash=prov.direccion_hash,
                         telefono_hash=prov.telefono_hash,
                         detalle=f"Proveedor {prov.codigo} ({prov.alias_comercial} — {prov.rubro})",

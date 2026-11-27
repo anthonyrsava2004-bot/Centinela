@@ -39,6 +39,7 @@ export interface PostulacionDetalle {
   proveedor_codigo: string;
   proveedor_alias: string;
   representante_id: string;
+  accionista_id: string;
   direccion_hash: string;
   telefono_hash: string;
   monto_ofertado: number;
@@ -94,6 +95,7 @@ export interface ProveedorItem {
   alias_comercial: string;
   rubro: string;
   representante_id: string;
+  accionista_id: string;
   direccion_hash: string;
   telefono_hash: string;
   es_colusorio: boolean;
@@ -313,6 +315,7 @@ export interface DenunciaItem {
   expediente_id?: number | null;
   alertas_xai_expediente?: number;
   descripcion_hechos: string;
+  sustento_verificable: string;
   solicita_proteccion: boolean;
   medida_proteccion: string;
   estado: EstadoDenuncia | string;

@@ -69,7 +69,7 @@ export const PAGE_TOUR_STEPS: Record<string, TourStep[]> = {
       title: 'Compras con Alertas Prioritarias',
       description:
         'Lista los expedientes con mayor riesgo detectado para acceder directamente a su cadena documental, verificación de entregables y reporte PDF.',
-      tip: 'Haga clic en "Auditar" o "Ver Historial" en cualquier fila para abrir el detalle completo del proceso.',
+      tip: 'Haga clic en "Controlar" o "Ver Historial" en cualquier fila para abrir el detalle completo del proceso.',
       placement: 'auto',
     },
   ],
@@ -211,7 +211,7 @@ export const PAGE_TOUR_STEPS: Record<string, TourStep[]> = {
       target: 'grafo-canvas',
       title: 'Mapa Interactivo de Relaciones',
       description:
-        'Representa proveedores (círculos rojos), datos compartidos como representante, dirección o teléfono (rombos amarillos) y expedientes (rectángulos azules).',
+        'Representa proveedores (círculos rojos), datos compartidos como representante, socio/inversor, dirección o teléfono (rombos amarillos) y expedientes (rectángulos azules).',
       tip: 'Haga clic en cualquier nodo para inspeccionarlo, arrastre para mover el grafo o use "Reajustar Red" para centrarlo.',
       placement: 'auto',
     },

@@ -15,7 +15,7 @@ from .nlp_tdr import analizar_similitud_tdr
 
 def generar_pdf_expediente(db: Session, expediente: Expediente) -> bytes:
     """
-    Genera en memoria un Reporte Oficial de Trazabilidad Forense y Auditoría Preventiva en PDF
+    Genera en memoria un Reporte Oficial de Trazabilidad Forense y Control Concurrente y Preventivo en PDF
     utilizando ReportLab, incluyendo la cadena de sellos SHA-256, señales XAI y análisis NLP.
     """
     buffer = io.BytesIO()
@@ -84,7 +84,7 @@ def generar_pdf_expediente(db: Session, expediente: Expediente) -> bytes:
     # 1. Encabezado Institucional
     story.append(
         Paragraph(
-            "PLATAFORMA CENTINELA — REPORTE OFICIAL DE AUDITORÍA PREVENTIVA Y TRAZABILIDAD FORENSE",
+            "PLATAFORMA CENTINELA — REPORTE OFICIAL DE CONTROL CONCURRENTE Y PREVENTIVO Y TRAZABILIDAD FORENSE",
             title_style,
         )
     )
@@ -209,7 +209,7 @@ def generar_pdf_expediente(db: Session, expediente: Expediente) -> bytes:
 
     # 4. Señales de Riesgo Explicables (XAI)
     story.append(
-        Paragraph("3. SEÑALES EXPLICABLES DE AUDITORÍA PREVENTIVA (XAI - SIN CAJA NEGRA)", section_style)
+        Paragraph("3. SEÑALES EXPLICABLES DE CONTROL CONCURRENTE Y PREVENTIVO (XAI - SIN CAJA NEGRA)", section_style)
     )
     if not alertas:
         story.append(
@@ -325,7 +325,7 @@ def generar_pdf_expediente(db: Session, expediente: Expediente) -> bytes:
             f"<b>Último Sello de Cadena del Expediente:</b> <font name='Courier'>{ultimo_hash}</font><br/>"
             f"<b>Fecha de Generación Forense:</b> {ts_emision}<br/><br/>"
             "<i>NOTA LEGAL Y ÉTICA (Ley N° 27444 / Ley N° 32069): El presente documento constituye un reporte técnico "
-            "de auditoría preventiva basado en señales algorítmicas explicables (XAI). No constituye imputación de "
+            "de control concurrente y preventivo basado en señales algorítmicas explicables (XAI). No constituye imputación de "
             "responsabilidad administrativa, civil ni penal sin el previo procedimiento de descargo y valoración "
             "humana por parte del Órgano de Control Institucional (OCI) o la Dependencia Encargada de las Contrataciones.</i>",
             body_style,

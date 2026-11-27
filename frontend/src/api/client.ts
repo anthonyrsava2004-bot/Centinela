@@ -284,6 +284,7 @@ export const centinelaApi = {
     area_involucrada: string;
     expediente_codigo?: string;
     descripcion_hechos: string;
+    sustento_verificable: string;
     solicita_proteccion: boolean;
   }): Promise<DenunciaConsultaPublica> => {
     const { data } = await apiClient.post<DenunciaConsultaPublica>('/api/denuncias', payload);

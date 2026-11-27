@@ -185,6 +185,10 @@ def _evaluar_reglas_expediente(
                     coincidencias_grafo.append(
                         f"{p1.codigo} y {p2.codigo} comparten Representante Legal ({p1.representante_id})"
                     )
+                if p1.accionista_id and p1.accionista_id == p2.accionista_id:
+                    coincidencias_grafo.append(
+                        f"{p1.codigo} y {p2.codigo} comparten Socio / Accionista Inversor ({p1.accionista_id})"
+                    )
                 if p1.direccion_hash == p2.direccion_hash:
                     coincidencias_grafo.append(
                         f"{p1.codigo} y {p2.codigo} comparten Dirección Fiscal ({p1.direccion_hash})"
@@ -207,7 +211,7 @@ def _evaluar_reglas_expediente(
                 regla_activada=(
                     "Regla XAI R-04 (Análisis Topológico NetworkX de Postores): Detecta cuando dos o más "
                     "proveedores que presentan cotizaciones u ofertas en el mismo expediente comparten "
-                    "identificadores de representante_id, direccion_hash o telefono_hash."
+                    "identificadores de representante_id, accionista_id (socio/inversor), direccion_hash o telefono_hash."
                 ),
                 evidencia_exacta=(
                     f"En el expediente {exp.codigo} ({exp.objeto}), se presentaron {len(postores_exp)} postores "

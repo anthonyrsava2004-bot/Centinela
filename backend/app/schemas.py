@@ -28,6 +28,7 @@ class PostulacionDetalleOut(BaseModel):
     proveedor_codigo: str
     proveedor_alias: str
     representante_id: str
+    accionista_id: str = "INV-UNICO-000"
     direccion_hash: str
     telefono_hash: str
     monto_ofertado: float
@@ -92,6 +93,7 @@ class ProveedorOut(BaseModel):
     alias_comercial: str
     rubro: str
     representante_id: str
+    accionista_id: str = "INV-UNICO-000"
     direccion_hash: str
     telefono_hash: str
     es_colusorio: bool
@@ -327,6 +329,7 @@ class DenunciaCreateInput(BaseModel):
     area_involucrada: str = "Por determinar"
     expediente_codigo: Optional[str] = None
     descripcion_hechos: str
+    sustento_verificable: str
     solicita_proteccion: bool = True
 
 
@@ -351,6 +354,7 @@ class DenunciaOut(BaseModel):
     expediente_id: Optional[int] = None
     alertas_xai_expediente: int = 0
     descripcion_hechos: str
+    sustento_verificable: str = "Referencia documental o constatación física verificable"
     solicita_proteccion: bool
     medida_proteccion: str
     estado: str

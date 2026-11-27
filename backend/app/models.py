@@ -78,6 +78,7 @@ class Proveedor(Base):
     alias_comercial = Column(String(120), nullable=False)
     rubro = Column(String(100), nullable=False)
     representante_id = Column(String(60), index=True, nullable=False)
+    accionista_id = Column(String(60), index=True, nullable=False, default="INV-UNICO-000")
     direccion_hash = Column(String(60), index=True, nullable=False)
     telefono_hash = Column(String(60), index=True, nullable=False)
     catalogo_texto = Column(Text, nullable=False)
@@ -229,6 +230,11 @@ class DenunciaReservada(Base):
     area_involucrada = Column(String(80), nullable=False, default="Por determinar")
     expediente_codigo = Column(String(50), nullable=True)
     descripcion_hechos = Column(Text, nullable=False)
+    sustento_verificable = Column(
+        Text,
+        nullable=False,
+        default="Referencia documental o constatación física verificable",
+    )
     solicita_proteccion = Column(Boolean, nullable=False, default=True)
     medida_proteccion = Column(
         String(140),

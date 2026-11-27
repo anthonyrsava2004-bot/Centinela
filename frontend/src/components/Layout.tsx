@@ -75,7 +75,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const [modalSesionAbierto, setModalSesionAbierto] = useState<boolean>(false);
   const [paletteAbierta, setPaletteAbierta] = useState<boolean>(false);
   const [alertasPendientes, setAlertasPendientes] = useState<number>(0);
-  const [totalPruebasVal, setTotalPruebasVal] = useState<number>(26);
+  const [totalPruebasVal, setTotalPruebasVal] = useState<number>(27);
   const [tourAbierto, setTourAbierto] = useState<boolean>(false);
   const [tourMode, setTourMode] = useState<TourMode>('page');
   const tourDelayRef = useRef<number | null>(null);
@@ -489,8 +489,8 @@ export const Layout: React.FC<LayoutProps> = ({
               <RoleIcon className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">{profile.workspaceTitle}</span>
             </span>
-            <p className="hidden 2xl:block text-[11px] text-slate-500 dark:text-slate-400 truncate">
-              Radar preventivo conectado sobre SEACE, SIGA y SIAF (sin reemplazarlos)
+            <p className="hidden xl:block text-[11px] text-slate-500 dark:text-slate-400 truncate">
+              Control concurrente sobre SIGA, SEACE y SIAF (sin reemplazarlos)
             </p>
           </div>
 

@@ -1,11 +1,11 @@
 # Informe de Pruebas y Efectividad — CENTINELA
 
-_Generado automáticamente el 2026-11-26 11:24:30 por `backend/tests/test_efectividad.py` (datos 100 % sintéticos)._
+_Generado automáticamente el 2026-11-27 00:01:46 por `backend/tests/test_efectividad.py` (datos 100 % sintéticos)._
 
 ## 1. Resumen ejecutivo
 
-- Muestras evaluadas: **120** expedientes sembrados + **18** casos etiquetados en vivo + **18** pruebas de adulteración SHA-256.
-- Decisiones regla×muestra: TP=29 · FP=0 · FN=0 · TN=1219.
+- Muestras evaluadas: **120** expedientes sembrados + **19** casos etiquetados en vivo + **18** pruebas de adulteración SHA-256.
+- Decisiones regla×muestra: TP=30 · FP=0 · FN=0 · TN=1226.
 - Falsos positivos totales: **0** · Falsos negativos totales: **0**.
 - Compras limpias sembradas evaluadas: **110** → con alerta indebida: **0**.
 
@@ -13,14 +13,14 @@ _Generado automáticamente el 2026-11-26 11:24:30 por `backend/tests/test_efecti
 
 | Regla | TP | FP | FN | TN | Precisión | Recall | F1 | Tasa FP |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| R-01-FRACCIONAMIENTO | 4 | 0 | 0 | 152 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
-| R-02-SEGREGACION | 3 | 0 | 0 | 153 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
-| R-03-PAGO-SIN-CONF | 5 | 0 | 0 | 151 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
-| R-04-COLUSION-GRAFO | 4 | 0 | 0 | 152 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
-| R-05-TDR-NLP | 2 | 0 | 0 | 154 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
-| R-06-SHA256 | 6 | 0 | 0 | 150 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
-| R-07-CRONO-VERSION | 3 | 0 | 0 | 153 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
-| R-08-CONFLICTO-INTERES | 2 | 0 | 0 | 154 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
+| R-01-FRACCIONAMIENTO | 4 | 0 | 0 | 153 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
+| R-02-SEGREGACION | 3 | 0 | 0 | 154 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
+| R-03-PAGO-SIN-CONF | 5 | 0 | 0 | 152 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
+| R-04-COLUSION-GRAFO | 5 | 0 | 0 | 152 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
+| R-05-TDR-NLP | 2 | 0 | 0 | 155 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
+| R-06-SHA256 | 6 | 0 | 0 | 151 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
+| R-07-CRONO-VERSION | 3 | 0 | 0 | 154 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
+| R-08-CONFLICTO-INTERES | 2 | 0 | 0 | 155 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
 
 ## 3. Casos etiquetados en vivo (incluye fronteras de 8 UIT y TDR legítimos)
 
@@ -44,15 +44,16 @@ _Generado automáticamente el 2026-11-26 11:24:30 por `backend/tests/test_efecti
 | P8 TDR copiado literal del catálogo de un proveedor | R-05-TDR-NLP | R-05-TDR-NLP | ✅ |
 | M1 Combinada: v2.1 extemporáneo + mismo funcionario | R-02-SEGREGACION, R-07-CRONO-VERSION | R-02-SEGREGACION, R-07-CRONO-VERSION | ✅ |
 | M2 Combinada: colusión + pago sin conformidad | R-03-PAGO-SIN-CONF, R-04-COLUSION-GRAFO | R-03-PAGO-SIN-CONF, R-04-COLUSION-GRAFO | ✅ |
+| P9 Colusión societaria: mismo socio/inversor con distinto gerente y oficina | R-04-COLUSION-GRAFO | R-04-COLUSION-GRAFO | ✅ |
 
 ## 4. Rendimiento (milisegundos, sobre SQLite local)
 
 | Operación | Muestras | p50 | p95 | Máx |
 |---|---:|---:|---:|---:|
-| Detalle de expediente (6 etapas + NLP + alertas) | 10 | 7 | 8 | 8 |
-| Dashboard de indicadores | 8 | 3 | 58 | 58 |
-| Grafo de colusión (NetworkX) | 8 | 5 | 6 | 6 |
-| Registrar expediente + sellar 6 etapas + 8 reglas XAI | 18 | 41 | 44 | 45 |
+| Detalle de expediente (6 etapas + NLP + alertas) | 10 | 8 | 63 | 63 |
+| Dashboard de indicadores | 8 | 3 | 4 | 4 |
+| Grafo de colusión (NetworkX) | 8 | 6 | 6 | 6 |
+| Registrar expediente + sellar 6 etapas + 8 reglas XAI | 19 | 40 | 42 | 42 |
 
 ## 5. Control de accesos (RBAC) verificado
 
@@ -89,6 +90,7 @@ _Generado automáticamente el 2026-11-26 11:24:30 por `backend/tests/test_efecti
 - ✅ `TestCanalDenuncia.test_ciclo_vida_completo_denuncia_y_cruce_expediente`
 - ✅ `TestCanalDenuncia.test_codigo_inexistente_devuelve_404`
 - ✅ `TestCanalDenuncia.test_consulta_publica_no_expone_datos_internos`
+- ✅ `TestCanalDenuncia.test_denuncia_comentario_sin_sustento_verificable_es_rechazada`
 - ✅ `TestCanalDenuncia.test_descripcion_muy_corta_es_rechazada`
 - ✅ `TestCanalDenuncia.test_publico_y_dec_no_pueden_gestionar_denuncias`
 - ✅ `TestCandadoDePago.test_verificar_y_reobservar_entregable`

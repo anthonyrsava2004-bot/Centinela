@@ -545,6 +545,19 @@ CASOS_VIVO = [
         ],
         {R04, R03},
     ),
+    (
+        "P9 Colusión societaria: mismo socio/inversor con distinto gerente y oficina",
+        [
+            {
+                "rubro": "Servicios de Conectividad y Ciberseguridad",
+                "area_usuaria": "AREA-TI-12",
+                "proveedor_adjudicado_codigo": "PROV-SYN-025",
+                "proveedores_postores": ["PROV-SYN-025", "PROV-SYN-026"],
+                "fecha_creacion": "2025-06-25T09:00:00",
+            }
+        ],
+        {R04},
+    ),
 ]
 
 
@@ -893,6 +906,7 @@ class TestCanalDenuncia(_Registro):
                 "categoria": "Fraccionamiento / Direccionamiento de Compras",
                 "area_involucrada": "AREA-TI-03",
                 "descripcion_hechos": "Reporte sintético para verificar la reserva de identidad del denunciante.",
+                "sustento_verificable": "Órdenes SIGA N° 4410 y 4411 registradas en el módulo logístico.",
                 "solicita_proteccion": True,
             },
             headers=hdr(ROL_PUB),
@@ -903,6 +917,7 @@ class TestCanalDenuncia(_Registro):
         self.assertTrue(codigo.startswith("DEN-2026-"))
         self.assertNotIn("id", creada)
         self.assertNotIn("nota_interna_oci", creada)
+        self.assertNotIn("sustento_verificable", creada)
 
         bandeja = client.get("/api/denuncias", headers=hdr(ROL_OCI)).json()
         den_id = next(d["id"] for d in bandeja if d["codigo_seguimiento"] == codigo)
@@ -922,7 +937,7 @@ class TestCanalDenuncia(_Registro):
         pub = client.get(f"/api/denuncias/consultar/{codigo}", headers=hdr(ROL_PUB))
         self.assertEqual(pub.status_code, 200)
         cuerpo = pub.json()
-        for campo in ("id", "nota_interna_oci", "descripcion_hechos", "gestionado_por"):
+        for campo in ("id", "nota_interna_oci", "descripcion_hechos", "sustento_verificable", "gestionado_por"):
             self.assertNotIn(campo, cuerpo)
         self.assertNotIn(self.SECRETO, pub.text)
         self.assertEqual(cuerpo["estado"], "DERIVADA")
@@ -934,7 +949,27 @@ class TestCanalDenuncia(_Registro):
     def test_descripcion_muy_corta_es_rechazada(self):
         r = client.post(
             "/api/denuncias",
-            json={"categoria": "Otros", "area_involucrada": "N/D", "descripcion_hechos": "corto", "solicita_proteccion": False},
+            json={
+                "categoria": "Otros",
+                "area_involucrada": "N/D",
+                "descripcion_hechos": "corto",
+                "sustento_verificable": "Acta de recepción N° 220-2025 verificable en archivo",
+                "solicita_proteccion": False,
+            },
+            headers=hdr(ROL_PUB),
+        )
+        self.assertIn(r.status_code, (400, 422))
+
+    def test_denuncia_comentario_sin_sustento_verificable_es_rechazada(self):
+        r = client.post(
+            "/api/denuncias",
+            json={
+                "categoria": "Cobro o Favoritismo a Proveedor",
+                "area_involucrada": "AREA-ADM-04",
+                "descripcion_hechos": "Comentario genérico sin referencia documental ni ubicación comprobable.",
+                "sustento_verificable": "ninguna",
+                "solicita_proteccion": False,
+            },
             headers=hdr(ROL_PUB),
         )
         self.assertIn(r.status_code, (400, 422))
@@ -966,6 +1001,7 @@ class TestCanalDenuncia(_Registro):
                 "area_involucrada": exp_15["area_usuaria"],
                 "expediente_codigo": "EXP-2025-UNT-0015",
                 "descripcion_hechos": "Reporte ciudadano sintético sobre posible trato preferencial no visible en documentos.",
+                "sustento_verificable": "Cuadro comparativo de cotizaciones SIGA N° 2025-0015 en archivo de logística.",
                 "solicita_proteccion": False,
             },
             headers=hdr(ROL_PUB),
@@ -980,6 +1016,7 @@ class TestCanalDenuncia(_Registro):
         den_id = item_oci["id"]
         self.assertEqual(item_oci["expediente_id"], exp_id)
         self.assertEqual(item_oci["alertas_xai_expediente"], 0)
+        self.assertIn("SIGA N° 2025-0015", item_oci["sustento_verificable"])
         self.assertFalse(item_oci["solicita_proteccion"])
 
         r_eval = client.patch(
@@ -1035,6 +1072,7 @@ class TestCanalDenuncia(_Registro):
             "id",
             "nota_interna_oci",
             "descripcion_hechos",
+            "sustento_verificable",
             "gestionado_por",
             "expediente_id",
             "alertas_xai_expediente",

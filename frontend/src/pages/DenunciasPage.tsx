@@ -216,6 +216,7 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
   const [areaInvolucrada, setAreaInvolucrada] = useState<string>(AREAS_SINTETICAS[0]);
   const [expedienteCodigo, setExpedienteCodigo] = useState<string>('');
   const [descripcionHechos, setDescripcionHechos] = useState<string>('');
+  const [sustentoVerificable, setSustentoVerificable] = useState<string>('');
   const [solicitaProteccion, setSolicitaProteccion] = useState<boolean>(true);
   const [enviando, setEnviando] = useState<boolean>(false);
   const [errorForm, setErrorForm] = useState<string | null>(null);
@@ -293,6 +294,7 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
         area_involucrada: areaInvolucrada,
         expediente_codigo: expedienteCodigo.trim() || undefined,
         descripcion_hechos: descripcionHechos.trim(),
+        sustento_verificable: sustentoVerificable.trim(),
         solicita_proteccion: solicitaProteccion,
       });
       setReciboCreado(creada);
@@ -303,6 +305,7 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
         prev.includes(creada.codigo_seguimiento) ? prev : [...prev, creada.codigo_seguimiento],
       );
       setDescripcionHechos('');
+      setSustentoVerificable('');
       setExpedienteCodigo('');
       await cargarDatos();
       window.dispatchEvent(new Event('centinela:data-updated'));
@@ -635,6 +638,24 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
               />
             </div>
 
+            <div className="space-y-1">
+              <label className="block font-bold text-slate-700 dark:text-slate-200">
+                Sustento o Fuente de Verificación Concreta (Filtro de Verosimilitud):
+              </label>
+              <textarea
+                rows={2}
+                required
+                minLength={10}
+                value={sustentoVerificable}
+                onChange={(e) => setSustentoVerificable(e.target.value)}
+                placeholder="Ej. N° de orden/acta SIGA, guía de remisión o ubicación exacta para constatación física de OCI (no se admiten rumores sin fuente verificable)..."
+                className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100"
+              />
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Filtro preventivo de admisibilidad: solo pasan a investigación reportes con elementos verificables; comentarios sin sustento se rechazan o archivan.
+              </p>
+            </div>
+
             <label className="flex items-start gap-2.5 p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-500/30 text-emerald-900 dark:text-emerald-200 cursor-pointer">
               <input
                 type="checkbox"
@@ -921,6 +942,15 @@ export const DenunciasPage: React.FC<DenunciasPageProps> = ({ rolActivo }) => {
                     <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
                       {den.descripcion_hechos}
                     </p>
+
+                    {den.sustento_verificable && (
+                      <div className="p-2.5 rounded-lg bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/30 text-[11px] text-slate-800 dark:text-slate-200">
+                        <strong className="text-amber-900 dark:text-amber-300">
+                          Sustento / Fuente verificable:
+                        </strong>{' '}
+                        {den.sustento_verificable}
+                      </div>
+                    )}
 
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-600 dark:text-slate-400">
                       <span className="inline-flex items-center gap-1">

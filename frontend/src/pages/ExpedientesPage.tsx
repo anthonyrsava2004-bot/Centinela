@@ -476,7 +476,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
                           title="Inspeccionar Cadena SHA-256 y NLP"
                         >
                           <FileSearch className="w-3 h-3" />
-                          {esSoloLectura ? 'Ver' : 'Auditar'}
+                          {esSoloLectura ? 'Ver' : 'Controlar'}
                         </button>
                         <a
                           href={centinelaApi.obtenerUrlReportePdf(exp.id)}
@@ -503,7 +503,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
         isOpen={modalAbierto}
         onClose={() => setModalAbierto(false)}
         title="Evaluador y Registro de Expediente Sintético en Vivo"
-        subtitle="Sella los 6 eslabones SHA-256 y ejecuta en tiempo real el Motor XAI (8 reglas), NLP TF-IDF y Grafos NetworkX"
+        subtitle="Ejecutar Control Concurrente XAI: sella los 6 eslabones SHA-256 y evalúa en tiempo real reglas normativas, NLP TF-IDF y Grafos NetworkX"
       >
         <form onSubmit={handleRegistrarVivo} className="space-y-4 text-xs">
           {/* Plantillas rápidas de 1 clic para demostración ante el jurado */}
@@ -773,7 +773,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
               className="btn-tactile inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-extrabold shadow-sm"
             >
               <PlusCircle className="w-4 h-4" />
-              {creando ? 'Sellando SHA-256 y Auditando...' : 'Sellar Cadena y Ejecutar Auditoría XAI'}
+              {creando ? 'Sellando SHA-256 y Evaluando...' : 'Sellar Cadena y Ejecutar Control Concurrente XAI'}
             </button>
           </div>
         </form>

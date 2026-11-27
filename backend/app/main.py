@@ -26,7 +26,7 @@ from .crypto_audit import (
     simular_alteracion_ex_post,
     verificar_cadena_expediente,
 )
-from .database import Base, SessionLocal, engine, get_db
+from .database import Base, SessionLocal, engine
 from .graph_engine import construir_grafo_colusion
 from .models import (
     AlertaGestion,
@@ -76,11 +76,15 @@ from .seed_synthetic import (
 from .validation_snapshot import VALIDATION_SNAPSHOT
 
 
-def _asegurar_esquema_actualizado():
+_DB_READY = False
+
+
+def _asegurar_esquema_actualizado() -> bool:
     """
     Verifica si las tablas sintéticas cuentan con todas las columnas vigentes del modelo
-    (ej. version_doc, area_asignada, historial_alertas). Si detecta una BD local de una
-    versión anterior, recrea el esquema limpiamente para regenerar el dataset sintético.
+    (ej. version_doc, area_asignada, historial_alertas, accionista_id, sustento_verificable).
+    Si detecta una BD local o remota (PostgreSQL/SQLite) de una versión anterior, recrea el
+    esquema limpiamente para regenerar el dataset 100% sintético actualizado.
     """
     inspector = inspect(engine)
     tablas = set(inspector.get_table_names())
@@ -96,6 +100,16 @@ def _asegurar_esquema_actualizado():
         if "area_asignada" not in cols_al or "accion_correctiva" not in cols_al:
             esquema_desactualizado = True
 
+    if "proveedores" in tablas:
+        cols_prov = {c["name"] for c in inspector.get_columns("proveedores")}
+        if "accionista_id" not in cols_prov:
+            esquema_desactualizado = True
+
+    if "denuncias_reservadas" in tablas:
+        cols_den = {c["name"] for c in inspector.get_columns("denuncias_reservadas")}
+        if "sustento_verificable" not in cols_den:
+            esquema_desactualizado = True
+
     if tablas and "historial_alertas" not in tablas:
         esquema_desactualizado = True
 
@@ -103,32 +117,56 @@ def _asegurar_esquema_actualizado():
         Base.metadata.drop_all(bind=engine)
 
     Base.metadata.create_all(bind=engine)
+    return esquema_desactualizado
+
+
+def _garantizar_migracion_y_seed() -> None:
+    """
+    Garantiza en entornos locales y serverless (Vercel + Supabase PostgreSQL) que el esquema
+    cuente con todas las columnas recientes y el dataset sintético esté sembrado antes de
+    atender cualquier consulta.
+    """
+    global _DB_READY
+    if _DB_READY:
+        return
+    recreado = _asegurar_esquema_actualizado()
+    db = SessionLocal()
+    try:
+        total = db.query(Expediente).count()
+        total_ent = db.query(EntregableTDR).count()
+        total_prov = db.query(Proveedor).count()
+        if recreado or total == 0 or total_ent == 0 or total_prov < 26:
+            poblar_base_datos_sintetica(db)
+        elif db.query(DenunciaReservada).count() == 0:
+            sembrar_denuncias_base(db)
+        inicializar_bitacora_si_vacia(db)
+        _DB_READY = True
+    finally:
+        db.close()
+
+
+def get_db():
+    """Dependencia de sesión de base de datos con auto-verificación perezosa serverless."""
+    _garantizar_migracion_y_seed()
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Inicializa esquemas en PostgreSQL / SQLite y ejecuta el seed automático de los
-    120 expedientes sintéticos (incluyendo entregables TDR y conflictos de interés)
-    si la base de datos se encuentra vacía o recién ampliada.
+    120 expedientes sintéticos si la base de datos se encuentra vacía o recién ampliada.
     """
-    _asegurar_esquema_actualizado()
-    db = SessionLocal()
-    try:
-        total = db.query(Expediente).count()
-        total_ent = db.query(EntregableTDR).count()
-        if total == 0 or total_ent == 0:
-            poblar_base_datos_sintetica(db)
-        elif db.query(DenunciaReservada).count() == 0:
-            sembrar_denuncias_base(db)
-        inicializar_bitacora_si_vacia(db)
-    finally:
-        db.close()
+    _garantizar_migracion_y_seed()
     yield
 
 
 app = FastAPI(
-    title="CENTINELA API — Auditoría Preventiva, Trazabilidad Forense y XAI",
+    title="CENTINELA API — Control Concurrente y Preventivo, Trazabilidad Forense y XAI",
     description=(
         "Plataforma de integridad institucional y detección explicable de riesgos en contrataciones "
         "públicas bajo la Ley N° 32069 y la Ley N° 29733 (Hackathon Innova Norte 3G - UNT)."
@@ -206,6 +244,7 @@ def _construir_detalle_expediente(db: Session, exp: Expediente) -> ExpedienteDet
                     proveedor_codigo=pr.codigo,
                     proveedor_alias=pr.alias_comercial,
                     representante_id=pr.representante_id,
+                    accionista_id=pr.accionista_id,
                     direccion_hash=pr.direccion_hash,
                     telefono_hash=pr.telefono_hash,
                     monto_ofertado=post.monto_ofertado,
@@ -1668,6 +1707,16 @@ def registrar_denuncia_reservada(
             detail="Describa brevemente los hechos (mínimo 15 caracteres) para iniciar la evaluación.",
         )
 
+    sustento_limpio = payload.sustento_verificable.strip()
+    if len(sustento_limpio) < 10:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Indique un sustento o fuente verificable concreta (documento, N° de orden/acta "
+                "o ubicación física comprobable, mínimo 10 caracteres). No se admiten comentarios sin sustento."
+            ),
+        )
+
     ahora = datetime.utcnow()
     ahora_iso = ahora.strftime("%Y-%m-%dT%H:%M:%S")
     sla_fecha = (ahora + timedelta(days=7)).strftime("%Y-%m-%d")
@@ -1701,6 +1750,7 @@ def registrar_denuncia_reservada(
         area_involucrada=payload.area_involucrada.strip() or "Por determinar",
         expediente_codigo=exp_cod,
         descripcion_hechos=desc_limpia,
+        sustento_verificable=sustento_limpio,
         solicita_proteccion=payload.solicita_proteccion,
         medida_proteccion=medida_inicial,
         estado="RECIBIDA",
@@ -1769,6 +1819,7 @@ def _serializar_denuncia_oci(
         expediente_id=exp_match.id if exp_match else None,
         alertas_xai_expediente=conteo_alertas.get(exp_match.id, 0) if exp_match else 0,
         descripcion_hechos=den.descripcion_hechos,
+        sustento_verificable=den.sustento_verificable,
         solicita_proteccion=den.solicita_proteccion,
         medida_proteccion=den.medida_proteccion,
         estado=den.estado,

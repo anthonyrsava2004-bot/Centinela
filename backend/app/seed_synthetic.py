@@ -25,6 +25,7 @@ def sembrar_denuncias_base(db: Session) -> int:
             "AREA-TI-03",
             "EXP-2025-UNT-0001",
             "Reporte confidencial sintético: se advierte división de compra de 15 proyectores multimedia en tres órdenes menores en 10 días y posible vínculo familiar entre un interviniente de logística y el proveedor ganador.",
+            "Órdenes SIGA N° 1001, 1002 y 1003 emitidas en febrero + padrón de intervinientes DEC",
             True,
             "Reserva de Identidad (D.L. N° 1327) — Solicitud de Protección Laboral en evaluación",
             "EN_EVALUACION",
@@ -42,6 +43,7 @@ def sembrar_denuncias_base(db: Session) -> int:
             "AREA-INFRA-01",
             "EXP-2025-UNT-0010",
             "Reporte confidencial sintético: en la renovación eléctrica y pintado de 8 aulas se tramitó conformidad general sin haber ejecutado ni certificado las pruebas de pozo a tierra exigidas en el TDR.",
+            "Acta de conformidad en trámite SIAF N° 8010 vs. ausencia de protocolo CNE en tablero de las 8 aulas",
             True,
             "Protección Laboral Anti-Represalias + Reserva de Identidad (Concedida)",
             "DERIVADA",
@@ -59,6 +61,7 @@ def sembrar_denuncias_base(db: Session) -> int:
             "AREA-LAB-01",
             "EXP-2025-UNT-0004",
             "Reporte confidencial sintético: tres empresas que cotizaron en el proceso de equipamiento de laboratorio operarían desde la misma oficina comercial.",
+            "Cotizaciones presentadas en EXP-2025-UNT-0004 con domicilio comercial coincidente",
             True,
             "Reserva de Identidad (D.L. N° 1327)",
             "RECIBIDA",
@@ -77,6 +80,7 @@ def sembrar_denuncias_base(db: Session) -> int:
         area,
         exp_cod,
         desc,
+        sustento,
         sol_prot,
         med_prot,
         est,
@@ -97,6 +101,7 @@ def sembrar_denuncias_base(db: Session) -> int:
                 area_involucrada=area,
                 expediente_codigo=exp_cod,
                 descripcion_hechos=desc,
+                sustento_verificable=sustento,
                 solicita_proteccion=sol_prot,
                 medida_proteccion=med_prot,
                 estado=est,
@@ -183,6 +188,7 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
         codigo = f"PROV-SYN-{i:03d}"
         rubro = rubros_base[(i - 1) % len(rubros_base)]
         rep_id = f"REP-HASH-{1000 + i * 37:04d}X"
+        acc_id = f"INV-HASH-{100 + i:03d}"
         dir_id = f"DIR-HASH-TRUJ-{200 + i * 13:03d}"
         tel_id = f"TEL-HASH-944-{300 + i * 19:03d}"
         es_colusorio = False
@@ -211,6 +217,7 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
             rubro = "Infraestructura y Mantenimiento Eléctrico"
             es_colusorio = True
         if i in (8, 9):
+            acc_id = "INV-GRUPO-CAPITAL-77"
             dir_id = "DIR-HASH-TRUJ-509"
             tel_id = "TEL-HASH-944-612"
             rubro = "Infraestructura y Mantenimiento Eléctrico"
@@ -233,6 +240,7 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
             alias_comercial=f"Corporación Proveedora Sintética {i:02d} [{codigo}]",
             rubro=rubro,
             representante_id=rep_id,
+            accionista_id=acc_id,
             direccion_hash=dir_id,
             telefono_hash=tel_id,
             catalogo_texto=catalogo,
@@ -240,6 +248,33 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
         )
         db.add(prov)
         proveedores_lista.append(prov)
+
+    # Anillo Societario #3 (PROV-SYN-025 y PROV-SYN-026): distinto gerente, oficina y teléfono,
+    # pero comparten el mismo Socio / Accionista Inversor (INV-HOLDING-NORTE-99).
+    for idx_soc, (cod_soc, rep_soc, dir_soc, tel_soc) in enumerate(
+        [
+            ("PROV-SYN-025", "REP-HASH-2501M", "DIR-HASH-TRUJ-925", "TEL-HASH-944-925"),
+            ("PROV-SYN-026", "REP-HASH-2602N", "DIR-HASH-TRUJ-926", "TEL-HASH-944-926"),
+        ],
+        start=25,
+    ):
+        rubro_soc = "Servicios de Conectividad y Ciberseguridad"
+        prov_soc = Proveedor(
+            codigo=cod_soc,
+            alias_comercial=f"Corporación Proveedora Sintética {idx_soc:02d} [{cod_soc}]",
+            rubro=rubro_soc,
+            representante_id=rep_soc,
+            accionista_id="INV-HOLDING-NORTE-99",
+            direccion_hash=dir_soc,
+            telefono_hash=tel_soc,
+            catalogo_texto=(
+                f"Catálogo comercial estándar del proveedor {cod_soc} especializado en {rubro_soc}. "
+                f"Componentes multimarca abiertos y soporte técnico institucional."
+            ),
+            es_colusorio=True,
+        )
+        db.add(prov_soc)
+        proveedores_lista.append(prov_soc)
 
     db.flush()
     prov_por_codigo = {p.codigo: p for p in proveedores_lista}

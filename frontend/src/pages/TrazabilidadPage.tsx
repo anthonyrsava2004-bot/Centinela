@@ -1257,6 +1257,12 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
                     </span>
                   </div>
                   <div>
+                    Socio / Inversor:{' '}
+                    <span className="text-amber-700 dark:text-amber-300 font-semibold">
+                      {post.accionista_id}
+                    </span>
+                  </div>
+                  <div>
                     Dirección:{' '}
                     <span className="text-amber-700 dark:text-amber-300 font-semibold">
                       {post.direccion_hash}

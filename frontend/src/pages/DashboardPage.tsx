@@ -139,7 +139,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
     : 'bg-white text-amber-900 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30';
 
   const heroTitle = profile.canDictaminarOci
-    ? 'Panel de Control Preventivo y Auditoría (OCI)'
+    ? 'Panel de Control Concurrente y Preventivo (OCI)'
     : profile.canSubmitDescargo
     ? 'Panel de Gestión de Compras y Respuestas (DEC)'
     : 'Portal Público de Transparencia en Compras';
@@ -388,7 +388,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                   Empresas con datos repetidos
                 </div>
                 <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                  Dueño, dirección o teléfono
+                  Gerente, socio, dirección o teléfono
                 </div>
               </div>
               <Network className="w-4 h-4 text-slate-400 group-hover:text-blue-700 dark:group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
@@ -777,7 +777,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ rolActivo }) => {
                         className="btn-tactile inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 font-semibold"
                       >
                         <FileSearch className="w-3.5 h-3.5" />
-                        {profile.isReadOnly ? 'Ver Historial' : 'Auditar'}
+                        {profile.isReadOnly ? 'Ver Historial' : 'Controlar'}
                       </button>
                     </td>
                   </tr>
