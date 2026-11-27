@@ -44,15 +44,15 @@ BLUE_50 = colors.HexColor("#EFF6FF")
 
 
 TIPOLOGIA_LEGIBLE = {
-    "CASO_1_PROYECTORES_UNT": "Compras partidas (≤ 8 UIT) + Conflicto de interés",
-    "FRACCIONAMIENTO_8UIT": "Compras partidas para evitar licitación (≤ 8 UIT)",
+    "CASO_1_PROYECTORES_UNT": "Compras divididas (≤ 8 UIT) y conflicto de interés",
+    "FRACCIONAMIENTO_8UIT": "Compras divididas para evitar licitación (≤ 8 UIT)",
     "COLUSION_PROVEEDORES": "Empresas vinculadas compitiendo juntas",
     "DIRECCIONAMIENTO_TDR": "Requisitos copiados de un solo proveedor",
     "CONFLICTO_SEGREGACION": "Un mismo trabajador firma etapas incompatibles",
-    "PAGO_SIN_CONFORMIDAD": "Trámite de pago sin visto bueno de entrega",
+    "PAGO_SIN_CONFORMIDAD": "Trámite de pago sin acta de conformidad",
     "INCONSISTENCIA_VERSION_SUSTENTO": "Cambio tardío de requisitos sin sustento",
     "ENTREGABLE_INCOMPLETO_CONFORMIDAD": "Falta entregable obligatorio antes de pagar",
-    "CONTINUIDAD_ECONOMICA_RNP": "Empresa 'nueva' ligada a proveedor sancionado",
+    "CONTINUIDAD_ECONOMICA_RNP": "Empresa nueva vinculada a proveedor sancionado",
     "SOBREPRECIO_MERCADO": "Precio muy por encima del estándar de mercado",
 }
 
@@ -97,7 +97,7 @@ REGLA_EN_SIMPLE = {
         "Formalizar la abstención preventiva del trabajador y reasignar el proceso a otro funcionario.",
     ),
     "R-09-CONTINUIDAD-RNP": (
-        "El proveedor está sancionado en el RNP o es una empresa 'nueva' que comparte socio o dirección con una sancionada.",
+        "El proveedor registra sanción vigente en el RNP o comparte socio o domicilio con una empresa sancionada.",
         "Verificar el impedimento legal (Art. 30 Ley N° 32069) y detener la contratación.",
     ),
     "R-10-SOBREPRECIO": (
@@ -356,7 +356,7 @@ def generar_pdf_expediente(db: Session, expediente: Expediente) -> bytes:
     header = Table(
         [
             [
-                Paragraph("CENTINELA — REPORTE CLARO DE CONTROL PREVENTIVO DE COMPRA", st["banner_title"]),
+                Paragraph("CENTINELA — REPORTE EJECUTIVO DE CONTROL PREVENTIVO", st["banner_title"]),
                 Paragraph(
                     f"<b>{_esc(expediente.codigo)}</b><br/>Emitido: {ts_emision}",
                     ParagraphStyle(
@@ -442,11 +442,10 @@ def generar_pdf_expediente(db: Session, expediente: Expediente) -> bytes:
             ],
             [
                 Paragraph(
-                    f"<b>En palabras simples:</b><br/>"
-                    f"• <b>¿Qué se está comprando?</b> {_esc(expediente.objeto)} "
+                    f"• <b>Objeto de contratación:</b> {_esc(expediente.objeto)} "
                     f"(Área: {_esc(expediente.area_usuaria)} • {_esc(expediente.modalidad)}).<br/>"
-                    f"• <b>¿Qué encontró CENTINELA?</b> {_esc(hallazgo_simple)}<br/>"
-                    f"• <b>¿Qué se recomienda hacer ahora?</b> {_esc(accion_simple)}",
+                    f"• <b>Hallazgo preventivo:</b> {_esc(hallazgo_simple)}<br/>"
+                    f"• <b>Acción recomendada:</b> {_esc(accion_simple)}",
                     st["body"],
                 )
             ],
@@ -520,7 +519,7 @@ def generar_pdf_expediente(db: Session, expediente: Expediente) -> bytes:
     story.append(Spacer(1, 8))
 
     # 4. SECCIÓN 1: CONTROL VISUAL DE PRECIO Y REQUISITOS (BARRAS DE COLOR)
-    story.append(Paragraph("1. REVISIÓN RÁPIDA DE PRECIO Y REQUISITOS (¿ES JUSTO Y LIMPIO?)", st["section"]))
+    story.append(Paragraph("1. VERIFICACIÓN DE PRECIO DE MERCADO Y REQUISITOS TÉCNICOS", st["section"]))
 
     sim_pct = float(nlp_res.max_similitud or 0.0)
     bar_sim_col = ROSE_600 if sim_pct >= 78.0 else EMERALD_600
@@ -543,7 +542,7 @@ def generar_pdf_expediente(db: Session, expediente: Expediente) -> bytes:
             [
                 Paragraph("<b>Control Verificado</b>", st["th"]),
                 Paragraph("<b>Medidor Visual</b>", st["th"]),
-                Paragraph("<b>Resultado Claro</b>", st["th"]),
+                Paragraph("<b>Resultado</b>", st["th"]),
             ],
             [
                 Paragraph("<b>Precio vs. Estándar de Mercado (R-10)</b>", st["body"]),
@@ -628,7 +627,7 @@ def generar_pdf_expediente(db: Session, expediente: Expediente) -> bytes:
 
     # 6. SECCIÓN 3: DETALLE EXPLICABLE DE ALERTAS Y BASE LEGAL (PARA OCI / DEC)
     story.append(
-        Paragraph("3. DETALLE EXPLICABLE DE ALERTAS Y BASE LEGAL (PARA REVISIÓN HUMANA)", st["section"])
+        Paragraph("3. DETALLE DE ALERTAS PREVENTIVAS Y BASE NORMATIVA", st["section"])
     )
     if not alertas:
         ok_box = Table(
@@ -668,7 +667,7 @@ def generar_pdf_expediente(db: Session, expediente: Expediente) -> bytes:
                 ],
                 [
                     Paragraph(
-                        f"<b>En términos simples:</b> {_esc(que_es)}<br/>"
+                        f"<b>Resumen del hallazgo:</b> {_esc(que_es)}<br/>"
                         f"<b>Acción sugerida:</b> {_esc(que_hacer)}",
                         st["body"],
                     )
@@ -925,7 +924,7 @@ def generar_pdf_reporte_institucional(db: Session) -> bytes:
         [
             [
                 Paragraph(
-                    f"<font color='{_hex(EMERALD_700)}'><b>EN PALABRAS SIMPLES: {pct_limpios:.1f} % DE LAS COMPRAS REVISADAS NO TIENEN ALERTAS</b></font>",
+                    f"<font color='{_hex(EMERALD_700)}'><b>RESUMEN EJECUTIVO: {pct_limpios:.1f} % DE LAS COMPRAS REVISADAS SIN ALERTAS DE RIESGO</b></font>",
                     st["verdict_title"],
                 )
             ],
@@ -1001,7 +1000,7 @@ def generar_pdf_reporte_institucional(db: Session) -> bytes:
     story.append(Spacer(1, 8))
 
     # 4. SECCIÓN 1: QUÉ TIPOS DE RIESGOS SE DETECTARON (CON BARRAS VISUALES)
-    story.append(Paragraph("1. ¿QUÉ TIPOS DE RIESGOS SE DETECTARON A TIEMPO?", st["section"]))
+    story.append(Paragraph("1. DISTRIBUCIÓN DE RIESGOS DETECTADOS PREVENTIVAMENTE", st["section"]))
     cat_rows = [
         [
             Paragraph("<b>Tipo de Riesgo Preventivo</b>", st["th"]),
@@ -1044,7 +1043,7 @@ def generar_pdf_reporte_institucional(db: Session) -> bytes:
             Paragraph("<b>Expediente</b>", st["th"]),
             Paragraph("<b>Área</b>", st["th"]),
             Paragraph("<b>Monto (S/)</b>", st["th"]),
-            Paragraph("<b>Motivo de Revisión (Lenguaje Claro)</b>", st["th"]),
+            Paragraph("<b>Motivo de Revisión Preventiva</b>", st["th"]),
             Paragraph("<b>Estado Actual</b>", st["th"]),
         ]
     ]
