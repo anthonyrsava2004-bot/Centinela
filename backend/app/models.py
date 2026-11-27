@@ -13,6 +13,7 @@ class Expediente(Base):
     area_usuaria = Column(String(50), index=True, nullable=False)
     modalidad = Column(String(80), nullable=False)
     monto_estimado = Column(Float, nullable=False)
+    precio_referencial_mercado = Column(Float, nullable=True)
     fecha_creacion = Column(String(35), nullable=False)
     estado_expediente = Column(String(40), nullable=False, default="Pagado")
     tdr_texto = Column(Text, nullable=False)
@@ -83,6 +84,10 @@ class Proveedor(Base):
     telefono_hash = Column(String(60), index=True, nullable=False)
     catalogo_texto = Column(Text, nullable=False)
     es_colusorio = Column(Boolean, nullable=False, default=False)
+    estado_rnp = Column(String(40), nullable=False, default="HABILITADO")
+    penalidades_previas = Column(Integer, nullable=False, default=0)
+    contratos_previos = Column(Integer, nullable=False, default=4)
+    motivo_historial = Column(Text, nullable=True)
 
     postulaciones = relationship(
         "Postulacion",

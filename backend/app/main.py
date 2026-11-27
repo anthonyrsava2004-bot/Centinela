@@ -102,7 +102,16 @@ def _asegurar_esquema_actualizado() -> bool:
 
     if "proveedores" in tablas:
         cols_prov = {c["name"] for c in inspector.get_columns("proveedores")}
-        if "accionista_id" not in cols_prov:
+        if (
+            "accionista_id" not in cols_prov
+            or "estado_rnp" not in cols_prov
+            or "penalidades_previas" not in cols_prov
+        ):
+            esquema_desactualizado = True
+
+    if "expedientes" in tablas:
+        cols_exp = {c["name"] for c in inspector.get_columns("expedientes")}
+        if "precio_referencial_mercado" not in cols_exp:
             esquema_desactualizado = True
 
     if "denuncias_reservadas" in tablas:
@@ -135,7 +144,7 @@ def _garantizar_migracion_y_seed() -> None:
         total = db.query(Expediente).count()
         total_ent = db.query(EntregableTDR).count()
         total_prov = db.query(Proveedor).count()
-        if recreado or total == 0 or total_ent == 0 or total_prov < 26:
+        if recreado or total == 0 or total_ent == 0 or total_prov < 28:
             poblar_base_datos_sintetica(db)
         elif db.query(DenunciaReservada).count() == 0:
             sembrar_denuncias_base(db)
@@ -247,6 +256,10 @@ def _construir_detalle_expediente(db: Session, exp: Expediente) -> ExpedienteDet
                     accionista_id=pr.accionista_id,
                     direccion_hash=pr.direccion_hash,
                     telefono_hash=pr.telefono_hash,
+                    estado_rnp=pr.estado_rnp,
+                    penalidades_previas=pr.penalidades_previas,
+                    contratos_previos=pr.contratos_previos,
+                    motivo_historial=pr.motivo_historial,
                     monto_ofertado=post.monto_ofertado,
                     es_ganador=post.es_ganador,
                     fecha_presentacion=post.fecha_presentacion,
@@ -320,6 +333,7 @@ def _construir_detalle_expediente(db: Session, exp: Expediente) -> ExpedienteDet
         area_usuaria=exp.area_usuaria,
         modalidad=exp.modalidad,
         monto_estimado=exp.monto_estimado,
+        precio_referencial_mercado=exp.precio_referencial_mercado,
         fecha_creacion=exp.fecha_creacion,
         estado_expediente=exp.estado_expediente,
         tdr_texto=exp.tdr_texto,
@@ -362,7 +376,7 @@ def health_check():
         ],
         "modulos_activos": [
             "Cadena Criptográfica SHA-256 con Control de Versiones",
-            "Motor XAI Sin Caja Negra (8 Reglas Normativas Reales)",
+            "Motor XAI Sin Caja Negra (10 Reglas Normativas Reales)",
             "Mapa de Riesgos de Integridad (Probabilidad x Impacto)",
             "Gestión de Conflictos de Interés (Declaración, Abstención y Reasignación)",
             "Checklist de Entregables Obligatorios del TDR (Bloqueo Preventivo de Pago)",
@@ -376,7 +390,7 @@ def health_check():
 @app.post("/api/seed/regenerar")
 def regenerar_dataset_sintetico(request: Request, db: Session = Depends(get_db)):
     """
-    Regenera determinísticamente los 120 expedientes sintéticos (110 limpios + 10 casos forenses)
+    Regenera determinísticamente los 120 expedientes sintéticos (108 limpios + 12 casos forenses)
     y restaura el estado base para demostraciones en vivo. Preserva la bitácora global inmutable.
     """
     usuario, rol, ip_origen = extraer_actor_request(request)
@@ -404,7 +418,7 @@ def regenerar_dataset_sintetico(request: Request, db: Session = Depends(get_db))
         accion="REINICIO_DATASET",
         recurso="DATASET-BASE-120",
         resultado="PERMITIDO",
-        detalle="Restauración controlada del dataset sintético base (110 limpios + 10 casos forenses).",
+        detalle="Restauración controlada del dataset sintético base (108 limpios + 12 casos forenses).",
         ip_origen=ip_origen,
     )
     return res
@@ -457,6 +471,7 @@ def obtener_kpis_dashboard(db: Session = Depends(get_db)):
             area_usuaria=e.area_usuaria,
             modalidad=e.modalidad,
             monto_estimado=e.monto_estimado,
+            precio_referencial_mercado=e.precio_referencial_mercado,
             fecha_creacion=e.fecha_creacion,
             estado_expediente=e.estado_expediente,
             proveedor_adjudicado_codigo=e.proveedor_adjudicado_codigo,
@@ -542,6 +557,7 @@ def listar_expedientes(
             area_usuaria=e.area_usuaria,
             modalidad=e.modalidad,
             monto_estimado=e.monto_estimado,
+            precio_referencial_mercado=e.precio_referencial_mercado,
             fecha_creacion=e.fecha_creacion,
             estado_expediente=e.estado_expediente,
             proveedor_adjudicado_codigo=e.proveedor_adjudicado_codigo,
@@ -609,6 +625,11 @@ def registrar_y_auditar_expediente_vivo(
 
     fecha_iso = payload.fecha_creacion or datetime.utcnow().strftime("%Y-%m-%dT09:00:00")
     fecha_dia = fecha_iso[:10]
+    precio_ref_calc = (
+        round(payload.precio_referencial_mercado, 2)
+        if payload.precio_referencial_mercado and payload.precio_referencial_mercado > 0
+        else round(payload.monto_estimado, 2)
+    )
 
     exp = Expediente(
         codigo=codigo_exp,
@@ -617,6 +638,7 @@ def registrar_y_auditar_expediente_vivo(
         area_usuaria=payload.area_usuaria.strip(),
         modalidad=payload.modalidad.strip(),
         monto_estimado=round(payload.monto_estimado, 2),
+        precio_referencial_mercado=precio_ref_calc,
         fecha_creacion=fecha_iso,
         estado_expediente="Pagado",
         tdr_texto=payload.tdr_texto.strip(),

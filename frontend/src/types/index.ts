@@ -42,6 +42,10 @@ export interface PostulacionDetalle {
   accionista_id: string;
   direccion_hash: string;
   telefono_hash: string;
+  estado_rnp: string;
+  penalidades_previas: number;
+  contratos_previos: number;
+  motivo_historial?: string | null;
   monto_ofertado: number;
   es_ganador: boolean;
   fecha_presentacion: string;
@@ -99,6 +103,10 @@ export interface ProveedorItem {
   direccion_hash: string;
   telefono_hash: string;
   es_colusorio: boolean;
+  estado_rnp: string;
+  penalidades_previas: number;
+  contratos_previos: number;
+  motivo_historial?: string | null;
 }
 
 export interface ExpedienteCreatePayload {
@@ -107,6 +115,7 @@ export interface ExpedienteCreatePayload {
   area_usuaria: string;
   modalidad: string;
   monto_estimado: number;
+  precio_referencial_mercado?: number | null;
   tdr_texto: string;
   proveedor_adjudicado_codigo: string;
   proveedores_postores: string[];
@@ -148,6 +157,7 @@ export interface ExpedienteListItem {
   area_usuaria: string;
   modalidad: string;
   monto_estimado: number;
+  precio_referencial_mercado?: number | null;
   fecha_creacion: string;
   estado_expediente: string;
   proveedor_adjudicado_codigo?: string | null;

@@ -180,8 +180,8 @@ export const QuickCommandPalette: React.FC<QuickCommandPaletteProps> = ({
       },
       {
         id: 'shortcut-validacion',
-        label: 'Validación Técnica y Efectividad (27 Pruebas)',
-        subtitle: 'Matriz de confusión por regla, frontera 8 UIT, latencias y 21 controles RBAC',
+        label: 'Validación Técnica y Efectividad (28 Pruebas)',
+        subtitle: 'Matriz de confusión (10 reglas), fronteras 8 UIT/+25%, latencias y 21 controles RBAC',
         to: '/validacion',
         keywords:
           'validacion tecnica efectividad pruebas matriz confusion f1 precision recall rbac latencia unittest',

@@ -15,6 +15,7 @@ from .models import (
 from .nlp_tdr import UMBRAL_DIRECCIONAMIENTO, analizar_similitud_tdr
 
 TOPE_8_UIT_PEN = 42800.0  # Referencia 8 UIT (UIT = S/ 5,350)
+UMBRAL_SOBREPRECIO_PCT = 25.0  # Desviación máxima tolerable frente a estándar de mercado (> +25.0%)
 MARCO_INTEGRIDAD_UNT = (
     "D.S. N° 148-2024-PCM (Modelo de Integridad); R.S. N° 002-2026-PCM/SIP "
     "(Directiva N° 001-2026-PCM/SIP); D.S. N° 092-2017-PCM; Resolución Rectoral N° 0490-2026/UNT."
@@ -392,6 +393,134 @@ def _evaluar_reglas_expediente(
         exp.puntaje_riesgo = max(exp.puntaje_riesgo, 96)
         exp.estado_expediente = "En Revisión OCI"
 
+    # -------------------------------------------------------------------------
+    # REGLA R-09: HISTORIAL DE SANCIONES RNP Y CONTINUIDAD ECONÓMICA (EMPRESA RECICLADA)
+    # -------------------------------------------------------------------------
+    hallazgos_r09: List[str] = []
+    proveedores_sancionados = [
+        p for p in proveedores_lista if p.estado_rnp != "HABILITADO"
+    ]
+    postores_vistos: Set[int] = set()
+    for prov in postores_exp:
+        if prov.id in postores_vistos:
+            continue
+        postores_vistos.add(prov.id)
+
+        if prov.estado_rnp != "HABILITADO" or prov.penalidades_previas >= 3:
+            motivo_extra = f" — {prov.motivo_historial}" if prov.motivo_historial else ""
+            hallazgos_r09.append(
+                f"El postor {prov.codigo} registra estado RNP '{prov.estado_rnp}' con "
+                f"{prov.penalidades_previas} penalidades previas en {prov.contratos_previos} contratos{motivo_extra}"
+            )
+        elif prov.estado_rnp == "HABILITADO":
+            for sancionado in proveedores_sancionados:
+                if sancionado.id == prov.id:
+                    continue
+                atributos_comunes: List[str] = []
+                if prov.representante_id == sancionado.representante_id:
+                    atributos_comunes.append(f"Representante Legal ({prov.representante_id})")
+                if prov.accionista_id and prov.accionista_id == sancionado.accionista_id:
+                    atributos_comunes.append(f"Socio / Accionista Inversor ({prov.accionista_id})")
+                if prov.direccion_hash == sancionado.direccion_hash:
+                    atributos_comunes.append(f"Dirección Fiscal ({prov.direccion_hash})")
+                if prov.telefono_hash == sancionado.telefono_hash:
+                    atributos_comunes.append(f"Teléfono de Contacto ({prov.telefono_hash})")
+
+                if atributos_comunes:
+                    hallazgos_r09.append(
+                        f"El postor habilitado {prov.codigo} ({prov.contratos_previos} contrato(s) previo(s)) "
+                        f"presenta continuidad económica con {sancionado.codigo} "
+                        f"(estado RNP: {sancionado.estado_rnp}, {sancionado.penalidades_previas} penalidades previas) "
+                        f"al compartir {', '.join(atributos_comunes)}"
+                    )
+
+    if hallazgos_r09:
+        alerta = AlertaGestion(
+            expediente_id=exp.id,
+            codigo_regla="R-09-CONTINUIDAD-RNP",
+            categoria="Historial RNP / Empresa Reciclada",
+            titulo=(
+                "Señal de riesgo que amerita revisión humana: Postor con sanción/penalidades RNP "
+                "o continuidad económica con empresa liquidada/inhabilitada"
+            ),
+            severidad="ALTO",
+            regla_activada=(
+                "Regla XAI R-09 (Historial de Sanciones RNP y Continuidad Económica / Empresa Reciclada): "
+                "Verifica si algún postor registra inhabilitación o liquidación sancionada en el RNP, acumula "
+                "3 o más penalidades previas por incumplimiento, o actúa como persona jurídica sucesora "
+                "compartiendo representante_id, accionista_id, direccion_hash o telefono_hash con un proveedor "
+                "previamente sancionado o liquidado."
+            ),
+            evidencia_exacta=(
+                f"En el expediente {exp.codigo} ({exp.objeto}, monto S/ {exp.monto_estimado:,.2f}), "
+                f"el cruce histórico del padrón RNP y vínculos societarios detectó: "
+                + "; ".join(hallazgos_r09)
+                + f". Proveedor adjudicado: {exp.proveedor_adjudicado_codigo}."
+            ),
+            base_normativa=(
+                "Ley N° 32069 (Art. 30: Impedimentos por continuidad económica, personas jurídicas sucesoras "
+                "y sanciones vigentes en RNP; Art. 5: Principio de Integridad); "
+                "D.S. N° 009-2025-EF (Verificación del historial del proveedor y prevención de elusión de sanciones)."
+            ),
+            estado_revision="PENDIENTE",
+            area_asignada="OCI — Unidad de Análisis de Redes y Compliance",
+            fecha_limite=_fecha_limite_sla(4),
+            comentario_descargo=None,
+            rol_ultimo_cambio="MOTOR-XAI-CENTINELA",
+            fecha_actualizacion=ahora_iso,
+        )
+        nuevas_alertas.append(alerta)
+        exp.nivel_riesgo = "ALTO"
+        exp.puntaje_riesgo = max(exp.puntaje_riesgo, 94)
+        exp.estado_expediente = "En Revisión OCI"
+
+    # -------------------------------------------------------------------------
+    # REGLA R-10: SOBREPRECIO FRENTE A ESTÁNDAR DE MERCADO (> +25.0%)
+    # -------------------------------------------------------------------------
+    if exp.precio_referencial_mercado and exp.precio_referencial_mercado > 0:
+        desviacion_pct = round(
+            ((exp.monto_estimado - exp.precio_referencial_mercado) / exp.precio_referencial_mercado)
+            * 100.0,
+            1,
+        )
+        if desviacion_pct > UMBRAL_SOBREPRECIO_PCT:
+            sobrecosto = round(exp.monto_estimado - exp.precio_referencial_mercado, 2)
+            alerta = AlertaGestion(
+                expediente_id=exp.id,
+                codigo_regla="R-10-SOBREPRECIO",
+                categoria="Inflación / Sobreprecio de Mercado",
+                titulo=(
+                    f"Señal de riesgo que amerita revisión humana: Sobreprecio de +{desviacion_pct:.1f}% "
+                    f"frente al estándar referencial de mercado"
+                ),
+                severidad="ALTO" if desviacion_pct >= 40.0 else "MEDIO",
+                regla_activada=(
+                    f"Regla XAI R-10 (Control de Sobreprecio frente a Estándar de Mercado > +{UMBRAL_SOBREPRECIO_PCT:.1f}%): "
+                    "Compara el monto estimado/adjudicado contra el estándar histórico referencial registrado en "
+                    f"SEACE / Perú Compras, activando revisión preventiva cuando la desviación supera el +{UMBRAL_SOBREPRECIO_PCT:.1f}%."
+                ),
+                evidencia_exacta=(
+                    f"En el expediente {exp.codigo} ({exp.objeto}), el monto registrado asciende a "
+                    f"S/ {exp.monto_estimado:,.2f} frente al estándar referencial SEACE / Perú Compras de "
+                    f"S/ {exp.precio_referencial_mercado:,.2f} (+{desviacion_pct:.1f}%, desviación de "
+                    f"S/ {sobrecosto:,.2f}), adjudicado a {exp.proveedor_adjudicado_codigo}."
+                ),
+                base_normativa=(
+                    "Ley N° 32069 (Art. 5: Principio de Valor por Dinero y Eficiencia; Art. 46: Indagación de Mercado "
+                    "y estándar histórico de precios SEACE / Perú Compras); D.S. N° 009-2025-EF."
+                ),
+                estado_revision="PENDIENTE",
+                area_asignada="DEC — Dependencia Encargada de Contrataciones",
+                fecha_limite=_fecha_limite_sla(4),
+                comentario_descargo=None,
+                rol_ultimo_cambio="MOTOR-XAI-CENTINELA",
+                fecha_actualizacion=ahora_iso,
+            )
+            nuevas_alertas.append(alerta)
+            exp.nivel_riesgo = "ALTO"
+            exp.puntaje_riesgo = max(exp.puntaje_riesgo, 91)
+            exp.estado_expediente = "En Revisión OCI"
+
     return nuevas_alertas
 
 
@@ -623,7 +752,9 @@ def construir_mapa_riesgos(db: Session) -> dict:
 
     c_req_exp, c_req_al = _contar(("R-01-FRACCIONAMIENTO",))
     c_tdr_exp, c_tdr_al = _contar(("R-05-TDR-NLP", "R-07-CRONO-VERSION"))
-    c_cot_exp, c_cot_al = _contar(("R-04-COLUSION-GRAFO", "R-06-SHA256"))
+    c_cot_exp, c_cot_al = _contar(
+        ("R-04-COLUSION-GRAFO", "R-06-SHA256", "R-09-CONTINUIDAD-RNP", "R-10-SOBREPRECIO")
+    )
     c_sel_exp, c_sel_al = _contar(("R-02-SEGREGACION", "R-08-CONFLICTO-INTERES"))
     c_conf_exp, c_conf_al = _contar(("R-03-PAGO-SIN-CONF",))
     ent_pendientes_exps = {
@@ -668,13 +799,13 @@ def construir_mapa_riesgos(db: Session) -> dict:
         (
             3,
             "3. Cotizaciones y Estudio de Mercado",
-            "Colusión de postores y adulteración ex-post de expedientes",
-            "Proveedores aparentemente competidores comparten domicilio, representante o teléfono.",
+            "Colusión de postores, empresas recicladas, sobreprecio y adulteración ex-post",
+            "Postores vinculados o sucesores de sancionados en RNP, cotizaciones infladas (> +25%) o edición tardía.",
             min(5, 3 + (1 if c_cot_al >= 2 else 0)),
             5,
             c_cot_exp,
             c_cot_al,
-            "Regla R-04 (Grafos NetworkX) + Cadena Criptográfica SHA-256 (R-06)",
+            "Reglas R-04 (Grafos), R-09 (Continuidad RNP), R-10 (Sobreprecio > +25%) y R-06 (SHA-256)",
             "Gestión de Riesgos y Trazabilidad Digital",
         ),
         (

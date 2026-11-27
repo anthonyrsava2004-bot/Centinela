@@ -453,6 +453,59 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
           </div>
         </div>
 
+        {/* Control de Estándar de Precio (Valor por Dinero — R-10) */}
+        {typeof detalle.precio_referencial_mercado === 'number' &&
+          detalle.precio_referencial_mercado > 0 && (() => {
+            const desvPct = Number(
+              (
+                ((detalle.monto_estimado - detalle.precio_referencial_mercado) /
+                  detalle.precio_referencial_mercado) *
+                100
+              ).toFixed(1),
+            );
+            const excedePrecio = desvPct > 25.0;
+            return (
+              <div
+                className={`p-3.5 rounded-xl border flex flex-wrap items-center justify-between gap-3 text-xs ${
+                  excedePrecio
+                    ? 'bg-rose-50/70 dark:bg-rose-950/25 border-rose-200 dark:border-rose-500/40'
+                    : 'bg-slate-50 dark:bg-slate-950/70 border-slate-200 dark:border-slate-800'
+                }`}
+              >
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <span className="font-extrabold text-slate-900 dark:text-white">
+                    Control de Estándar de Precio (Valor por Dinero — R-10):
+                  </span>
+                  <span className="font-mono text-slate-700 dark:text-slate-300">
+                    Monto:{' '}
+                    <strong className="text-slate-900 dark:text-white">
+                      S/ {detalle.monto_estimado.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                    </strong>
+                  </span>
+                  <span className="font-mono text-slate-700 dark:text-slate-300">
+                    Estándar SEACE/Perú Compras:{' '}
+                    <strong className="text-blue-700 dark:text-cyan-300">
+                      S/{' '}
+                      {detalle.precio_referencial_mercado.toLocaleString('es-PE', {
+                        minimumFractionDigits: 2,
+                      })}
+                    </strong>
+                  </span>
+                </div>
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] font-extrabold border ${
+                    excedePrecio
+                      ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-500/40'
+                      : 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40'
+                  }`}
+                >
+                  {desvPct >= 0 ? `+${desvPct.toFixed(1)}%` : `${desvPct.toFixed(1)}%`} •{' '}
+                  {excedePrecio ? 'Sobreprecio (> +25%)' : 'En rango estándar (≤ +25%)'}
+                </span>
+              </div>
+            );
+          })()}
+
         {/* Selector Rápido de Expediente */}
         <div
           data-tour="traz-selector"
@@ -1164,7 +1217,8 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
                         className={`flex flex-wrap items-center justify-between gap-2 pt-2 border-t ${dividerClass}`}
                       >
                         <div>
-                          {al.codigo_regla === 'R-04-COLUSION-GRAFO' && (
+                          {(al.codigo_regla === 'R-04-COLUSION-GRAFO' ||
+                            al.codigo_regla === 'R-09-CONTINUIDAD-RNP') && (
                             <button
                               type="button"
                               onClick={() => navigate('/grafo-colusion')}
@@ -1238,10 +1292,21 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
                     : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono font-bold text-blue-700 dark:text-cyan-300">
-                    {post.proveedor_codigo}
-                  </span>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono font-bold text-blue-700 dark:text-cyan-300">
+                      {post.proveedor_codigo}
+                    </span>
+                    <span
+                      className={`px-1.5 py-0.5 rounded font-mono text-[10px] font-extrabold border ${
+                        post.estado_rnp === 'HABILITADO'
+                          ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/35'
+                          : 'bg-purple-100 dark:bg-purple-500/20 text-purple-900 dark:text-purple-200 border-purple-300 dark:border-purple-500/40'
+                      }`}
+                    >
+                      {post.estado_rnp || 'HABILITADO'}
+                    </span>
+                  </div>
                   <span className="font-mono font-bold text-slate-900 dark:text-white">
                     S/ {post.monto_ofertado.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                   </span>
@@ -1249,6 +1314,28 @@ export const TrazabilidadPage: React.FC<TrazabilidadPageProps> = ({ rolActivo })
                 <div className="text-[11px] text-slate-600 dark:text-slate-400">
                   {post.proveedor_alias}
                 </div>
+                <div className="text-[10px] font-mono text-slate-600 dark:text-slate-300 flex flex-wrap items-center gap-x-2">
+                  <span>
+                    Historial: <strong>{post.contratos_previos ?? 0}</strong> contratos •{' '}
+                    <strong
+                      className={
+                        (post.penalidades_previas ?? 0) > 0
+                          ? 'text-rose-700 dark:text-rose-300'
+                          : 'text-emerald-700 dark:text-emerald-400'
+                      }
+                    >
+                      {post.penalidades_previas ?? 0} penalidades
+                    </strong>
+                  </span>
+                </div>
+                {post.motivo_historial &&
+                  (post.estado_rnp !== 'HABILITADO' ||
+                    (post.penalidades_previas ?? 0) > 0 ||
+                    (post.contratos_previos ?? 4) <= 1) && (
+                    <div className="text-[10px] text-amber-900 dark:text-amber-200 bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-500/30 rounded-lg px-2 py-1 leading-snug">
+                      {post.motivo_historial}
+                    </div>
+                  )}
                 <div className="pt-1 border-t border-slate-200 dark:border-slate-800/80 font-mono text-[10px] text-slate-500 dark:text-slate-400 space-y-0.5">
                   <div>
                     Rep. Legal:{' '}

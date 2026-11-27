@@ -47,7 +47,9 @@ R05 = "R-05-TDR-NLP"
 R06 = "R-06-SHA256"
 R07 = "R-07-CRONO-VERSION"
 R08 = "R-08-CONFLICTO-INTERES"
-ALL_RULES = [R01, R02, R03, R04, R05, R06, R07, R08]
+R09 = "R-09-CONTINUIDAD-RNP"
+R10 = "R-10-SOBREPRECIO"
+ALL_RULES = [R01, R02, R03, R04, R05, R06, R07, R08, R09, R10]
 
 ROL_OCI = "AUDITOR_OCI"
 ROL_DEC = "ESPECIALISTA_DEC"
@@ -84,6 +86,7 @@ BASE_PAYLOAD = {
     "area_usuaria": "AREA-ADM-01",
     "modalidad": "Licitación Pública Abreviada",
     "monto_estimado": 150000.0,
+    "precio_referencial_mercado": None,
     "tdr_texto": TDR_GENERICO,
     "proveedor_adjudicado_codigo": "PROV-SYN-010",
     "proveedores_postores": ["PROV-SYN-010", "PROV-SYN-016"],
@@ -97,7 +100,7 @@ BASE_PAYLOAD = {
     "rol_usuario": ROL_TXT[ROL_DEC],
 }
 
-# Verdad de terreno de los 10 expedientes forenses sembrados (diseño del dataset)
+# Verdad de terreno de los 12 expedientes forenses sembrados (diseño del dataset)
 SEED_TRUTH = {
     "EXP-2025-UNT-0001": {R01, R08},
     "EXP-2025-UNT-0002": {R01},
@@ -109,6 +112,8 @@ SEED_TRUTH = {
     "EXP-2025-UNT-0008": {R03},
     "EXP-2025-UNT-0009": {R07},
     "EXP-2025-UNT-0010": {R03},
+    "EXP-2025-UNT-0011": {R09},
+    "EXP-2025-UNT-0012": {R10},
 }
 
 # Resultados observados para el informe
@@ -239,7 +244,7 @@ def _escribir_informe():
             f"{_fmt(m['precision'])} | {_fmt(m['recall'])} | {_fmt(m['f1'])} | {_fmt(m['fpr'])} |"
         )
     L.append("")
-    L.append("## 3. Casos etiquetados en vivo (incluye fronteras de 8 UIT y TDR legítimos)")
+    L.append("## 3. Casos etiquetados en vivo (incluye fronteras de 8 UIT, sobreprecio +25 % y continuidad RNP)")
     L.append("")
     L.append("| Caso | Esperado | Detectado | Resultado |")
     L.append("|---|---|---|---|")
@@ -268,7 +273,7 @@ def _escribir_informe():
     L.append("")
     L.append("## 7. Alcance y limitaciones honestas")
     L.append("")
-    L.append("- La verdad de terreno de los 10 forenses proviene del diseño del dataset sintético; los casos en vivo son etiquetados manualmente por el equipo.")
+    L.append("- La verdad de terreno de los 12 forenses proviene del diseño del dataset sintético; los casos en vivo son etiquetados manualmente por el equipo.")
     L.append("- Las métricas describen el desempeño sobre datos sintéticos; en un piloto real se recalibrarán umbrales con el OCI y la Oficina de Integridad.")
     L.append("- Las alertas son señales preventivas para revisión humana (Presunción de Licitud, Art. 248 Ley N° 27444), no acusaciones.")
     L.append("")
@@ -349,6 +354,8 @@ class TestDeteccionDatasetBase(_Registro):
         self.assertEqual(len(self.lista), 120)
 
     def test_cero_falsos_positivos_en_compras_limpias(self):
+        limpias = [c for c, esp, _ in OBS["seed"] if not esp]
+        self.assertEqual(len(limpias), 108)
         indebidas = [c for c, esp, det in OBS["seed"] if not esp and det]
         self.assertEqual(indebidas, [], f"Compras limpias con alerta indebida: {indebidas}")
 
@@ -361,7 +368,7 @@ class TestDeteccionDatasetBase(_Registro):
     def test_kpi_salud_preventiva_coherente(self):
         k = client.get("/api/dashboard", headers=hdr(ROL_OCI)).json()
         self.assertEqual(k["total_expedientes"], 120)
-        self.assertEqual(k["expedientes_limpios"], 110)
+        self.assertEqual(k["expedientes_limpios"], 108)
         self.assertGreaterEqual(k["porcentaje_limpios"], 90.0)
 
 
@@ -558,6 +565,54 @@ CASOS_VIVO = [
         ],
         {R04},
     ),
+    (
+        "N6 Frontera Sobreprecio: +25.0 % exacto (125 000 vs 100 000, no excede)",
+        [
+            {
+                "monto_estimado": 125000.0,
+                "precio_referencial_mercado": 100000.0,
+                "fecha_creacion": "2025-06-26T09:00:00",
+            }
+        ],
+        set(),
+    ),
+    (
+        "P10 Frontera Sobreprecio: +25.1 % (125 100 vs 100 000, excede)",
+        [
+            {
+                "monto_estimado": 125100.0,
+                "precio_referencial_mercado": 100000.0,
+                "fecha_creacion": "2025-06-27T09:00:00",
+            }
+        ],
+        {R10},
+    ),
+    (
+        "P11 Continuidad Económica: empresa nueva PROV-SYN-028 ligada a liquidada PROV-SYN-027",
+        [
+            {
+                "rubro": "Tecnología y Equipamiento Computacional",
+                "area_usuaria": "AREA-TI-13",
+                "proveedor_adjudicado_codigo": "PROV-SYN-028",
+                "proveedores_postores": ["PROV-SYN-028", "PROV-SYN-001"],
+                "fecha_creacion": "2025-06-28T09:00:00",
+            }
+        ],
+        {R09},
+    ),
+    (
+        "P12 Proveedor sancionado directo (PROV-SYN-027) intentando contratar",
+        [
+            {
+                "rubro": "Tecnología y Equipamiento Computacional",
+                "area_usuaria": "AREA-TI-14",
+                "proveedor_adjudicado_codigo": "PROV-SYN-027",
+                "proveedores_postores": ["PROV-SYN-027", "PROV-SYN-001"],
+                "fecha_creacion": "2025-06-29T09:00:00",
+            }
+        ],
+        {R09},
+    ),
 ]
 
 
@@ -575,7 +630,7 @@ class TestDeteccionEnVivo(_Registro):
                 exp = esperado if es_ultima else set()
                 etiqueta = nombre if es_ultima else f"{nombre} (orden previa {i + 1})"
                 OBS["live"].append((etiqueta, exp, reglas_de(det)))
-        OBS["latency"]["Registrar expediente + sellar 6 etapas + 8 reglas XAI"] = _stats(tiempos)
+        OBS["latency"]["Registrar expediente + sellar 6 etapas + 10 reglas XAI"] = _stats(tiempos)
         for nombre, esperado, detectado in OBS["live"]:
             with self.subTest(caso=nombre):
                 self.assertEqual(detectado, esperado)
@@ -1157,6 +1212,44 @@ class TestBitacoraReinicioYReportes(_Registro):
                 self.assertIn(clave, data)
             self.assertEqual(data["totales"]["FP"], 0)
             self.assertEqual(data["resumen_muestras"]["alertas_indebidas_en_limpias"], 0)
+
+
+# --------------------------------------------------------------------------- #
+# 8. Historial RNP, continuidad económica en grafos y sobreprecio referencial
+# --------------------------------------------------------------------------- #
+class TestHistorialYSobreprecio(_Registro):
+    def test_grafo_conecta_empresa_sancionada_con_sucesora_en_exp_0011(self):
+        reset_dataset()
+        r = client.get("/api/grafo-colusion", headers=hdr(ROL_OCI))
+        self.assertEqual(r.status_code, 200, r.text[:200])
+        grafo = r.json()
+        nodos_por_id = {n["data"]["id"]: n["data"] for n in grafo["elements"]["nodes"]}
+
+        for esperado_id in (
+            "PROV-SYN-027",
+            "PROV-SYN-028",
+            "INV-RECICL-77",
+            "DIR-HASH-TRUJ-991",
+            "EXP-2025-UNT-0011",
+        ):
+            self.assertIn(esperado_id, nodos_por_id, f"Falta nodo {esperado_id} en grafo")
+
+        p27 = nodos_por_id["PROV-SYN-027"]
+        p28 = nodos_por_id["PROV-SYN-028"]
+        self.assertEqual(p27["estado_rnp"], "LIQUIDADA_SANCIONADA")
+        self.assertEqual(p27["riesgo"], "SANCIONADO")
+        self.assertGreaterEqual(p27["penalidades_previas"], 4)
+        self.assertEqual(p28["estado_rnp"], "HABILITADO")
+
+        clusters_cont = [
+            c
+            for c in grafo["clusters_detectados"]
+            if "PROV-SYN-027" in c["proveedores_vinculados"]
+            and "PROV-SYN-028" in c["proveedores_vinculados"]
+        ]
+        self.assertEqual(len(clusters_cont), 1)
+        codigos_afectados = {e["codigo"] for e in clusters_cont[0]["expedientes_afectados"]}
+        self.assertIn("EXP-2025-UNT-0011", codigos_afectados)
 
 
 if __name__ == "__main__":

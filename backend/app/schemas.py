@@ -31,6 +31,10 @@ class PostulacionDetalleOut(BaseModel):
     accionista_id: str = "INV-UNICO-000"
     direccion_hash: str
     telefono_hash: str
+    estado_rnp: str = "HABILITADO"
+    penalidades_previas: int = 0
+    contratos_previos: int = 4
+    motivo_historial: Optional[str] = None
     monto_ofertado: float
     es_ganador: bool
     fecha_presentacion: str
@@ -97,6 +101,10 @@ class ProveedorOut(BaseModel):
     direccion_hash: str
     telefono_hash: str
     es_colusorio: bool
+    estado_rnp: str = "HABILITADO"
+    penalidades_previas: int = 0
+    contratos_previos: int = 4
+    motivo_historial: Optional[str] = None
 
 
 class ExpedienteCreateInput(BaseModel):
@@ -105,6 +113,7 @@ class ExpedienteCreateInput(BaseModel):
     area_usuaria: str
     modalidad: str
     monto_estimado: float
+    precio_referencial_mercado: Optional[float] = None
     tdr_texto: str
     proveedor_adjudicado_codigo: str
     proveedores_postores: List[str] = []
@@ -128,6 +137,7 @@ class ExpedienteListOut(BaseModel):
     area_usuaria: str
     modalidad: str
     monto_estimado: float
+    precio_referencial_mercado: Optional[float] = None
     fecha_creacion: str
     estado_expediente: str
     proveedor_adjudicado_codigo: Optional[str] = None
@@ -254,6 +264,7 @@ class ExpedienteDetalleOut(BaseModel):
     area_usuaria: str
     modalidad: str
     monto_estimado: float
+    precio_referencial_mercado: Optional[float] = None
     fecha_creacion: str
     estado_expediente: str
     tdr_texto: str

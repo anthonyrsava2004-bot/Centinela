@@ -269,6 +269,8 @@ def restaurar_integridad_expediente(db: Session, expediente: Expediente) -> Veri
             "INCONSISTENCIA_VERSION_SUSTENTO": 91,
             "ENTREGABLE_INCOMPLETO_CONFORMIDAD": 95,
             "CASO_1_PROYECTORES_UNT": 96,
+            "CONTINUIDAD_ECONOMICA_RNP": 94,
+            "SOBREPRECIO_MERCADO": 91,
         }
         expediente.puntaje_riesgo = puntajes_base_trampa.get(expediente.tipo_trampa or "", 92)
 

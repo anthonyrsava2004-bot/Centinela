@@ -245,6 +245,10 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
             telefono_hash=tel_id,
             catalogo_texto=catalogo,
             es_colusorio=es_colusorio,
+            estado_rnp="HABILITADO",
+            penalidades_previas=0,
+            contratos_previos=3 + (i % 7),
+            motivo_historial="Historial conforme en RNP sin sanciones ni penalidades vigentes.",
         )
         db.add(prov)
         proveedores_lista.append(prov)
@@ -272,9 +276,62 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
                 f"Componentes multimarca abiertos y soporte técnico institucional."
             ),
             es_colusorio=True,
+            estado_rnp="HABILITADO",
+            penalidades_previas=0,
+            contratos_previos=3 + (idx_soc % 7),
+            motivo_historial="Historial conforme en RNP sin sanciones ni penalidades vigentes.",
         )
         db.add(prov_soc)
         proveedores_lista.append(prov_soc)
+
+    # Continuidad Económica / Empresa Reciclada (PROV-SYN-027 liquidada/sancionada y PROV-SYN-028 sucesora)
+    prov_027 = Proveedor(
+        codigo="PROV-SYN-027",
+        alias_comercial="Corporación Proveedora Sintética 27 [PROV-SYN-027]",
+        rubro="Tecnología y Equipamiento Computacional",
+        representante_id="REP-HASH-RECICL-77",
+        accionista_id="INV-RECICL-77",
+        direccion_hash="DIR-HASH-TRUJ-991",
+        telefono_hash="TEL-HASH-944-991",
+        catalogo_texto=(
+            "Catálogo histórico referencial del proveedor PROV-SYN-027 especializado en "
+            "Tecnología y Equipamiento Computacional (registro RNP con inhabilitación vigente)."
+        ),
+        es_colusorio=True,
+        estado_rnp="LIQUIDADA_SANCIONADA",
+        penalidades_previas=4,
+        contratos_previos=6,
+        motivo_historial=(
+            "Empresa liquidada tras 4 penalidades por incumplimiento e inhabilitación vigente en RNP "
+            "(Resolución sintética TCE-2024-089)."
+        ),
+    )
+    db.add(prov_027)
+    proveedores_lista.append(prov_027)
+
+    prov_028 = Proveedor(
+        codigo="PROV-SYN-028",
+        alias_comercial="Corporación Proveedora Sintética 28 [PROV-SYN-028]",
+        rubro="Tecnología y Equipamiento Computacional",
+        representante_id="REP-HASH-NUEVO-28",
+        accionista_id="INV-RECICL-77",
+        direccion_hash="DIR-HASH-TRUJ-991",
+        telefono_hash="TEL-HASH-944-928",
+        catalogo_texto=(
+            "Catálogo comercial estándar del proveedor PROV-SYN-028 especializado en "
+            "Tecnología y Equipamiento Computacional. Componentes multimarca abiertos."
+        ),
+        es_colusorio=True,
+        estado_rnp="HABILITADO",
+        penalidades_previas=0,
+        contratos_previos=1,
+        motivo_historial=(
+            "Nueva razón social habilitada en RNP; registra coincidencia societaria y domiciliaria "
+            "con empresa previamente sancionada."
+        ),
+    )
+    db.add(prov_028)
+    proveedores_lista.append(prov_028)
 
     db.flush()
     prov_por_codigo = {p.codigo: p for p in proveedores_lista}
@@ -484,10 +541,56 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
                 "con pruebas certificadas de pozo a tierra y (3) pintado general con evidencia fotográfica."
             ),
         },
+        # Caso 11: Continuidad Económica / Empresa Reciclada (PROV-SYN-028 vinculada a PROV-SYN-027 sancionada)
+        {
+            "num": 11,
+            "objeto": "Adquisición de Sistema de Videovigilancia IP y Analítica de Accesos para Campus Central",
+            "rubro": "Tecnología y Equipamiento Computacional",
+            "area_usuaria": "AREA-TI-03",
+            "modalidad": "Licitación Pública Abreviada",
+            "monto": 142000.00,
+            "precio_referencial_mercado": 136500.00,
+            "fecha": "2025-03-28T09:10:00",
+            "prov_ganador": "PROV-SYN-028",
+            "postores": [
+                ("PROV-SYN-028", 142000.00, True),
+                ("PROV-SYN-001", 146800.00, False),
+            ],
+            "tipo_trampa": "CONTINUIDAD_ECONOMICA_RNP",
+            "tdr": (
+                "Suministro e instalación de cámaras domo IP PoE con compresión H.265+, grabador NVR "
+                "en red redundante, analítica perimetral de control de accesos y almacenamiento RAID "
+                "para seguridad física de campus universitario."
+            ),
+        },
+        # Caso 12: Inflación / Sobreprecio frente a Estándar de Mercado (+65.0% sobre referencia SEACE/Perú Compras)
+        {
+            "num": 12,
+            "objeto": "Adquisición de Servidores de Cómputo de Alto Rendimiento para Laboratorio de IA",
+            "rubro": "Tecnología y Equipamiento Computacional",
+            "area_usuaria": "AREA-LAB-02",
+            "modalidad": "Licitación Pública Abreviada",
+            "monto": 161700.00,
+            "precio_referencial_mercado": 98000.00,
+            "fecha": "2025-04-02T09:30:00",
+            "prov_ganador": "PROV-SYN-016",
+            "postores": [
+                ("PROV-SYN-016", 161700.00, True),
+                ("PROV-SYN-010", 166200.00, False),
+            ],
+            "tipo_trampa": "SOBREPRECIO_MERCADO",
+            "tdr": (
+                "Suministro de servidores rackeables 2U con procesadores multinúcleo, aceleradoras de cálculo "
+                "paralelo para investigación en inteligencia artificial, memoria ECC DDR5 y fuentes redundantes."
+            ),
+        },
     ]
 
     for spec in trampas_spec:
         codigo_exp = f"EXP-2025-UNT-{spec['num']:04d}"
+        precio_ref_spec = round(
+            spec.get("precio_referencial_mercado", spec["monto"] * 0.96), 2
+        )
         exp = Expediente(
             codigo=codigo_exp,
             objeto=spec["objeto"],
@@ -495,6 +598,7 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
             area_usuaria=spec["area_usuaria"],
             modalidad=spec["modalidad"],
             monto_estimado=spec["monto"],
+            precio_referencial_mercado=precio_ref_spec,
             fecha_creacion=spec["fecha"],
             estado_expediente="En Revisión OCI",
             tdr_texto=spec["tdr"],
@@ -503,8 +607,10 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
             puntaje_riesgo=(
                 95
                 if spec["tipo_trampa"] in ("PAGO_SIN_CONFORMIDAD", "ENTREGABLE_INCOMPLETO_CONFORMIDAD")
+                else 94
+                if spec["tipo_trampa"] in ("COLUSION_PROVEEDORES", "CONTINUIDAD_ECONOMICA_RNP")
                 else 91
-                if spec["tipo_trampa"] == "INCONSISTENCIA_VERSION_SUSTENTO"
+                if spec["tipo_trampa"] in ("INCONSISTENCIA_VERSION_SUSTENTO", "SOBREPRECIO_MERCADO")
                 else 92
             ),
             integridad_valida=True,
@@ -715,7 +821,7 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
         p for p in proveedores_lista if not p.es_colusorio
     ]
 
-    for num in range(11, 121):
+    for num in range(13, 121):
         idx_item = (num - 11) % len(objetos_limpios)
         obj_base, rubro, monto_base, modalidad = objetos_limpios[idx_item]
         area = areas_limpias[(num - 11) % len(areas_limpias)]
@@ -746,6 +852,7 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
             area_usuaria=area,
             modalidad=modalidad,
             monto_estimado=monto_final,
+            precio_referencial_mercado=round(monto_final * 0.96, 2),
             fecha_creacion=fecha_iso,
             estado_expediente="Pagado",
             tdr_texto=tdr_generico,
@@ -852,7 +959,7 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
         )
 
         # Caso ejemplar de prevención positiva: Declaración Oportuna + Abstención y Reasignación
-        if num == 11:
+        if num == 13:
             db.add(
                 ConflictoInteres(
                     expediente_id=exp.id,
@@ -878,10 +985,10 @@ def poblar_base_datos_sintetica(db: Session) -> dict:
     sembrar_denuncias_base(db)
 
     return {
-        "mensaje": "Dataset sintético CENTINELA regenerado exitosamente (120 expedientes: 110 limpios + 10 casos forenses incluyendo Caso 1 y Caso 2 UNT).",
+        "mensaje": "Dataset sintético CENTINELA regenerado exitosamente (120 expedientes: 108 limpios + 12 casos forenses incluyendo Caso 1 y Caso 2 UNT).",
         "total_expedientes": 120,
-        "expedientes_limpios": 110,
-        "expedientes_trampa": 10,
+        "expedientes_limpios": 108,
+        "expedientes_trampa": 12,
         "proveedores_sinteticos": len(proveedores_lista),
         "auditoria_xai": resumen_reglas,
     }

@@ -379,6 +379,12 @@ export const CompliancePage: React.FC<CompliancePageProps> = ({ rolActivo }) => 
               <option value="Ejecución Contractual / Pago">Pago sin Conformidad / TDR</option>
               <option value="Trazabilidad / Versiones y Sustentos">Versiones y Sustentos</option>
               <option value="Conflicto de Interés">Conflicto de Interés (R-08)</option>
+              <option value="Historial RNP / Empresa Reciclada">
+                Historial RNP / Empresa Reciclada (R-09)
+              </option>
+              <option value="Inflación / Sobreprecio de Mercado">
+                Sobreprecio de Mercado (R-10)
+              </option>
               <option value="Integridad Criptográfica SHA-256">Ruptura SHA-256</option>
             </select>
           </div>

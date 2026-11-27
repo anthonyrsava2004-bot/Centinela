@@ -77,6 +77,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
   const [areaUsuaria, setAreaUsuaria] = useState<string>('AREA-ACAD-01');
   const [modalidad, setModalidad] = useState<string>(MODALIDADES_DISPONIBLES[1]);
   const [montoEstimado, setMontoEstimado] = useState<string>('85000');
+  const [precioReferencialMercado, setPrecioReferencialMercado] = useState<string>('82000');
   const [fechaCreacion, setFechaCreacion] = useState<string>('2025-04-10T09:00:00');
   const [provGanador, setProvGanador] = useState<string>('PROV-SYN-001');
   const [provSegundo, setProvSegundo] = useState<string>('PROV-SYN-002');
@@ -131,6 +132,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
       setAreaUsuaria('AREA-BIB-02');
       setModalidad('Licitación Pública Abreviada');
       setMontoEstimado('68500');
+      setPrecioReferencialMercado('66000');
       setFechaCreacion('2025-05-12T09:00:00');
       setProvGanador('PROV-SYN-001');
       setProvSegundo('PROV-SYN-002');
@@ -149,6 +151,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
       setAreaUsuaria('AREA-TI-03');
       setModalidad('Contratación Menor (<= 8 UIT)');
       setMontoEstimado('40200');
+      setPrecioReferencialMercado('38600');
       setFechaCreacion('2025-02-14T10:00:00');
       setProvGanador('PROV-SYN-014');
       setProvSegundo('PROV-SYN-001');
@@ -167,6 +170,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
       setAreaUsuaria('AREA-INFRA-01');
       setModalidad('Concurso Público Abreviado');
       setMontoEstimado('136400');
+      setPrecioReferencialMercado('131000');
       setFechaCreacion('2025-04-22T09:15:00');
       setProvGanador('PROV-SYN-015');
       setProvSegundo('PROV-SYN-018');
@@ -185,6 +189,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
       setAreaUsuaria('AREA-TI-03');
       setModalidad('Licitación Pública Abreviada');
       setMontoEstimado('164000');
+      setPrecioReferencialMercado('158000');
       setFechaCreacion('2025-04-15T09:00:00');
       setProvGanador('PROV-SYN-014');
       setProvSegundo('PROV-SYN-001');
@@ -203,6 +208,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
       setAreaUsuaria('AREA-TI-03');
       setModalidad('Contratación Menor (<= 8 UIT)');
       setMontoEstimado('39800');
+      setPrecioReferencialMercado('38200');
       setFechaCreacion('2025-02-22T09:30:00');
       setProvGanador('PROV-SYN-014');
       setProvSegundo('PROV-SYN-001');
@@ -221,6 +227,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
       setAreaUsuaria('AREA-INFRA-01');
       setModalidad('Concurso Público Abreviado');
       setMontoEstimado('132500');
+      setPrecioReferencialMercado('127500');
       setFechaCreacion('2025-04-18T09:00:00');
       setProvGanador('PROV-SYN-012');
       setProvSegundo('PROV-SYN-018');
@@ -239,6 +246,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
       setAreaUsuaria('AREA-LAB-02');
       setModalidad('Licitación Pública Abreviada');
       setMontoEstimado('195000');
+      setPrecioReferencialMercado('188000');
       setFechaCreacion('2025-04-20T09:00:00');
       setProvGanador('PROV-SYN-004');
       setProvSegundo('PROV-SYN-005');
@@ -247,6 +255,44 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
       );
       setMismoFuncionario(false);
       setPagoSinConformidad(true);
+      setModExtemporaneaTdr(false);
+      setSinSustentoDoc(false);
+      setEntregableIncompletoObra(false);
+      setConflictoInteresFamiliar(false);
+    } else if (tipo === 'EMPRESA_RECICLADA') {
+      setObjeto('Adquisición de Sistema de Cámaras IP y Control de Accesos para Pabellones');
+      setRubro('Tecnología y Equipamiento Computacional');
+      setAreaUsuaria('AREA-TI-03');
+      setModalidad('Licitación Pública Abreviada');
+      setMontoEstimado('142000');
+      setPrecioReferencialMercado('136500');
+      setFechaCreacion('2025-04-25T09:15:00');
+      setProvGanador('PROV-SYN-028');
+      setProvSegundo('PROV-SYN-001');
+      setTdrTexto(
+        'Suministro e instalación de cámaras domo IP PoE con compresión H.265+, grabador en red redundante y almacenamiento certificado con pluralidad de marcas.',
+      );
+      setMismoFuncionario(false);
+      setPagoSinConformidad(false);
+      setModExtemporaneaTdr(false);
+      setSinSustentoDoc(false);
+      setEntregableIncompletoObra(false);
+      setConflictoInteresFamiliar(false);
+    } else if (tipo === 'SOBREPRECIO_MERCADO') {
+      setObjeto('Adquisición de Servidores Rackeables de Cómputo Académico');
+      setRubro('Tecnología y Equipamiento Computacional');
+      setAreaUsuaria('AREA-LAB-02');
+      setModalidad('Licitación Pública Abreviada');
+      setMontoEstimado('165000');
+      setPrecioReferencialMercado('100000');
+      setFechaCreacion('2025-04-26T09:30:00');
+      setProvGanador('PROV-SYN-016');
+      setProvSegundo('PROV-SYN-010');
+      setTdrTexto(
+        'Servidores rackeables 2U con procesadores multinúcleo estándar, memoria ECC DDR5, fuentes redundantes y garantía comercial de 24 meses.',
+      );
+      setMismoFuncionario(false);
+      setPagoSinConformidad(false);
       setModExtemporaneaTdr(false);
       setSinSustentoDoc(false);
       setEntregableIncompletoObra(false);
@@ -266,6 +312,9 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
         area_usuaria: areaUsuaria,
         modalidad,
         monto_estimado: Number(montoEstimado),
+        precio_referencial_mercado: precioReferencialMercado
+          ? Number(precioReferencialMercado)
+          : undefined,
         tdr_texto: tdrTexto,
         proveedor_adjudicado_codigo: provGanador,
         proveedores_postores: [provGanador, provSegundo].filter(Boolean),
@@ -503,7 +552,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
         isOpen={modalAbierto}
         onClose={() => setModalAbierto(false)}
         title="Evaluador y Registro de Expediente Sintético en Vivo"
-        subtitle="Ejecutar Control Concurrente XAI: sella los 6 eslabones SHA-256 y evalúa en tiempo real reglas normativas, NLP TF-IDF y Grafos NetworkX"
+        subtitle="Ejecutar Control Concurrente XAI: Motor XAI (10 reglas), sella los 6 eslabones SHA-256 y evalúa NLP TF-IDF y Grafos NetworkX"
       >
         <form onSubmit={handleRegistrarVivo} className="space-y-4 text-xs">
           {/* Plantillas rápidas de 1 clic para demostración ante el jurado */}
@@ -562,6 +611,20 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
               >
                 Colusión + Pago sin Conformidad
               </button>
+              <button
+                type="button"
+                onClick={() => aplicarPlantilla('EMPRESA_RECICLADA')}
+                className="px-2.5 py-1 rounded-lg bg-purple-100 hover:bg-purple-200 dark:bg-purple-500/20 dark:hover:bg-purple-500/30 text-purple-900 dark:text-purple-200 border border-purple-300 dark:border-purple-500/40 font-semibold"
+              >
+                Empresa Reciclada (R-09)
+              </button>
+              <button
+                type="button"
+                onClick={() => aplicarPlantilla('SOBREPRECIO_MERCADO')}
+                className="px-2.5 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 dark:bg-rose-500/20 dark:hover:bg-rose-500/30 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-500/40 font-semibold"
+              >
+                Sobreprecio +65% (R-10)
+              </button>
             </div>
           </div>
 
@@ -585,7 +648,7 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="space-y-1">
               <label className="block font-bold text-slate-700 dark:text-slate-200">
                 Área Usuaria (Ley 29733):
@@ -632,6 +695,20 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
                 className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono"
               />
             </div>
+            <div className="space-y-1">
+              <label className="block font-bold text-slate-700 dark:text-slate-200">
+                Precio Estándar de Mercado (S/ — ref. SEACE/Perú Compras):
+              </label>
+              <input
+                type="number"
+                min="100"
+                step="0.01"
+                value={precioReferencialMercado}
+                onChange={(e) => setPrecioReferencialMercado(e.target.value)}
+                placeholder="Ej. 82000"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -663,7 +740,12 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
                   : [{ codigo: 'PROV-SYN-001', es_colusorio: false } as ProveedorItem]
                 ).map((p) => (
                   <option key={p.codigo} value={p.codigo}>
-                    {p.codigo} {p.es_colusorio ? '(Red/Exclusivo)' : ''}
+                    {p.codigo}{' '}
+                    {p.estado_rnp && p.estado_rnp !== 'HABILITADO'
+                      ? '(Sancionado RNP)'
+                      : p.es_colusorio
+                      ? '(Red/Exclusivo)'
+                      : ''}
                   </option>
                 ))}
               </select>
@@ -682,7 +764,12 @@ export const ExpedientesPage: React.FC<ExpedientesPageProps> = ({ rolActivo }) =
                   : [{ codigo: 'PROV-SYN-002', es_colusorio: false } as ProveedorItem]
                 ).map((p) => (
                   <option key={p.codigo} value={p.codigo}>
-                    {p.codigo} {p.es_colusorio ? '(Red/Exclusivo)' : ''}
+                    {p.codigo}{' '}
+                    {p.estado_rnp && p.estado_rnp !== 'HABILITADO'
+                      ? '(Sancionado RNP)'
+                      : p.es_colusorio
+                      ? '(Red/Exclusivo)'
+                      : ''}
                   </option>
                 ))}
               </select>

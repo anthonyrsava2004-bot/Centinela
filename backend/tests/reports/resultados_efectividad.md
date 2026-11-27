@@ -1,28 +1,30 @@
 # Informe de Pruebas y Efectividad — CENTINELA
 
-_Generado automáticamente el 2026-11-27 00:01:46 por `backend/tests/test_efectividad.py` (datos 100 % sintéticos)._
+_Generado automáticamente el 2026-11-27 00:51:47 por `backend/tests/test_efectividad.py` (datos 100 % sintéticos)._
 
 ## 1. Resumen ejecutivo
 
-- Muestras evaluadas: **120** expedientes sembrados + **19** casos etiquetados en vivo + **18** pruebas de adulteración SHA-256.
-- Decisiones regla×muestra: TP=30 · FP=0 · FN=0 · TN=1226.
+- Muestras evaluadas: **120** expedientes sembrados + **23** casos etiquetados en vivo + **18** pruebas de adulteración SHA-256.
+- Decisiones regla×muestra: TP=35 · FP=0 · FN=0 · TN=1575.
 - Falsos positivos totales: **0** · Falsos negativos totales: **0**.
-- Compras limpias sembradas evaluadas: **110** → con alerta indebida: **0**.
+- Compras limpias sembradas evaluadas: **108** → con alerta indebida: **0**.
 
 ## 2. Matriz de confusión por regla
 
 | Regla | TP | FP | FN | TN | Precisión | Recall | F1 | Tasa FP |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| R-01-FRACCIONAMIENTO | 4 | 0 | 0 | 153 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
-| R-02-SEGREGACION | 3 | 0 | 0 | 154 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
-| R-03-PAGO-SIN-CONF | 5 | 0 | 0 | 152 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
-| R-04-COLUSION-GRAFO | 5 | 0 | 0 | 152 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
-| R-05-TDR-NLP | 2 | 0 | 0 | 155 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
-| R-06-SHA256 | 6 | 0 | 0 | 151 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
-| R-07-CRONO-VERSION | 3 | 0 | 0 | 154 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
-| R-08-CONFLICTO-INTERES | 2 | 0 | 0 | 155 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
+| R-01-FRACCIONAMIENTO | 4 | 0 | 0 | 157 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
+| R-02-SEGREGACION | 3 | 0 | 0 | 158 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
+| R-03-PAGO-SIN-CONF | 5 | 0 | 0 | 156 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
+| R-04-COLUSION-GRAFO | 5 | 0 | 0 | 156 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
+| R-05-TDR-NLP | 2 | 0 | 0 | 159 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
+| R-06-SHA256 | 6 | 0 | 0 | 155 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
+| R-07-CRONO-VERSION | 3 | 0 | 0 | 158 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
+| R-08-CONFLICTO-INTERES | 2 | 0 | 0 | 159 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
+| R-09-CONTINUIDAD-RNP | 3 | 0 | 0 | 158 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
+| R-10-SOBREPRECIO | 2 | 0 | 0 | 159 | 100.0 % | 100.0 % | 100.0 % | 0.0 % |
 
-## 3. Casos etiquetados en vivo (incluye fronteras de 8 UIT y TDR legítimos)
+## 3. Casos etiquetados en vivo (incluye fronteras de 8 UIT, sobreprecio +25 % y continuidad RNP)
 
 | Caso | Esperado | Detectado | Resultado |
 |---|---|---|---|
@@ -45,15 +47,19 @@ _Generado automáticamente el 2026-11-27 00:01:46 por `backend/tests/test_efecti
 | M1 Combinada: v2.1 extemporáneo + mismo funcionario | R-02-SEGREGACION, R-07-CRONO-VERSION | R-02-SEGREGACION, R-07-CRONO-VERSION | ✅ |
 | M2 Combinada: colusión + pago sin conformidad | R-03-PAGO-SIN-CONF, R-04-COLUSION-GRAFO | R-03-PAGO-SIN-CONF, R-04-COLUSION-GRAFO | ✅ |
 | P9 Colusión societaria: mismo socio/inversor con distinto gerente y oficina | R-04-COLUSION-GRAFO | R-04-COLUSION-GRAFO | ✅ |
+| N6 Frontera Sobreprecio: +25.0 % exacto (125 000 vs 100 000, no excede) | — | — | ✅ |
+| P10 Frontera Sobreprecio: +25.1 % (125 100 vs 100 000, excede) | R-10-SOBREPRECIO | R-10-SOBREPRECIO | ✅ |
+| P11 Continuidad Económica: empresa nueva PROV-SYN-028 ligada a liquidada PROV-SYN-027 | R-09-CONTINUIDAD-RNP | R-09-CONTINUIDAD-RNP | ✅ |
+| P12 Proveedor sancionado directo (PROV-SYN-027) intentando contratar | R-09-CONTINUIDAD-RNP | R-09-CONTINUIDAD-RNP | ✅ |
 
 ## 4. Rendimiento (milisegundos, sobre SQLite local)
 
 | Operación | Muestras | p50 | p95 | Máx |
 |---|---:|---:|---:|---:|
-| Detalle de expediente (6 etapas + NLP + alertas) | 10 | 8 | 63 | 63 |
+| Detalle de expediente (6 etapas + NLP + alertas) | 10 | 8 | 15 | 15 |
 | Dashboard de indicadores | 8 | 3 | 4 | 4 |
-| Grafo de colusión (NetworkX) | 8 | 6 | 6 | 6 |
-| Registrar expediente + sellar 6 etapas + 8 reglas XAI | 19 | 40 | 42 | 42 |
+| Grafo de colusión (NetworkX) | 8 | 7 | 8 | 8 |
+| Registrar expediente + sellar 6 etapas + 10 reglas XAI | 23 | 40 | 49 | 49 |
 
 ## 5. Control de accesos (RBAC) verificado
 
@@ -101,6 +107,7 @@ _Generado automáticamente el 2026-11-27 00:01:46 por `backend/tests/test_efecti
 - ✅ `TestDeteccionEnVivo.test_caso_aulas_activa_candado_de_pago`
 - ✅ `TestDeteccionEnVivo.test_casos_etiquetados`
 - ✅ `TestDeteccionEnVivo.test_registro_en_vivo_nace_con_cadena_integra`
+- ✅ `TestHistorialYSobreprecio.test_grafo_conecta_empresa_sancionada_con_sucesora_en_exp_0011`
 - ✅ `TestIntegridadSHA256.test_adulteracion_de_cada_etapa_rompe_la_cadena_en_cascada`
 - ✅ `TestIntegridadSHA256.test_dec_y_publico_no_pueden_adulterar_ni_restaurar`
 - ✅ `TestRBAC.test_dec_no_puede_cerrar_alertas_ni_publico_modificarlas`
@@ -113,6 +120,6 @@ _Generado automáticamente el 2026-11-27 00:01:46 por `backend/tests/test_efecti
 
 ## 7. Alcance y limitaciones honestas
 
-- La verdad de terreno de los 10 forenses proviene del diseño del dataset sintético; los casos en vivo son etiquetados manualmente por el equipo.
+- La verdad de terreno de los 12 forenses proviene del diseño del dataset sintético; los casos en vivo son etiquetados manualmente por el equipo.
 - Las métricas describen el desempeño sobre datos sintéticos; en un piloto real se recalibrarán umbrales con el OCI y la Oficina de Integridad.
 - Las alertas son señales preventivas para revisión humana (Presunción de Licitud, Art. 248 Ley N° 27444), no acusaciones.

@@ -314,10 +314,10 @@ export const PAGE_TOUR_STEPS: Record<string, TourStep[]> = {
     {
       id: 'val-matriz',
       target: 'val-matriz',
-      title: 'Matriz de Confusión por Regla (R-01 a R-08)',
+      title: 'Matriz de Confusión por Regla (R-01 a R-10)',
       description:
         'Detalla aciertos (VP), falsos positivos (FP), falsos negativos (FN), verdaderos negativos (VN), precisión, recall y puntaje F1 de cada regla normativa.',
-      tip: 'Verifique que las 110 compras limpias registran cero alertas indebidas (tasa FP de 0.0 %).',
+      tip: 'Verifique que las 108 compras limpias registran cero alertas indebidas (tasa FP de 0.0 %).',
       placement: 'auto',
     },
     {

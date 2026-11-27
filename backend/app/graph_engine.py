@@ -78,18 +78,35 @@ def construir_grafo_colusion(db: Session, solo_riesgo: bool = True) -> dict:
             for x in lista_p:
                 proveedores_en_red_ids.add(x.id)
 
+    # Identificar proveedores sancionados/liquidados y aquellos vinculados por continuidad económica
+    proveedores_sancionados_ids = {
+        p.id for p in proveedores if p.estado_rnp != "HABILITADO"
+    }
+    proveedores_vinculados_sancionados_ids = set(proveedores_sancionados_ids)
+    prov_por_codigo = {p.codigo: p for p in proveedores}
+    for info in atributos_compartidos.values():
+        codigos_attr = info["proveedores"]
+        if any(
+            cod in prov_por_codigo and prov_por_codigo[cod].estado_rnp != "HABILITADO"
+            for cod in codigos_attr
+        ):
+            for cod in codigos_attr:
+                if cod in prov_por_codigo:
+                    proveedores_vinculados_sancionados_ids.add(prov_por_codigo[cod].id)
+
     # Construir grafo en NetworkX
     G = nx.Graph()
 
-    # Solo incluir proveedores realmente conectados por atributos compartidos (sin nodos huérfanos)
+    # Solo incluir proveedores realmente conectados por atributos compartidos o sancionados (sin nodos huérfanos)
     proveedores_visibles = []
     for p in proveedores:
-        if p.id in proveedores_en_red_ids:
+        if p.id in proveedores_en_red_ids or p.id in proveedores_sancionados_ids:
             proveedores_visibles.append(p)
         elif not solo_riesgo and len(proveedores_visibles) < 14:
             proveedores_visibles.append(p)
 
     for p in proveedores_visibles:
+        es_sancionado = p.estado_rnp != "HABILITADO"
         es_sospechoso = p.id in proveedores_en_red_ids
         G.add_node(
             p.codigo,
@@ -97,14 +114,19 @@ def construir_grafo_colusion(db: Session, solo_riesgo: bool = True) -> dict:
             label=p.codigo,
             titulo_completo=p.alias_comercial,
             tipo="PROVEEDOR",
-            riesgo="ALTO" if es_sospechoso else "LIMPIO",
+            riesgo="SANCIONADO" if es_sancionado else ("ALTO" if es_sospechoso else "LIMPIO"),
             rubro=p.rubro,
             representante_id=p.representante_id,
             accionista_id=p.accionista_id,
             direccion_hash=p.direccion_hash,
             telefono_hash=p.telefono_hash,
+            estado_rnp=p.estado_rnp,
+            penalidades_previas=p.penalidades_previas,
+            contratos_previos=p.contratos_previos,
+            motivo_historial=p.motivo_historial,
             detalle=(
                 f"Proveedor anonimizado {p.codigo} ({p.alias_comercial} — {p.rubro}). "
+                f"Estado RNP: {p.estado_rnp} ({p.contratos_previos} contratos, {p.penalidades_previas} penalidades) | "
                 f"Rep: {p.representante_id} | Socio/Inv: {p.accionista_id} | Dir: {p.direccion_hash} | Tel: {p.telefono_hash}"
             ),
         )
@@ -156,9 +178,18 @@ def construir_grafo_colusion(db: Session, solo_riesgo: bool = True) -> dict:
         postores_red_en_exp = [
             post for post in lista_post if post.proveedor_id in proveedores_en_red_ids
         ]
+        tiene_vinculo_sancionado = any(
+            post.proveedor_id in proveedores_vinculados_sancionados_ids
+            for post in lista_post
+        )
 
         # Incluir expediente si co-participan >= 2 postores con atributos compartidos
-        incluir_exp = (len(postores_red_en_exp) >= 2) or (exp.tipo_trampa == "COLUSION_PROVEEDORES")
+        # o si interviene un postor con continuidad económica / sanción RNP
+        incluir_exp = (
+            (len(postores_red_en_exp) >= 2)
+            or (exp.tipo_trampa in ("COLUSION_PROVEEDORES", "CONTINUIDAD_ECONOMICA_RNP"))
+            or tiene_vinculo_sancionado
+        )
 
         if incluir_exp:
             expedientes_colusorios.append((exp, lista_post))
@@ -183,18 +214,23 @@ def construir_grafo_colusion(db: Session, solo_riesgo: bool = True) -> dict:
                 if not prov:
                     continue
                 if not G.has_node(prov.codigo):
+                    es_sanc = prov.estado_rnp != "HABILITADO"
                     G.add_node(
                         prov.codigo,
                         id=prov.codigo,
                         label=prov.codigo,
                         titulo_completo=prov.alias_comercial,
                         tipo="PROVEEDOR",
-                        riesgo="ALTO" if (prov.id in proveedores_en_red_ids) else "LIMPIO",
+                        riesgo="SANCIONADO" if es_sanc else ("ALTO" if (prov.id in proveedores_en_red_ids) else "LIMPIO"),
                         rubro=prov.rubro,
                         representante_id=prov.representante_id,
                         accionista_id=prov.accionista_id,
                         direccion_hash=prov.direccion_hash,
                         telefono_hash=prov.telefono_hash,
+                        estado_rnp=prov.estado_rnp,
+                        penalidades_previas=prov.penalidades_previas,
+                        contratos_previos=prov.contratos_previos,
+                        motivo_historial=prov.motivo_historial,
                         detalle=f"Proveedor {prov.codigo} ({prov.alias_comercial} — {prov.rubro})",
                     )
                 rol_corto = "Adjudicado" if post.es_ganador else "Postor"
@@ -204,13 +240,13 @@ def construir_grafo_colusion(db: Session, solo_riesgo: bool = True) -> dict:
                     id=f"edge-{prov.codigo}-{exp.codigo}",
                     label=rol_corto,
                     tipo_enlace="POSTULACION_GANADORA" if post.es_ganador else "POSTULACION",
-                    riesgo="ALTO" if (prov.id in proveedores_en_red_ids) else "MEDIO",
+                    riesgo="ALTO" if (prov.id in proveedores_en_red_ids or prov.id in proveedores_sancionados_ids) else "MEDIO",
                 )
 
     # Calcular centralidad de grado con NetworkX
     centralidad = nx.degree_centrality(G) if G.number_of_nodes() > 0 else {}
 
-    # Construir lista de clústeres de colusión detectados mediante componentes conexas sobre subgrafo de riesgo
+    # Construir lista de clústeres de colusión / continuidad detectados mediante componentes conexas
     G_riesgo = nx.Graph()
     for attr_id, info in atributos_compartidos.items():
         for prov_code in info["proveedores"]:
@@ -220,6 +256,13 @@ def construir_grafo_colusion(db: Session, solo_riesgo: bool = True) -> dict:
     for idx, comp in enumerate(nx.connected_components(G_riesgo), start=1):
         nodos_prov = sorted([n for n in comp if n.startswith("PROV-")])
         nodos_attr = sorted([n for n in comp if not n.startswith("PROV-")])
+        provs_sancionados_cluster = [
+            cod
+            for cod in nodos_prov
+            if cod in prov_por_codigo and prov_por_codigo[cod].estado_rnp != "HABILITADO"
+        ]
+        es_continuidad = len(provs_sancionados_cluster) > 0
+        umbral_interseccion = 1 if es_continuidad else 2
 
         # Buscar expedientes afectados por este clúster
         exps_afectados = []
@@ -231,7 +274,7 @@ def construir_grafo_colusion(db: Session, solo_riesgo: bool = True) -> dict:
                 if p.proveedor_id in prov_map
             }
             interseccion = set(nodos_prov).intersection(codigos_postores)
-            if len(interseccion) >= 2:
+            if len(interseccion) >= umbral_interseccion:
                 exps_afectados.append(
                     {
                         "id": exp.id,
@@ -250,24 +293,41 @@ def construir_grafo_colusion(db: Session, solo_riesgo: bool = True) -> dict:
             if a in atributos_compartidos
         ]
 
+        if es_continuidad:
+            nombre_red = f"Continuidad Económica / Empresa Reciclada #{idx} (Art. 30 Ley 32069)"
+            explicacion_cluster = (
+                f"Señal de riesgo que amerita revisión humana: Se detectó vinculación societaria o domiciliaria "
+                f"({', '.join(detalles_atributos)}) entre {', '.join(nodos_prov)}, incluyendo proveedor(es) con "
+                f"sanción o liquidación previa en el RNP ({', '.join(provs_sancionados_cluster)}). Esto configura "
+                f"indicio de continuidad económica ('empresa reciclada') para eludir impedimentos de contratación."
+            )
+            normativa_cluster = (
+                "Ley N° 32069 (Art. 30 Impedimentos por continuidad económica, personas jurídicas sucesoras "
+                "y sanciones vigentes en RNP; Art. 5 Principio de Integridad); D.S. N° 009-2025-EF."
+            )
+        else:
+            nombre_red = f"Anillo de Colusión Presunta #{idx} ({len(nodos_prov)} proveedores vinculados)"
+            explicacion_cluster = (
+                f"Señal de riesgo que amerita revisión humana: Los proveedores {', '.join(nodos_prov)} "
+                f"se presentaron como competidores independientes en los mismos procesos de contratación, "
+                f"pero comparten vínculos encubiertos ({', '.join(detalles_atributos)}). "
+                f"Esto vulnera la competencia efectiva y configura indicio de simulación de pluralidad de postores."
+            )
+            normativa_cluster = (
+                "Ley N° 32069 (Art. 5 Principio de Competencia e Integridad; Art. 30 Impedimentos para ser participante "
+                "y postor por vinculación económica o grupo empresarial); D.S. N° 009-2025-EF."
+            )
+
         clusters_detectados.append(
             {
                 "cluster_id": f"CLUSTER-COL-0{idx}",
-                "nombre_red": f"Anillo de Colusión Presunta #{idx} ({len(nodos_prov)} proveedores vinculados)",
+                "nombre_red": nombre_red,
                 "proveedores_vinculados": nodos_prov,
                 "atributos_compartidos": detalles_atributos,
                 "expedientes_afectados": exps_afectados,
                 "monto_total_afectado": round(monto_involucrado, 2),
-                "explicacion_xai": (
-                    f"Señal de riesgo que amerita revisión humana: Los proveedores {', '.join(nodos_prov)} "
-                    f"se presentaron como competidores independientes en los mismos procesos de contratación, "
-                    f"pero comparten vínculos encubiertos ({', '.join(detalles_atributos)}). "
-                    f"Esto vulnera la competencia efectiva y configura indicio de simulación de pluralidad de postores."
-                ),
-                "base_normativa": (
-                    "Ley N° 32069 (Art. 5 Principio de Competencia e Integridad; Art. 30 Impedimentos para ser participante "
-                    "y postor por vinculación económica o grupo empresarial); D.S. N° 009-2025-EF."
-                ),
+                "explicacion_xai": explicacion_cluster,
+                "base_normativa": normativa_cluster,
             }
         )
 

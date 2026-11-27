@@ -102,6 +102,13 @@ export const GrafoColusionPage: React.FC = () => {
         },
       },
       {
+        selector: 'node[tipo = "PROVEEDOR"][riesgo = "SANCIONADO"]',
+        style: {
+          'background-color': '#7e22ce',
+          'border-color': isDark ? '#f3e8ff' : '#581c87',
+        },
+      },
+      {
         selector: 'node[tipo = "ATRIBUTO"]',
         style: {
           shape: 'diamond',
@@ -189,7 +196,7 @@ export const GrafoColusionPage: React.FC = () => {
             Empresas con Datos Compartidos (Posible Colusión)
           </h1>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-            Identifica proveedores que compiten en un mismo proceso pero comparten representante legal, socio/accionista inversor, dirección o teléfono (Art. 30 Ley N° 32069 • Grafo NetworkX)
+            Identifica proveedores que compiten en un mismo proceso o suceden a empresas sancionadas en RNP compartiendo representante legal, socio/accionista inversor, dirección o teléfono (Art. 30 Ley N° 32069 • Grafo NetworkX)
           </p>
         </div>
 
@@ -270,6 +277,10 @@ export const GrafoColusionPage: React.FC = () => {
               <span className="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-medium">
                 <span className="w-3 h-3 rounded-full bg-rose-600 inline-block border border-rose-300" />
                 Proveedor Vinculado
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-medium">
+                <span className="w-3 h-3 rounded-full bg-purple-700 inline-block border border-purple-300" />
+                Proveedor Sancionado / Liquidado (RNP)
               </span>
               <span className="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-medium">
                 <span className="w-3 h-3 rotate-45 bg-amber-500 inline-block border border-amber-300" />
@@ -415,6 +426,46 @@ export const GrafoColusionPage: React.FC = () => {
                         {nodoSeleccionado.telefono_hash}
                       </span>
                     </div>
+                  )}
+                  {nodoSeleccionado.tipo === 'PROVEEDOR' && nodoSeleccionado.estado_rnp && (
+                    <>
+                      <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                        <span className="text-slate-500 dark:text-slate-400">Estado RNP:</span>
+                        <span
+                          className={`px-2 py-0.5 rounded font-mono text-[10px] font-extrabold border ${
+                            nodoSeleccionado.estado_rnp === 'HABILITADO'
+                              ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/40'
+                              : 'bg-purple-100 dark:bg-purple-500/20 text-purple-900 dark:text-purple-200 border-purple-300 dark:border-purple-500/40'
+                          }`}
+                        >
+                          {nodoSeleccionado.estado_rnp}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500 dark:text-slate-400">Contratos previos:</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                          {nodoSeleccionado.contratos_previos ?? 0}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500 dark:text-slate-400">Penalidades previas:</span>
+                        <span
+                          className={`font-mono font-bold ${
+                            (nodoSeleccionado.penalidades_previas ?? 0) > 0
+                              ? 'text-rose-700 dark:text-rose-300'
+                              : 'text-emerald-700 dark:text-emerald-400'
+                          }`}
+                        >
+                          {nodoSeleccionado.penalidades_previas ?? 0}
+                        </span>
+                      </div>
+                      {nodoSeleccionado.motivo_historial && (
+                        <div className="pt-1 text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
+                          <strong className="text-slate-800 dark:text-slate-200">Historial RNP: </strong>
+                          {nodoSeleccionado.motivo_historial}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 

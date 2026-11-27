@@ -70,6 +70,16 @@ const REGLA_METADATA: Record<
     corto: 'R-08 Conflicto',
     referencia: 'Ley N° 27815 • D.S. N° 148-2024-PCM',
   },
+  'R-09-CONTINUIDAD-RNP': {
+    titulo: 'Historial RNP / Continuidad Económica (Empresa Reciclada)',
+    corto: 'R-09 RNP/Suces.',
+    referencia: 'Art. 30 Ley N° 32069 • Padrón RNP y Vínculos',
+  },
+  'R-10-SOBREPRECIO': {
+    titulo: 'Sobreprecio frente a Estándar de Mercado (> +25 %)',
+    corto: 'R-10 Sobreprecio',
+    referencia: 'Art. 5 y 46 Ley N° 32069 • SEACE / Perú Compras',
+  },
 };
 
 const SUITE_LABELS: Record<string, string> = {
@@ -79,6 +89,7 @@ const SUITE_LABELS: Record<string, string> = {
   TestCandadoDePago: 'Candado de Pago',
   TestRBAC: 'Permisos RBAC',
   TestCanalDenuncia: 'Denuncia D.L. 1327',
+  TestHistorialYSobreprecio: 'Historial RNP y Sobreprecio',
   TestBitacoraReinicioYReportes: 'Bitácora y API',
 };
 
@@ -100,9 +111,10 @@ function classifyLiveCase(nombre: string, esperado: string[]): {
   etiqueta: string;
   clase: string;
 } {
-  if (nombre.toLowerCase().includes('frontera')) {
+  const lower = nombre.toLowerCase();
+  if (lower.includes('frontera')) {
     return {
-      etiqueta: 'Frontera 8 UIT',
+      etiqueta: lower.includes('sobreprecio') ? 'Frontera +25%' : 'Frontera 8 UIT',
       clase:
         'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30',
     };
@@ -145,6 +157,7 @@ function formatTestMethodName(fullName: string): {
     .replace(/\bkpi\b/gi, 'KPI')
     .replace(/\bpdf\b/gi, 'PDF')
     .replace(/\bcsv\b/gi, 'CSV')
+    .replace(/\brnp\b/gi, 'RNP')
     .replace(/\b403\b/g, 'HTTP 403')
     .replace(/\b404\b/g, 'HTTP 404');
   const capitalized = clean.charAt(0).toUpperCase() + clean.slice(1);
@@ -326,11 +339,12 @@ export const ValidacionPage: React.FC<ValidacionPageProps> = ({ rolActivo }) => 
                 <strong className="text-[#0B1F3A] dark:text-white">
                   {resumen.expedientes_sembrados} expedientes base
                 </strong>{' '}
-                ({resumen.compras_limpias} compras limpias y 10 casos forenses),{' '}
+                ({resumen.compras_limpias} compras limpias y{' '}
+                {resumen.expedientes_sembrados - resumen.compras_limpias} casos forenses),{' '}
                 <strong className="text-[#0B1F3A] dark:text-white">
                   {resumen.casos_en_vivo} casos borde etiquetados en vivo
                 </strong>{' '}
-                —incluyendo la frontera exacta de 8 UIT (<span className="font-mono">S/ 42,800</span>)—,{' '}
+                —incluyendo las fronteras exactas de 8 UIT (<span className="font-mono">S/ 42,800</span>) y sobreprecio (<span className="font-mono">+25.0 %</span>)—,{' '}
                 <strong className="text-[#0B1F3A] dark:text-white">
                   {resumen.pruebas_sha256} verificaciones de ruptura SHA-256
                 </strong>{' '}
@@ -503,7 +517,7 @@ export const ValidacionPage: React.FC<ValidacionPageProps> = ({ rolActivo }) => 
               1. Matriz de Confusión y Efectividad por Regla Normativa
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Desempeño individual de las 8 reglas explicables sobre las {totalMuestrasMatriz} muestras evaluadas ({resumen.expedientes_sembrados} base + {resumen.casos_en_vivo} en vivo + {resumen.pruebas_sha256} estados SHA-256)
+              Desempeño individual de las {reglasEntries.length} reglas explicables sobre las {totalMuestrasMatriz} muestras evaluadas ({resumen.expedientes_sembrados} base + {resumen.casos_en_vivo} en vivo + {resumen.pruebas_sha256} estados SHA-256)
             </p>
           </div>
           <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300">
@@ -625,7 +639,7 @@ export const ValidacionPage: React.FC<ValidacionPageProps> = ({ rolActivo }) => 
               2. Casos Etiquetados y Pruebas de Frontera en Vivo
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Verificación del límite exacto de 8 UIT (S/ 42,800 vs. S/ 42,801), TDR técnicos legítimos e irregularidades combinadas
+              Verificación de los límites exactos de 8 UIT (S/ 42,800 vs. S/ 42,801) y sobreprecio (+25.0 % vs. +25.1 %), continuidad RNP e irregularidades combinadas
             </p>
           </div>
 
@@ -655,7 +669,7 @@ export const ValidacionPage: React.FC<ValidacionPageProps> = ({ rolActivo }) => 
                   : 'text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800'
               }`}
             >
-              Controles Limpios y Frontera ≤ 8 UIT ({conteoCasos.controles})
+              Controles Limpios y Fronteras ({conteoCasos.controles})
             </button>
             <button
               type="button"

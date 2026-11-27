@@ -7,6 +7,8 @@ const TIPOLOGIA_LABELS: Record<string, string> = {
   PAGO_SIN_CONFORMIDAD: 'Pago sin Conformidad',
   INCONSISTENCIA_VERSION_SUSTENTO: 'Versión / Sin Sustento',
   ENTREGABLE_INCOMPLETO_CONFORMIDAD: 'Caso 2 UNT • Sin Pozo a Tierra',
+  CONTINUIDAD_ECONOMICA_RNP: 'Empresa Reciclada / Historial RNP',
+  SOBREPRECIO_MERCADO: 'Sobreprecio frente a Estándar',
 };
 
 export function formatTipologia(tipo?: string | null): string {
